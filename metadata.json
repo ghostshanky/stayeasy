@@ -1,0 +1,5 @@
+{
+  "name": "StayEasy - Hostel Management Platform",
+  "description": "A comprehensive multi-page application for finding, booking, and managing hostel stays. Includes a user-facing booking flow, a tenant dashboard, and a property owner dashboard.",
+  "requestFramePermissions": []
+}
