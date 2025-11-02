@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Page, Listing } from '../types';
 import { getProperties } from '../api';

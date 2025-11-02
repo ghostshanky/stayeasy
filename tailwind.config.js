@@ -1,3 +1,4 @@
+
 import containerQueries from '@tailwindcss/container-queries';
 
 /** @type {import('tailwindcss').Config} */

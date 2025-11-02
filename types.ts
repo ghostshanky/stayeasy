@@ -1,3 +1,4 @@
+
 export type Page = 'landing' | 'searchResults' | 'propertyDetails' | 'confirmAndPay' | 'ownerDashboard' | 'tenantDashboard' | 'login' | 'signup';
 
 export enum ListingStatus {
