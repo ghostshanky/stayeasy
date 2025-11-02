@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Page } from './types';
 
@@ -76,6 +77,7 @@ function App() {
                             <h2 className="text-text-light-primary dark:text-text-dark-primary text-xl font-bold">StayEasy</h2>
                         </div>
                         <div className="hidden md:flex items-center gap-8">
+                            <a onClick={() => navigate('landing')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Home</a>
                             <a onClick={() => navigate('searchResults')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Explore</a>
                             <a onClick={() => navigate('ownerDashboard')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">List your property</a>
                             <a href="#" className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Help</a>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Page } from '../types';
 
@@ -5,7 +6,7 @@ const TenantDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
     return (
         <div className="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
             <div className="flex h-full grow">
-                <aside className="hidden md:flex w-64 flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 p-4 sticky top-0 h-screen">
+                <aside className="hidden md:flex w-64 flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 p-4 sticky top-16 h-[calc(100vh-4rem)]">
                     <div className="flex h-full flex-col justify-between">
                         <div className="flex flex-col gap-8">
                             <div className="flex items-center gap-3">
@@ -53,7 +54,7 @@ const TenantDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
                             </div>
                             <div className="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800">
                                 <p className="text-[#111518] dark:text-gray-300 text-base font-medium leading-normal">Total Spent</p>
-                                <p className="text-[#111518] dark:text-white tracking-light text-2xl font-bold leading-tight">$1,250</p>
+                                <p className="text-[#111518] dark:text-white tracking-light text-2xl font-bold leading-tight">₹95,000</p>
                             </div>
                         </div>
                         <div className="flex flex-col">

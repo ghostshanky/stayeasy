@@ -1,7 +1,80 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Page } from '../types';
 
 const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+    const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi' | 'netbanking'>('card');
+    
+    const PaymentMethodButton = ({ method, label }) => {
+        const isActive = paymentMethod === method;
+        return (
+            <button 
+                onClick={() => setPaymentMethod(method)}
+                className={`py-2 px-4 text-sm font-semibold ${isActive ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+            >
+                {label}
+            </button>
+        )
+    };
+
+    const renderPaymentForm = () => {
+        switch (paymentMethod) {
+            case 'card':
+                return (
+                    <form className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="card-number">Card Number</label>
+                            <div className="relative">
+                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">credit_card</span>
+                                <input className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="card-number" placeholder="0000 0000 0000 0000" type="text" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="expiry-date">Expiry Date</label>
+                                <input className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="expiry-date" placeholder="MM / YY" type="text" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="cvv">CVV</label>
+                                <input className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="cvv" placeholder="123" type="text" />
+                            </div>
+                        </div>
+                        <div className="flex items-center">
+                            <input className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" id="save-card" name="save-card" type="checkbox" />
+                            <label className="ml-2 block text-sm text-gray-900 dark:text-gray-300" htmlFor="save-card">Save card for future use</label>
+                        </div>
+                    </form>
+                );
+            case 'upi':
+                return (
+                     <form className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="upi-id">UPI ID</label>
+                             <input className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="upi-id" placeholder="yourname@bank" type="text" />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">A payment request will be sent to your UPI app.</p>
+                     </form>
+                );
+            case 'netbanking':
+                 return (
+                     <form className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="bank-select">Select Bank</label>
+                            <select id="bank-select" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900">
+                                <option>State Bank of India</option>
+                                <option>HDFC Bank</option>
+                                <option>ICICI Bank</option>
+                                <option>Axis Bank</option>
+                                <option>Kotak Mahindra Bank</option>
+                            </select>
+                        </div>
+                     </form>
+                );
+            default:
+                return null;
+        }
+    }
+
+
     return (
         <div className="font-display bg-background-light dark:bg-background-dark text-[#111518] dark:text-gray-200">
             <div className="relative flex h-auto w-full flex-col group/design-root overflow-x-hidden">
@@ -41,33 +114,11 @@ const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => 
                                 <div className="flex flex-col gap-6">
                                     <h2 className="text-2xl font-bold leading-tight tracking-[-0.015em] text-gray-900 dark:text-white">Pay with</h2>
                                     <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-                                        <button className="py-2 px-4 text-sm font-semibold border-b-2 border-primary text-primary">Credit/Debit Card</button>
-                                        <button className="py-2 px-4 text-sm font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">UPI</button>
-                                        <button className="py-2 px-4 text-sm font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">Net Banking</button>
+                                        <PaymentMethodButton method="card" label="Credit/Debit Card" />
+                                        <PaymentMethodButton method="upi" label="UPI" />
+                                        <PaymentMethodButton method="netbanking" label="Net Banking" />
                                     </div>
-                                    <form className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="card-number">Card Number</label>
-                                            <div className="relative">
-                                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">credit_card</span>
-                                                <input className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="card-number" placeholder="0000 0000 0000 0000" type="text" />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="expiry-date">Expiry Date</label>
-                                                <input className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="expiry-date" placeholder="MM / YY" type="text" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="cvv">CVV</label>
-                                                <input className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="cvv" placeholder="123" type="text" />
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <input className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" id="save-card" name="save-card" type="checkbox" />
-                                            <label className="ml-2 block text-sm text-gray-900 dark:text-gray-300" htmlFor="save-card">Save card for future use</label>
-                                        </div>
-                                    </form>
+                                    {renderPaymentForm()}
                                     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                                         <span className="material-symbols-outlined text-base text-success">lock</span>
                                         <p>This is a secure 256-bit SSL encrypted payment.</p>

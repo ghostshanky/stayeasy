@@ -14,6 +14,7 @@ export interface Listing {
   status: ListingStatus;
   rating?: number;
   price?: string;
+  priceValue?: number;
 }
 
 export enum StatChangeDirection {

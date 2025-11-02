@@ -1,50 +1,53 @@
+
 import React from 'react';
 import { Page } from '../types';
 
 const LandingPage = ({ navigate }: { navigate: (page: Page) => void }) => {
     return (
         <div className="bg-background-light dark:bg-background-dark text-[#111518] dark:text-gray-200">
-            <div className="relative flex h-auto min-h-screen w-full flex-col font-display group/design-root overflow-x-hidden">
+            <div className="relative flex h-auto w-full flex-col font-display group/design-root overflow-x-hidden">
                 <div className="layout-container flex h-full grow flex-col">
                     <div className="flex flex-1 justify-center py-5">
                         <div className="layout-content-container flex flex-col w-full max-w-6xl flex-1 px-4 sm:px-6 lg:px-8">
                             
                             <main className="flex flex-col gap-10 md:gap-16">
-                                <div className="@container mt-5">
-                                    <div className="@[480px]:p-0">
-                                        <div className="flex min-h-[480px] flex-col gap-6 bg-cover bg-center bg-no-repeat @[480px]:gap-8 @[480px]:rounded-xl items-center justify-center p-4 text-center" aria-label="Vibrant, modern co-living space with young people interacting" style={{ backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.5) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuBT9ls834uSRBR6QcNga1tnsjJUI6lNVrObMuhyG9Etwl-O559TpoWZxFYWU9pz_BCRxAxfIssOFk6_CRuHJ6vIAcJebgkGLmqSv7qwXc5UiJ7mvE0c-Za8c0X-TeifdaEJNUjQl-2otWoOCQpqFswA2tJYgWryrpl__NCX36YT60bsqfRTjI6eWwcmDawhrBfiK3VfLekfyYXtGMh3Kv_4EiZ6gx5-q5thDBBShXVYQEORIn5eKHmFsNsgM0pRTwRswMMcurO3a-Q")' }}>
-                                            <div className="flex flex-col gap-2">
-                                                <h1 className="text-white text-4xl font-black leading-tight tracking-[-0.033em] @[480px]:text-5xl @[480px]:font-black @[480px]:leading-tight @[480px]:tracking-[-0.033em]">
-                                                    Find Your Community. Find Your Home.
-                                                </h1>
-                                                <h2 className="text-white text-sm font-normal leading-normal @[480px]:text-base @[480px]:font-normal @[480px]:leading-normal max-w-2xl mx-auto">
-                                                    Budget-friendly hostels and PGs for students and professionals. Book your perfect stay today.
-                                                </h2>
+                                <div className="relative mb-12">
+                                    <div className="@container mt-5">
+                                        <div className="@[480px]:p-0">
+                                            <div className="flex min-h-[480px] flex-col gap-6 bg-cover bg-center bg-no-repeat @[480px]:gap-8 @[480px]:rounded-xl items-center justify-center p-4 text-center" aria-label="Vibrant, modern co-living space with young people interacting" style={{ backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.5) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuBT9ls834uSRBR6QcNga1tnsjJUI6lNVrObMuhyG9Etwl-O559TpoWZxFYWU9pz_BCRxAxfIssOFk6_CRuHJ6vIAcJebgkGLmqSv7qwXc5UiJ7mvE0c-Za8c0X-TeifdaEJNUjQl-2otWoOCQpqFswA2tJYgWryrpl__NCX36YT60bsqfRTjI6eWwcmDawhrBfiK3VfLekfyYXtGMh3Kv_4EiZ6gx5-q5thDBBShXVYQEORIn5eKHmFsNsgM0pRTwRswMMcurO3a-Q")' }}>
+                                                <div className="flex flex-col gap-2">
+                                                    <h1 className="text-white text-4xl font-black leading-tight tracking-[-0.033em] @[480px]:text-5xl @[480px]:font-black @[480px]:leading-tight @[480px]:tracking-[-0.033em]">
+                                                        Find Your Community. Find Your Home.
+                                                    </h1>
+                                                    <h2 className="text-white text-sm font-normal leading-normal @[480px]:text-base @[480px]:font-normal @[480px]:leading-normal max-w-2xl mx-auto">
+                                                        Budget-friendly hostels and PGs for students and professionals. Book your perfect stay today.
+                                                    </h2>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="-mt-24 z-10 px-4">
-                                    <div className="max-w-4xl mx-auto bg-surface-light dark:bg-surface-dark p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800">
-                                        <div className="flex flex-col md:flex-row items-center gap-3 w-full">
-                                            <div className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg flex-1 w-full">
-                                                <span className="material-symbols-outlined text-gray-500">search</span>
-                                                <input className="w-full bg-transparent focus:outline-none text-[#111518] dark:text-gray-200 placeholder-gray-500" placeholder="Enter a city or area" type="text" />
-                                            </div>
-                                            <div className="flex gap-3 flex-wrap justify-center w-full md:w-auto">
-                                                <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-200 dark:bg-gray-800 px-4">
-                                                    <p className="text-[#111518] dark:text-gray-200 text-sm font-medium leading-normal">Stay Type</p>
-                                                    <span className="material-symbols-outlined text-[#111518] dark:text-gray-200">expand_more</span>
+                                    <div className="absolute bottom-0 translate-y-1/2 w-full z-10 px-4">
+                                        <div className="max-w-4xl mx-auto bg-surface-light dark:bg-surface-dark p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800">
+                                            <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+                                                <div className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg flex-1 w-full">
+                                                    <span className="material-symbols-outlined text-gray-500">search</span>
+                                                    <input className="w-full bg-transparent focus:outline-none text-[#111518] dark:text-gray-200 placeholder-gray-500" placeholder="Enter a city or area" type="text" />
+                                                </div>
+                                                <div className="flex gap-3 flex-wrap justify-center w-full md:w-auto">
+                                                    <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-200 dark:bg-gray-800 px-4">
+                                                        <p className="text-[#111518] dark:text-gray-200 text-sm font-medium leading-normal">Stay Type</p>
+                                                        <span className="material-symbols-outlined text-[#111518] dark:text-gray-200">expand_more</span>
+                                                    </button>
+                                                    <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-200 dark:bg-gray-800 px-4">
+                                                        <p className="text-[#111518] dark:text-gray-200 text-sm font-medium leading-normal">Price Range</p>
+                                                        <span className="material-symbols-outlined text-[#111518] dark:text-gray-200">expand_more</span>
+                                                    </button>
+                                                </div>
+                                                <button onClick={() => navigate('searchResults')} className="flex w-full md:w-auto min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+                                                    <span className="truncate">Search</span>
                                                 </button>
-                                                <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-200 dark:bg-gray-800 px-4">
-                                                    <p className="text-[#111518] dark:text-gray-200 text-sm font-medium leading-normal">Price Range</p>
-                                                    <span className="material-symbols-outlined text-[#111518] dark:text-gray-200">expand_more</span>
-                                                </button>
                                             </div>
-                                            <button onClick={() => navigate('searchResults')} className="flex w-full md:w-auto min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
-                                                <span className="truncate">Search</span>
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
