@@ -156,25 +156,25 @@ const LandingPage = ({ navigate }: { navigate: (page: Page) => void }) => {
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">StayEasy</h4>
                             <ul className="space-y-2">
-                                <li><a className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary" href="#">About Us</a></li>
+                                <li><button onClick={() => console.log('About Us clicked')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">About Us</button></li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">Discover</h4>
                             <ul className="space-y-2">
-                                <li><a className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary" href="#">Trust & Safety</a></li>
+                                <li><button onClick={() => console.log('Trust & Safety clicked')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Trust & Safety</button></li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">Hosting</h4>
                             <ul className="space-y-2">
-                                <li><a className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary" href="#">List your property</a></li>
+                                <li><button onClick={() => console.log('List your property clicked')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">List your property</button></li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">Support</h4>
                             <ul className="space-y-2">
-                                <li><a className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary" href="#">Help Center</a></li>
+                                <li><button onClick={() => console.log('Help Center clicked')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Help Center</button></li>
                             </ul>
                         </div>
                     </div>

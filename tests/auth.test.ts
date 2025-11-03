@@ -2,33 +2,24 @@ import request from 'supertest'
 import express from 'express'
 import { AuthService } from '../server/auth.js'
 import { requireAuth, requireRole } from '../server/middleware.js'
+import { PrismaClient } from '@prisma/client'
 
-// Mock the auth service for testing
-jest.mock('../server/auth.js', () => ({
-  AuthService: {
-    createUser: jest.fn(),
-    authenticateUser: jest.fn(),
-    validateSession: jest.fn(),
-    invalidateSession: jest.fn(),
-    verifyRefreshToken: jest.fn(),
-    getUserById: jest.fn(),
-    verifyEmailToken: jest.fn(),
-    createSession: jest.fn(),
-    generateToken: jest.fn(),
-    generateRefreshToken: jest.fn(),
-  },
-}))
+const prisma = new PrismaClient()
 
 const app = express()
 app.use(express.json())
 
-// Mock middleware for testing
-app.use((req: any, res, next) => {
-  req.currentUser = null // Will be set by individual tests
+// Auth middleware for testing
+app.use(async (req: any, res, next) => {
+  const authHeader = req.headers.authorization
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7)
+    req.currentUser = await AuthService.validateSession(token)
+  }
   next()
 })
 
-// Auth routes (simplified for testing)
+// Auth routes
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password, name, role } = req.body
@@ -62,15 +53,8 @@ app.get('/api/admin', requireRole(['ADMIN']), (req, res) => {
 })
 
 describe('Authentication Flow', () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
-
   describe('POST /api/auth/signup', () => {
     it('should create a new user successfully', async () => {
-      const mockUser = { id: 'user123', email: 'test@example.com' }
-      ;(AuthService.createUser as jest.Mock).mockResolvedValue(mockUser)
-
       const response = await request(app)
         .post('/api/auth/signup')
         .send({
@@ -81,69 +65,84 @@ describe('Authentication Flow', () => {
         })
 
       expect(response.status).toBe(200)
-      expect(response.body).toEqual({
-        message: 'User created successfully',
-        userId: 'user123',
+      expect(response.body).toHaveProperty('message', 'User created successfully')
+      expect(response.body).toHaveProperty('userId')
+
+      // Verify user was created in database
+      const user = await prisma.user.findUnique({
+        where: { email: 'test@example.com' }
       })
-      expect(AuthService.createUser).toHaveBeenCalledWith(
-        'test@example.com',
-        'password123',
-        'Test User',
-        'TENANT'
-      )
+      expect(user).toBeTruthy()
+      expect(user?.name).toBe('Test User')
+      expect(user?.role).toBe('TENANT')
     })
 
-    it('should handle user creation failure', async () => {
-      ;(AuthService.createUser as jest.Mock).mockRejectedValue(new Error('Creation failed'))
+    it('should handle duplicate email', async () => {
+      // First create a user
+      await request(app)
+        .post('/api/auth/signup')
+        .send({
+          email: 'duplicate@example.com',
+          password: 'password123',
+          name: 'Test User',
+          role: 'TENANT',
+        })
 
+      // Try to create again with same email
       const response = await request(app)
         .post('/api/auth/signup')
         .send({
-          email: 'test@example.com',
+          email: 'duplicate@example.com',
           password: 'password123',
-          name: 'Test User',
+          name: 'Test User 2',
+          role: 'TENANT',
         })
 
       expect(response.status).toBe(400)
-      expect(response.body).toEqual({ error: 'User creation failed' })
+      expect(response.body).toHaveProperty('error', 'User creation failed')
     })
   })
 
   describe('POST /api/auth/login', () => {
+    beforeAll(async () => {
+      // Create a test user for login tests
+      await AuthService.createUser('login@example.com', 'password123', 'Login User', 'TENANT')
+    })
+
     it('should login user successfully', async () => {
-      const mockUser = {
-        id: 'user123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'TENANT',
-        emailVerified: true,
-      }
-      const mockToken = 'jwt-token-123'
-
-      ;(AuthService.authenticateUser as jest.Mock).mockResolvedValue(mockUser)
-      ;(AuthService.createSession as jest.Mock).mockResolvedValue(mockToken)
-
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          email: 'test@example.com',
+          email: 'login@example.com',
           password: 'password123',
         })
 
       expect(response.status).toBe(200)
-      expect(response.body).toEqual({ token: mockToken, user: mockUser })
-      expect(AuthService.authenticateUser).toHaveBeenCalledWith('test@example.com', 'password123')
-      expect(AuthService.createSession).toHaveBeenCalledWith('user123')
+      expect(response.body).toHaveProperty('token')
+      expect(response.body).toHaveProperty('user')
+      expect(response.body.user.email).toBe('login@example.com')
+      expect(response.body.user.name).toBe('Login User')
+      expect(response.body.user.role).toBe('TENANT')
     })
 
     it('should reject invalid credentials', async () => {
-      ;(AuthService.authenticateUser as jest.Mock).mockResolvedValue(null)
-
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          email: 'test@example.com',
+          email: 'login@example.com',
           password: 'wrongpassword',
+        })
+
+      expect(response.status).toBe(401)
+      expect(response.body).toEqual({ error: 'Invalid credentials' })
+    })
+
+    it('should reject non-existent user', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'nonexistent@example.com',
+          password: 'password123',
         })
 
       expect(response.status).toBe(401)
@@ -152,23 +151,30 @@ describe('Authentication Flow', () => {
   })
 
   describe('GET /api/auth/me', () => {
-    it('should return current user when authenticated', async () => {
-      const mockUser = {
-        id: 'user123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'TENANT',
-        emailVerified: true,
-      }
+    let token: string
 
+    beforeAll(async () => {
+      // Create user and get token
+      await AuthService.createUser('me@example.com', 'password123', 'Me User', 'TENANT')
+      const loginResponse = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'me@example.com',
+          password: 'password123',
+        })
+      token = loginResponse.body.token
+    })
+
+    it('should return current user when authenticated', async () => {
       const response = await request(app)
         .get('/api/auth/me')
-        .set('Authorization', 'Bearer valid-token')
-        .set('currentUser', JSON.stringify(mockUser)) // Simulate middleware setting req.currentUser
+        .set('Authorization', `Bearer ${token}`)
 
-      // Note: In a real test, you'd need to mock the middleware properly
-      // This is a simplified version
-      expect(response.status).toBe(401) // Will fail without proper middleware mock
+      expect(response.status).toBe(200)
+      expect(response.body).toHaveProperty('user')
+      expect(response.body.user.email).toBe('me@example.com')
+      expect(response.body.user.name).toBe('Me User')
+      expect(response.body.user.role).toBe('TENANT')
     })
 
     it('should reject when not authenticated', async () => {
@@ -177,19 +183,66 @@ describe('Authentication Flow', () => {
       expect(response.status).toBe(401)
       expect(response.body).toEqual({ error: 'Not authenticated' })
     })
+
+    it('should reject with invalid token', async () => {
+      const response = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', 'Bearer invalid-token')
+
+      expect(response.status).toBe(401)
+      expect(response.body).toEqual({ error: 'Not authenticated' })
+    })
   })
 
   describe('Role-based Access Control', () => {
+    let adminToken: string
+    let tenantToken: string
+
+    beforeAll(async () => {
+      // Create admin user
+      await AuthService.createUser('admin@example.com', 'password123', 'Admin User', 'ADMIN')
+      const adminLogin = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'admin@example.com',
+          password: 'password123',
+        })
+      adminToken = adminLogin.body.token
+
+      // Create tenant user
+      await AuthService.createUser('tenant@example.com', 'password123', 'Tenant User', 'TENANT')
+      const tenantLogin = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'tenant@example.com',
+          password: 'password123',
+        })
+      tenantToken = tenantLogin.body.token
+    })
+
     it('should allow admin access with correct role', async () => {
-      // This would require proper middleware mocking
-      // Simplified test structure
-      expect(true).toBe(true) // Placeholder
+      const response = await request(app)
+        .get('/api/admin')
+        .set('Authorization', `Bearer ${adminToken}`)
+
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual({ message: 'Admin access granted' })
     })
 
     it('should deny access with insufficient role', async () => {
-      // This would require proper middleware mocking
-      // Simplified test structure
-      expect(true).toBe(true) // Placeholder
+      const response = await request(app)
+        .get('/api/admin')
+        .set('Authorization', `Bearer ${tenantToken}`)
+
+      expect(response.status).toBe(403)
+      expect(response.body).toEqual({ error: 'Insufficient permissions' })
+    })
+
+    it('should deny access without authentication', async () => {
+      const response = await request(app).get('/api/admin')
+
+      expect(response.status).toBe(401)
+      expect(response.body).toEqual({ error: 'Not authenticated' })
     })
   })
 })

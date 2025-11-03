@@ -17,21 +17,21 @@ const TenantDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
                                 </div>
                             </div>
                             <nav className="flex flex-col gap-2">
-                                <a className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
+                                <button onClick={() => console.log('Dashboard Home clicked')} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary">
                                     <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>dashboard</span>
                                     <p className="text-sm font-medium leading-normal">Dashboard Home</p>
-                                </a>
-                                <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" href="#">
+                                </button>
+                                <button onClick={() => console.log('Payment History clicked')} className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
                                     <span className="material-symbols-outlined">credit_card</span>
                                     <p className="text-sm font-medium leading-normal">Payment History</p>
-                                </a>
+                                </button>
                             </nav>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" href="#">
+                            <button onClick={() => console.log('Logout clicked')} className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
                                 <span className="material-symbols-outlined">logout</span>
                                 <p className="text-sm font-medium leading-normal">Logout</p>
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </aside>

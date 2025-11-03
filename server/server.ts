@@ -4,7 +4,9 @@ import { createServer } from 'http'
 import { AuthService, AuthUser } from './auth.js'
 import { ChatService } from './chat.js'
 import chatApi from './chat-api.js'
-import upiPaymentApi from './upi-payment.js'
+import paymentRoutes from './controllers/paymentsController.js'
+import filesRouter from './controllers/filesController.js'
+import dataGovernanceRouter from './controllers/dataGovernanceController.js'
 
 const app = express()
 const server = createServer(app)
@@ -46,13 +48,15 @@ const authMiddleware = async (req: express.Request, res: express.Response, next:
 app.use(authMiddleware)
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
 // Mount API routes
 app.use('/api', chatApi)
-app.use('/api/payments', upiPaymentApi)
+app.use('/api/payments', paymentRoutes)
+app.use('/api/files', filesRouter)
+app.use('/api', dataGovernanceRouter)
 
 // Auth routes
 app.post('/api/auth/signup', async (req, res) => {

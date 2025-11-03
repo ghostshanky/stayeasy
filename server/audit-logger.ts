@@ -38,8 +38,8 @@ export class AuditLogger {
   /**
    * Log owner payment verification
    */
-  static async logPaymentVerification(actorId: string, bookingId: string, paymentId: string, action: 'verify' | 'reject', reason?: string) {
-    const actionText = action === 'verify' ? 'verified' : 'rejected'
+  static async logPaymentVerification(actorId: string, bookingId: string, paymentId: string, action: 'verify' | 'reject' | 'refund', reason?: string) {
+    const actionText = action === 'verify' ? 'verified' : action === 'reject' ? 'rejected' : 'refunded'
     await prisma.auditLog.create({
       data: {
         userId: actorId,

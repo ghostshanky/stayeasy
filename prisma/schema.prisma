@@ -22,8 +22,12 @@ enum BookingStatus {
 
 enum PaymentStatus {
   PENDING
-  COMPLETED
-  FAILED
+  AWAITING_PAYMENT
+  AWAITING_OWNER_VERIFICATION
+  VERIFIED
+  REJECTED
+  CANCELLED
+  REFUNDED
 }
 
 model User {
@@ -35,31 +39,26 @@ model User {
   emailVerified Boolean        @default(false)
   emailToken    String?
   emailTokenExpiry DateTime?
+  avatar        String?
+  mobile        String?
+  bio           String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   bookings      Booking[]
   reviews       Review[]
   chats         Chat[]         @relation("UserChats")
+  chatsAsOwner  Chat[]         @relation("OwnerChats")
   sessions      Session[]
   auditLogs     AuditLog[]
   notifications Notification[]
+  paymentsAsUser Payment[]
+  paymentsAsOwner Payment[] @relation("OwnerPayments")
+  invoicesAsUser Invoice[]
+  invoicesAsOwner Invoice[] @relation("OwnerInvoices")
+  files         File[]
+  properties    Property[]
 
   @@map("users")
-  @@index([createdAt])
-  @@index([email])
-}
-
-model Owner {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  password  String
-  name      String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  properties Property[]
-  chats     Chat[]     @relation("OwnerChats")
-
-  @@map("owners")
   @@index([createdAt])
   @@index([email])
 }
@@ -74,10 +73,11 @@ model Property {
   capacity  Int
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
-  owner     Owner            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner     User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   details   PropertyDetail[]
   bookings  Booking[]
   reviews   Review[]
+  files     File[]
 
   @@map("properties")
   @@index([ownerId])
@@ -107,6 +107,7 @@ model Booking {
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   property  Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   payments  Payment[]
+  invoices  Invoice[]
 
   @@map("bookings")
   @@index([userId])
@@ -132,30 +133,59 @@ model Review {
 }
 
 model Payment {
-  id        String       @id @default(cuid())
-  bookingId String
-  amount    Float
-  status    PaymentStatus @default(PENDING)
-  createdAt DateTime     @default(now())
-  booking   Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  invoices  Invoice[]
+  id             String        @id @default(cuid())
+  bookingId      String
+  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: NoAction)
+  ownerId        String
+  owner          User          @relation("OwnerPayments", fields: [ownerId], references: [id], onDelete: NoAction)
+  amount         Int // Amount in paisa (e.g., 10000 for ₹100.00)
+  currency       String        @default("INR")
+  upiUri         String?
+  upiReference   String?
+  status         PaymentStatus @default(AWAITING_PAYMENT)
+  verifiedBy     String?
+  verifiedAt     DateTime?
+  rejectionReason String?
+  completedAt    DateTime?
+  refundedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  invoice        Invoice?
 
   @@map("payments")
   @@index([bookingId])
   @@index([createdAt])
   @@index([status])
+  @@index([userId])
+  @@index([ownerId])
 }
 
 model Invoice {
-  id        String  @id @default(cuid())
-  paymentId String
+  id        String   @id @default(cuid())
+  paymentId String   @unique
   details   String
   createdAt DateTime @default(now())
-  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceNo String   @unique
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: NoAction)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction)
+  ownerId   String
+  owner     User     @relation("OwnerInvoices", fields: [ownerId], references: [id], onDelete: NoAction)
+  lineItems Json // Array of { description: string, amount: number }
+  amount    Int // Total amount in paisa
+  status    String // e.g., "PAID"
+  pdfFileId String?
 
   @@map("invoices")
   @@index([paymentId])
   @@index([createdAt])
+  @@index([bookingId])
+  @@index([userId])
+  @@index([ownerId])
 }
 
 model Chat {
@@ -164,7 +194,7 @@ model Chat {
   ownerId   String
   createdAt DateTime  @default(now())
   user      User      @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
-  owner     Owner     @relation("OwnerChats", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner     User      @relation("OwnerChats", fields: [ownerId], references: [id], onDelete: Cascade)
   messages  Message[]
 
   @@map("chats")
@@ -174,14 +204,16 @@ model Chat {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  chatId    String
-  senderId  String
-  senderType String  // 'user' or 'owner'
-  content   String
-  createdAt DateTime @default(now())
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  files     File[]
+  id         String   @id @default(cuid())
+  chatId     String
+  senderId   String
+  recipientId String
+  senderType String  // 'TENANT' or 'OWNER'
+  content    String
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+  chat       Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  files      File[]
 
   @@map("messages")
   @@index([chatId])
@@ -189,13 +221,29 @@ model Message {
   @@index([createdAt])
 }
 
+enum FileStatus {
+  UPLOADING
+  AVAILABLE
+  ERROR
+}
+
 model File {
-  id        String  @id @default(cuid())
-  messageId String
-  url       String
-  type      String
-  createdAt DateTime @default(now())
-  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  url          String
+  thumbnailUrl String?
+  fileName     String
+  fileType     String
+  size         Int?
+  status       FileStatus @default(UPLOADING)
+  purpose      String? // e.g., 'PROPERTY_IMAGE', 'CHAT_ATTACHMENT'
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId   String?
+  property     Property?  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  messageId    String?
+  message      Message?   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@map("files")
   @@index([messageId])
@@ -218,14 +266,18 @@ model Session {
 
 model AuditLog {
   id        String   @id @default(cuid())
-  userId    String?
+  actorId   String? // The user who performed the action
   action    String
   details   String?
   createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  userId    String? // The subject user, if different from actor
+  bookingId String?
+  paymentId String?
+  invoiceId String?
 
   @@map("audit_logs")
-  @@index([userId])
+  @@index([actorId])
   @@index([createdAt])
 }
 

@@ -81,10 +81,12 @@ export class ChatService {
         attachments?: Array<{ url: string, type: string }>
       }) => {
         try {
-          await this.handleMessage(socket, data)
+          const savedMessage = await this.handleMessage(socket, data)
+          // Send ACK to sender
+          socket.emit('message_sent', { tempId: data.tempId, ...savedMessage })
         } catch (error) {
           socket.emit('message_error', {
-            error: 'Failed to send message',
+            error: (error as Error).message || 'Failed to send message',
             originalMessage: data
           })
         }
@@ -128,12 +130,14 @@ export class ChatService {
   private async handleMessage(socket: AuthenticatedSocket, data: {
     chatId: string
     content: string
+    tempId?: string // Temporary client-side ID for ACK mapping
     propertyId?: string
     attachments?: Array<{ url: string, type: string }>
   }) {
     const { chatId, content, propertyId, attachments } = data
 
     // Verify user has access to this chat
+    // This check is critical for security
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
       include: { user: true, owner: true }
@@ -151,7 +155,7 @@ export class ChatService {
     const recipientId = chat.userId === socket.userId ? chat.ownerId : chat.userId
 
     // Use transaction to ensure message and files are saved atomically
-    const result = await prisma.$transaction(async (tx) => {
+    const savedMessage = await prisma.$transaction(async (tx) => {
       // Create message
       const message = await tx.message.create({
         data: {
@@ -160,7 +164,8 @@ export class ChatService {
           recipientId,
           propertyId,
           content,
-          createdAt: new Date()
+          createdAt: new Date(),
+          senderType: socket.userRole,
         }
       })
 
@@ -187,26 +192,27 @@ export class ChatService {
       })
     })
 
-    if (!result) {
+    if (!savedMessage) {
       throw new Error('Failed to save message')
     }
 
+    // Update chat's updatedAt timestamp for sorting chat lists
+    await prisma.chat.update({
+      where: { id: chatId },
+      data: { updatedAt: new Date() }
+    });
+
     // Emit to chat room
-    this.io.to(`chat_${chatId}`).emit('new_message', result)
+    this.io.to(`chat_${chatId}`).emit('new_message', savedMessage)
 
     // Emit to recipient's private room (for notifications)
     this.io.to(`user_${recipientId}`).emit('message_notification', {
       chatId,
-      message: result,
+      message: savedMessage,
       unreadCount: await this.getUnreadCount(recipientId)
     })
-
-    // Send ACK to sender
-    socket.emit('message_sent', {
-      messageId: result.id,
-      chatId,
-      timestamp: result.createdAt
-    })
+    
+    return { id: savedMessage.id, chatId, createdAt: savedMessage.createdAt };
   }
 
   private async markMessagesRead(userId: string, messageIds: string[]) {

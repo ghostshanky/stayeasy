@@ -80,7 +80,7 @@ function App() {
                             <a onClick={() => navigate('landing')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Home</a>
                             <a onClick={() => navigate('searchResults')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Explore</a>
                             <a onClick={() => navigate('ownerDashboard')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">List your property</a>
-                            <a href="#" className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Help</a>
+                            <button onClick={() => console.log('Help clicked')} className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Help</button>
                         </div>
                          <div className="flex items-center gap-2">
                             {isAuthenticated ? (

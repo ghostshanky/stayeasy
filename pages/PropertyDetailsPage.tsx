@@ -26,9 +26,9 @@ const PropertyDetailsPage = ({ navigate }: { navigate: (page: Page) => void }) =
             <div className="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
                 <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="flex flex-wrap gap-2 mb-4">
-                        <a className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium" href="#">Home</a>
+                        <button onClick={() => navigate('landing')} className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Home</button>
                         <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">/</span>
-                        <a className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium" href="#">Mumbai</a>
+                        <button onClick={() => navigate('searchResults')} className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Mumbai</button>
                         <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">/</span>
                         <span className="text-gray-800 dark:text-gray-200 text-sm font-medium">Sunnyvale Hostel</span>
                     </div>

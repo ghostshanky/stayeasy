@@ -110,8 +110,7 @@ router.get('/chats', requireAuth, async (req, res) => {
 router.get('/chats/:chatId/messages', requireAuth, async (req, res) => {
   try {
     const { chatId } = req.params
-    const { page = 1, limit = 50, before } = req.query
-    const offset = (Number(page) - 1) * Number(limit)
+    const { cursor, limit = 20 } = req.query
 
     const userId = req.currentUser.id
 
@@ -129,13 +128,12 @@ router.get('/chats/:chatId/messages', requireAuth, async (req, res) => {
     }
 
     // Build where clause
-    const whereClause: any = { chatId }
-    if (before) {
-      whereClause.createdAt = { lt: new Date(before as string) }
-    }
+    const take = Number(limit)
 
     const messages = await prisma.message.findMany({
-      where: whereClause,
+      where: { chatId },
+      take: take + 1, // Fetch one extra to determine if there are more pages
+      cursor: cursor ? { id: cursor as string } : undefined,
       include: {
         sender: { select: { id: true, name: true, role: true } },
         recipient: { select: { id: true, name: true, role: true } },
@@ -143,17 +141,16 @@ router.get('/chats/:chatId/messages', requireAuth, async (req, res) => {
         files: true
       },
       orderBy: { createdAt: 'desc' },
-      skip: offset,
-      take: Number(limit)
     })
 
-    // Reverse to get chronological order
-    messages.reverse()
+    let hasMore = false;
+    let nextCursor: string | null = null;
 
-    // Get total count
-    const totalMessages = await prisma.message.count({
-      where: { chatId }
-    })
+    if (messages.length > take) {
+      hasMore = true;
+      const nextMessage = messages.pop(); // Remove the extra item
+      nextCursor = nextMessage!.id;
+    }
 
     // Mark messages as read if user is recipient
     const unreadMessageIds = messages
@@ -169,13 +166,12 @@ router.get('/chats/:chatId/messages', requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: messages,
+      data: {
+        messages: messages.reverse(), // Return in chronological order
+        nextCursor,
+        hasMore,
+      },
       pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total: totalMessages,
-        totalPages: Math.ceil(totalMessages / Number(limit)),
-        hasMore: offset + messages.length < totalMessages
       }
     })
 
@@ -387,5 +383,47 @@ router.put('/chats/:chatId/read', requireAuth, async (req, res) => {
     })
   }
 })
+
+// Mark messages as read
+router.post('/chats/:chatId/read', requireAuth, async (req, res) => {
+  try {
+    const { chatId } = req.params
+    const { messageIds } = req.body
+    const userId = req.currentUser.id
+
+    if (!Array.isArray(messageIds)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_INPUT', message: 'messageIds must be an array.' } });
+    }
+
+    // Verify user has access to this chat
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      select: { userId: true, ownerId: true }
+    })
+
+    if (!chat || (chat.userId !== userId && chat.ownerId !== userId)) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'CHAT_ACCESS_DENIED', message: 'Access denied to this chat' }
+      })
+    }
+
+    // Mark messages as read
+    const result = await prisma.message.updateMany({
+      where: {
+        id: { in: messageIds },
+        recipientId: userId,
+        readAt: null
+      },
+      data: { readAt: new Date() }
+    })
+
+    res.json({ success: true, data: { updatedCount: result.count } });
+
+  } catch (error) {
+    console.error('Error marking messages read:', error);
+    res.status(500).json({ success: false, error: { code: 'MARK_READ_FAILED', message: 'Failed to mark messages as read' } });
+  }
+});
 
 export default router

@@ -14,8 +14,19 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
-  // Clear all tables before each test
+  // Clear all tables before each test in correct order (respecting foreign keys)
+  await prisma.auditLog.deleteMany()
+  await prisma.notification.deleteMany()
   await prisma.session.deleteMany()
+  await prisma.file.deleteMany()
+  await prisma.message.deleteMany()
+  await prisma.chat.deleteMany()
+  await prisma.invoice.deleteMany()
+  await prisma.payment.deleteMany()
+  await prisma.review.deleteMany()
+  await prisma.booking.deleteMany()
+  await prisma.propertyDetail.deleteMany()
+  await prisma.property.deleteMany()
+  await prisma.owner.deleteMany()
   await prisma.user.deleteMany()
-  // Add other cleanup as needed
 })
