@@ -1,186 +1,188 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
+import axios from 'axios';
 
 const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => {
-    const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi' | 'netbanking'>('card');
-    
-    const PaymentMethodButton = ({ method, label }) => {
-        const isActive = paymentMethod === method;
-        return (
-            <button 
-                onClick={() => setPaymentMethod(method)}
-                className={`py-2 px-4 text-sm font-semibold ${isActive ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
-            >
-                {label}
-            </button>
-        )
-    };
+  const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [paymentData, setPaymentData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const renderPaymentForm = () => {
-        switch (paymentMethod) {
-            case 'card':
-                return (
-                    <form className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="card-number">Card Number</label>
-                            <div className="relative">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">credit_card</span>
-                                <input className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="card-number" placeholder="0000 0000 0000 0000" type="text" />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="expiry-date">Expiry Date</label>
-                                <input className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="expiry-date" placeholder="MM / YY" type="text" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="cvv">CVV</label>
-                                <input className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="cvv" placeholder="123" type="text" />
-                            </div>
-                        </div>
-                        <div className="flex items-center">
-                            <input className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" id="save-card" name="save-card" type="checkbox" />
-                            <label className="ml-2 block text-sm text-gray-900 dark:text-gray-300" htmlFor="save-card">Save card for future use</label>
-                        </div>
-                    </form>
-                );
-            case 'upi':
-                return (
-                     <form className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="upi-id">UPI ID</label>
-                             <input className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900" id="upi-id" placeholder="yourname@bank" type="text" />
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">A payment request will be sent to your UPI app.</p>
-                     </form>
-                );
-            case 'netbanking':
-                 return (
-                     <form className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="bank-select">Select Bank</label>
-                            <select id="bank-select" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-primary focus:border-primary bg-white dark:bg-gray-900">
-                                <option>State Bank of India</option>
-                                <option>HDFC Bank</option>
-                                <option>ICICI Bank</option>
-                                <option>Axis Bank</option>
-                                <option>Kotak Mahindra Bank</option>
-                            </select>
-                        </div>
-                     </form>
-                );
-            default:
-                return null;
-        }
+  useEffect(() => {
+    // Get booking details from localStorage or props
+    const booking = localStorage.getItem('currentBooking');
+    if (booking) {
+      setBookingDetails(JSON.parse(booking));
     }
+  }, []);
 
+  const handleCreatePayment = async () => {
+    if (!bookingDetails) return;
 
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.post('http://localhost:3000/api/payments/create', {
+        bookingId: bookingDetails.id,
+        amount: bookingDetails.totalAmount || 100, // Default amount for demo
+      });
+
+      if (response.data.success) {
+        setPaymentData(response.data);
+      } else {
+        setError('Failed to create payment');
+      }
+    } catch (err) {
+      console.error('Payment creation error:', err);
+      setError('Failed to create payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!paymentData) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.post('http://localhost:3000/api/payments/confirm', {
+        paymentId: paymentData.paymentId,
+        transactionId: paymentData.transactionId,
+      });
+
+      if (response.data.success) {
+        alert('Payment confirmed successfully!');
+        navigate('tenantDashboard');
+      } else {
+        setError('Failed to confirm payment');
+      }
+    } catch (err) {
+      console.error('Payment confirmation error:', err);
+      setError('Failed to confirm payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!bookingDetails) {
     return (
-        <div className="font-display bg-background-light dark:bg-background-dark text-[#111518] dark:text-gray-200">
-            <div className="relative flex h-auto w-full flex-col group/design-root overflow-x-hidden">
-                <div className="layout-container flex h-full grow flex-col">
-                    <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                        <div className="flex flex-wrap justify-between gap-3 mb-8">
-                            <h1 className="text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em] min-w-72 text-gray-900 dark:text-white">Confirm and pay</h1>
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
-                            {/* Left Column */}
-                            <div className="lg:col-span-3 flex flex-col gap-8">
-                                {/* Booking Summary Card */}
-                                <div className="p-6 bg-white dark:bg-surface-dark rounded-xl border border-gray-200 dark:border-gray-800">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex flex-col gap-1 flex-grow">
-                                            <p className="text-sm font-normal leading-normal text-gray-500 dark:text-gray-400">Private Room in Hostel</p>
-                                            <p className="text-lg font-bold leading-tight text-gray-900 dark:text-white">The Student Hub, Koramangala</p>
-                                            <p className="text-sm font-normal leading-normal text-gray-500 dark:text-gray-400 mt-1">456, 7th Main Rd, 4th Block, Koramangala, Bengaluru, Karnataka 560034</p>
-                                        </div>
-                                        <div className="w-28 h-20 sm:w-36 sm:h-24 bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-shrink-0" aria-label="Exterior view of The Student Hub hostel" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCgQGE7izJcR3jwda1gG0-HCkSl2okTfgEZxI1c7CNx_C-PmYGbbM26pDceT-XQUyW3IdmCZC6INFRRYN_g8dPqboFNYWqdtFxT7S5eGE07c_QnnEu5rlFqHCcqtYMqat8hxoPTOCTpPNCBmm6HeAuT0piB4LLcNLh-GmYb7ocxt5IFaTj4gRbLuTgd1T6jcoGIR4BhznyZfIGyDeng9fhkdL0UgEg3amjYW1IbvqOOBbFrB0Y9WI-lxxb8tvYEhf11Bs98h2Ar5yI")' }}></div>
-                                    </div>
-                                    <div className="mt-6 pt-6 border-t border-solid border-gray-200 dark:border-gray-700">
-                                        <h2 className="text-xl font-bold leading-tight tracking-[-0.015em] mb-4 text-gray-900 dark:text-white">Your trip</h2>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <p className="text-sm font-medium leading-normal text-gray-500 dark:text-gray-400">Dates</p>
-                                                <p className="text-base font-semibold leading-normal text-gray-800 dark:text-gray-200">Sep 1 - Sep 30, 2024</p>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <p className="text-sm font-medium leading-normal text-gray-500 dark:text-gray-400">Guests</p>
-                                                <p className="text-base font-semibold leading-normal text-gray-800 dark:text-gray-200">1 guest</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Payment Form */}
-                                <div className="flex flex-col gap-6">
-                                    <h2 className="text-2xl font-bold leading-tight tracking-[-0.015em] text-gray-900 dark:text-white">Pay with</h2>
-                                    <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-                                        <PaymentMethodButton method="card" label="Credit/Debit Card" />
-                                        <PaymentMethodButton method="upi" label="UPI" />
-                                        <PaymentMethodButton method="netbanking" label="Net Banking" />
-                                    </div>
-                                    {renderPaymentForm()}
-                                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                                        <span className="material-symbols-outlined text-base text-success">lock</span>
-                                        <p>This is a secure 256-bit SSL encrypted payment.</p>
-                                    </div>
-                                </div>
-                                {/* Cancellation Policy */}
-                                <div>
-                                    <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">Cancellation Policy</h3>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Free cancellation before 12:00 PM on Aug 30. After that, cancel before 12:00 PM on Sep 1 for a partial refund. <a className="text-primary font-semibold underline" href="#">Learn more</a></p>
-                                </div>
-                                <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                                    <button onClick={() => alert("Payment Confirmed!")} className="w-full flex items-center justify-center gap-2 rounded-lg h-12 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
-                                        <span className="material-symbols-outlined">verified_user</span>
-                                        Confirm and Pay
-                                    </button>
-                                </div>
-                            </div>
-                            {/* Right Column */}
-                            <div className="lg:col-span-2">
-                                <div className="sticky top-24 p-6 bg-white dark:bg-surface-dark rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col gap-6">
-                                    <h2 className="text-xl font-bold leading-tight tracking-[-0.015em] text-gray-900 dark:text-white">Price details</h2>
-                                    <div className="flex flex-col gap-3 text-sm">
-                                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
-                                            <p>₹12,000 x 1 month</p>
-                                            <p>₹12,000</p>
-                                        </div>
-                                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
-                                            <p>Service fee</p>
-                                            <p>₹500</p>
-                                        </div>
-                                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
-                                            <p>Taxes</p>
-                                            <p>₹2,160</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between items-center border-t border-gray-200 dark:border-gray-700 pt-4">
-                                        <p className="text-base font-bold text-gray-900 dark:text-white">Total (INR)</p>
-                                        <p className="text-base font-bold text-gray-900 dark:text-white">₹14,660</p>
-                                    </div>
-                                    {/* Host Info */}
-                                    <div className="mt-4 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                        <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Meet your host</h3>
-                                        <div className="flex items-center gap-4">
-                                            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-14" aria-label="Profile picture of the host, Priya" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDwP5tectrs4ndIek8_ZXFIrBqvRs3BILsZKiwZmsWyb5TneRt6tc3vvo2L9fIbeaBn3YZrZ-8OzVcBZ1jlLbPMJvRl6LWiKEDOYXld8CtsN5hrvVeTROMltdFwqLsRF9gYhOPzHtE5cRXLOfRl_vNE_2ZafyVOi7cxCBgj87GCxIN8L0p37mTSZCi8AYcNiC4MeeuPEhD6klJ1ZIsZmTKpuox3lKsugItNlmY0H_BKX3wGSqtHC1U5Cq141tdIU3rKQAweqCEcRLk")' }}></div>
-                                            <div className="flex-1">
-                                                <p className="font-bold text-gray-800 dark:text-gray-200">Priya Sharma</p>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">Joined in 2022</p>
-                                            </div>
-                                            <button className="flex items-center justify-center rounded-lg h-10 px-4 bg-gray-100 dark:bg-gray-800 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                                Message Host
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </main>
-                </div>
-            </div>
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary mb-4">
+            No Booking Found
+          </h2>
+          <button
+            onClick={() => navigate('landing')}
+            className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Go Back to Home
+          </button>
         </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="min-h-screen bg-background-light dark:bg-background-dark py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <button
+            onClick={() => navigate('propertyDetails')}
+            className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+            Back to Property Details
+          </button>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+          <h1 className="text-3xl font-bold text-text-light-primary dark:text-text-dark-primary mb-8 text-center">
+            Confirm & Pay
+          </h1>
+
+          {/* Booking Summary */}
+          <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <h2 className="text-xl font-semibold mb-4">Booking Summary</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Property</p>
+                <p className="font-medium">{bookingDetails.propertyName || 'Property Name'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Check-in</p>
+                <p className="font-medium">{bookingDetails.checkIn || 'Check-in Date'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Check-out</p>
+                <p className="font-medium">{bookingDetails.checkOut || 'Check-out Date'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Amount</p>
+                <p className="font-medium text-2xl text-primary">₹{bookingDetails.totalAmount || 100}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Section */}
+          {!paymentData ? (
+            <div className="text-center">
+              <button
+                onClick={handleCreatePayment}
+                disabled={loading}
+                className="px-8 py-4 bg-primary text-white text-lg font-semibold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Creating Payment...' : 'Create UPI Payment'}
+              </button>
+              {error && <p className="text-red-500 mt-4">{error}</p>}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-4">Scan QR Code to Pay</h3>
+                <div className="flex justify-center mb-4">
+                  <img
+                    src={paymentData.qrCode}
+                    alt="UPI Payment QR Code"
+                    className="border-4 border-gray-200 dark:border-gray-600 rounded-lg"
+                  />
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Or click the payment link to open in UPI app
+                </p>
+                <a
+                  href={paymentData.upiUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Open UPI App
+                </a>
+              </div>
+
+              <div className="border-t pt-6">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    After completing payment in your UPI app, click confirm below
+                  </p>
+                  <button
+                    onClick={handleConfirmPayment}
+                    disabled={loading}
+                    className="px-8 py-4 bg-primary text-white text-lg font-semibold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Confirming Payment...' : 'Confirm Payment'}
+                  </button>
+                  {error && <p className="text-red-500 mt-4">{error}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ConfirmAndPayPage;

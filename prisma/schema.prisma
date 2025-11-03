@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TENANT
+  OWNER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String
+  role          Role           @default(TENANT)
+  emailVerified Boolean        @default(false)
+  emailToken    String?
+  emailTokenExpiry DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  bookings      Booking[]
+  reviews       Review[]
+  chats         Chat[]         @relation("UserChats")
+  sessions      Session[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  @@map("users")
+  @@index([createdAt])
+  @@index([email])
+}
+
+model Owner {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  properties Property[]
+  chats     Chat[]     @relation("OwnerChats")
+
+  @@map("owners")
+  @@index([createdAt])
+  @@index([email])
+}
+
+model Property {
+  id        String           @id @default(cuid())
+  ownerId   String
+  name      String
+  address   String
+  description String?
+  price     Float
+  capacity  Int
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  owner     Owner            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  details   PropertyDetail[]
+  bookings  Booking[]
+  reviews   Review[]
+
+  @@map("properties")
+  @@index([ownerId])
+  @@index([createdAt])
+}
+
+model PropertyDetail {
+  id         String   @id @default(cuid())
+  propertyId String
+  amenity    String
+  value      String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_details")
+  @@index([propertyId])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  userId    String
+  propertyId String
+  checkIn   DateTime
+  checkOut  DateTime
+  status    BookingStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property  Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  payments  Payment[]
+
+  @@map("bookings")
+  @@index([userId])
+  @@index([propertyId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  userId     String
+  propertyId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+  @@index([userId])
+  @@index([propertyId])
+  @@index([createdAt])
+}
+
+model Payment {
+  id        String       @id @default(cuid())
+  bookingId String
+  amount    Float
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  booking   Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
+
+  @@map("payments")
+  @@index([bookingId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model Invoice {
+  id        String  @id @default(cuid())
+  paymentId String
+  details   String
+  createdAt DateTime @default(now())
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+  @@index([paymentId])
+  @@index([createdAt])
+}
+
+model Chat {
+  id        String    @id @default(cuid())
+  userId    String
+  ownerId   String
+  createdAt DateTime  @default(now())
+  user      User      @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
+  owner     Owner     @relation("OwnerChats", fields: [ownerId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@map("chats")
+  @@index([userId])
+  @@index([ownerId])
+  @@index([createdAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  chatId    String
+  senderId  String
+  senderType String  // 'user' or 'owner'
+  content   String
+  createdAt DateTime @default(now())
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  files     File[]
+
+  @@map("messages")
+  @@index([chatId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model File {
+  id        String  @id @default(cuid())
+  messageId String
+  url       String
+  type      String
+  createdAt DateTime @default(now())
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("files")
+  @@index([messageId])
+  @@index([createdAt])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}

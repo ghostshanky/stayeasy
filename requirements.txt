@@ -1,0 +1,42 @@
+# StayEasy Hostel/PG Listing Platform Requirements
+
+## Database
+- PostgreSQL 13+ with PostGIS extension (optional for location features)
+
+## Backend Dependencies (Node.js)
+- Node.js 18+
+- Prisma ORM (@prisma/client, prisma)
+- Express.js for API server
+- QRCode library for UPI payment QR generation
+- TypeScript for type safety
+
+## Frontend Dependencies (React)
+- React 18+
+- Axios for API calls
+- Tailwind CSS for styling
+- Vite for build tooling
+
+## Development Tools
+- Jest for testing
+- tsx for TypeScript execution
+- Git for version control
+
+## Environment Variables Required
+- DATABASE_URL: PostgreSQL connection string
+- JWT_SECRET: For authentication (if implemented)
+
+## Deployment
+- Vercel for frontend deployment
+- Supabase or Railway for database hosting
+- Node.js runtime environment
+
+## Key Features Implemented
+- Complete database schema with all entities
+- Prisma models with relations and constraints
+- UPI payment integration with QR codes
+- Role-based access control
+- Audit logging system
+- Chat and messaging system
+- File upload support
+- Notification system
+- Session management
