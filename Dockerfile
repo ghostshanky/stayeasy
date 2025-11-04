@@ -28,7 +28,7 @@ WORKDIR /app
 COPY --from=builder /app/package*.json ./
 RUN npm ci --only=production
 
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3001
