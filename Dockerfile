@@ -32,4 +32,4 @@ COPY --from=builder /app/server/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3001
-CMD ["npm", "run", "start"]
+CMD ["node", "dist/server.js"]
