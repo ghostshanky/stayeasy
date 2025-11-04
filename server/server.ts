@@ -4,9 +4,11 @@ import { createServer } from 'http'
 import { AuthService, AuthUser } from './auth.js'
 import { ChatService } from './chat.js'
 import chatApi from './chat-api.js'
-import paymentRoutes from './controllers/paymentsController.js'
+import paymentRoutes from './routes/payment.js'
 import filesRouter from './controllers/filesController.js'
 import dataGovernanceRouter from './controllers/dataGovernanceController.js'
+import propertiesRoutes from './routes/properties.js'
+import bookingsRoutes from './routes/bookings.js'
 
 const app = express()
 const server = createServer(app)
@@ -57,6 +59,8 @@ app.use('/api', chatApi)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/files', filesRouter)
 app.use('/api', dataGovernanceRouter)
+app.use('/api', propertiesRoutes)
+app.use('/api', bookingsRoutes)
 
 // Auth routes
 app.post('/api/auth/signup', async (req, res) => {
@@ -64,8 +68,8 @@ app.post('/api/auth/signup', async (req, res) => {
     const { email, password, name, role } = req.body
     const user = await AuthService.createUser(email, password, name, role)
     res.json({ message: 'User created successfully. Please check your email for verification.', userId: user.id })
-  } catch (error) {
-    res.status(400).json({ error: 'User creation failed' })
+  } catch (error: any) {
+    res.status(400).json({ error: error.message || 'User creation failed' })
   }
 })
 
@@ -77,8 +81,8 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
 
-    const token = await AuthService.createSession(user.id)
-    res.json({ token, user })
+    const { accessToken, refreshToken } = await AuthService.createSession(user)
+    res.json({ token: accessToken, refreshToken, user })
   } catch (error) {
     res.status(500).json({ error: 'Login failed' })
   }
@@ -86,10 +90,9 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/logout', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7)
-      await AuthService.invalidateSession(token)
+    const { refreshToken } = req.body
+    if (refreshToken) {
+      await AuthService.logout(refreshToken)
     }
     res.json({ message: 'Logged out successfully' })
   } catch (error) {
@@ -100,20 +103,12 @@ app.post('/api/auth/logout', async (req, res) => {
 app.post('/api/auth/refresh', async (req, res) => {
   try {
     const { refreshToken } = req.body
-    const payload = AuthService.verifyRefreshToken(refreshToken)
-    if (!payload) {
+    const newTokens = await AuthService.refreshToken(refreshToken)
+    if (!newTokens) {
       return res.status(401).json({ error: 'Invalid refresh token' })
     }
 
-    const user = await AuthService.getUserById(payload.userId)
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' })
-    }
-
-    const newToken = AuthService.generateToken(user)
-    const newRefreshToken = AuthService.generateRefreshToken(user)
-
-    res.json({ token: newToken, refreshToken: newRefreshToken })
+    res.json({ token: newTokens.accessToken, refreshToken: newTokens.refreshToken })
   } catch (error) {
     res.status(500).json({ error: 'Token refresh failed' })
   }

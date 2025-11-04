@@ -128,4 +128,18 @@ export class AuditLogger {
       take: limit
     })
   }
+
+  /**
+   * Log user action
+   */
+  static async logUserAction(userId: string, action: string, details: string) {
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action,
+        details,
+        actorId: userId
+      }
+    })
+  }
 }

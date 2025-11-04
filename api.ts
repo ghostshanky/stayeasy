@@ -2,8 +2,8 @@
 import axios from 'axios';
 import { Listing, StatCardData, ListingStatus, StatChangeDirection } from './types';
 
-// In a real app, this would be in a .env file
-const API_BASE_URL = 'https://api.stayeasy.com/v1'; // Replace with your actual backend URL
+// Use environment variable or default to localhost for development
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001/api';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -21,48 +21,57 @@ apiClient.interceptors.request.use(config => {
     return config;
 });
 
+// Response interceptor to handle unauthorized errors
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            // Clear auth token and redirect to login
+            localStorage.removeItem('authToken');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 // --- API Functions ---
 
 // Note: The backend would return data that we map to our frontend types.
 // These are mock implementations that simulate API calls and data transformation.
 
 export const loginUser = async (email, password) => {
-    console.log('Logging in with:', { email, password });
-    // In a real app:
-    // const response = await apiClient.post('/auth/login', { email, password });
-    // localStorage.setItem('authToken', response.data.token);
-    // return response.data.user;
-
-    // Mock response
-    await new Promise(res => setTimeout(res, 500));
-    const mockToken = 'fake-jwt-token-for-user';
-    localStorage.setItem('authToken', mockToken);
-    return { name: 'John Doe', email: 'john.doe@example.com' };
+    try {
+        const response = await apiClient.post('/auth/login', { email, password });
+        localStorage.setItem('authToken', response.data.token);
+        return response.data.user;
+    } catch (error) {
+        console.error('Login failed:', error);
+        throw error;
+    }
 };
 
 export const registerUser = async (name, email, password) => {
-    console.log('Registering:', { name, email, password });
-    // In a real app:
-    // const response = await apiClient.post('/auth/register', { name, email, password });
-    // localStorage.setItem('authToken', response.data.token);
-    // return response.data.user;
-
-    // Mock response
-    await new Promise(res => setTimeout(res, 500));
-    const mockToken = 'fake-jwt-token-for-new-user';
-    localStorage.setItem('authToken', mockToken);
-    return { name, email };
+    try {
+        const response = await apiClient.post('/auth/signup', { name, email, password });
+        localStorage.setItem('authToken', response.data.token);
+        return response.data.user;
+    } catch (error) {
+        console.error('Registration failed:', error);
+        throw error;
+    }
 };
 
-export const sendMessageToHost = async (hostName: string, message: string) => {
-    console.log(`Sending message to ${hostName}: "${message}"`);
-    // In a real app:
-    // await apiClient.post('/messages', { hostName, message });
-    
-    // Mock response
-    await new Promise(res => setTimeout(res, 700));
-    console.log('Message sent successfully!');
-    return { status: 'success' };
+export const sendMessageToHost = async (hostId: string, message: string) => {
+    try {
+        const response = await apiClient.post('/chats', { 
+            recipientId: hostId, 
+            content: message 
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Failed to send message:', error);
+        throw error;
+    }
 }
 
 export const getProperties = async (): Promise<Listing[]> => {

@@ -1,13 +1,58 @@
 // Test script to simulate the complete UPI payment flow
 // Run with: node test-payment-flow.js
 
-const axios = require('axios')
+import axios from 'axios'
 
 const BASE_URL = 'http://localhost:3001'
 
-// Mock authentication tokens (in real scenario, these would come from login)
-const TENANT_TOKEN = 'mock-tenant-token'
-const OWNER_TOKEN = 'mock-owner-token'
+let TENANT_TOKEN = ''
+let OWNER_TOKEN = ''
+
+async function setupUsers() {
+  try {
+    console.log('🔧 Setting up test users...')
+    
+    // Create a tenant user
+    const tenantResponse = await axios.post(`${BASE_URL}/api/auth/signup`, {
+      email: `tenant${Date.now()}@test.com`,
+      password: 'password123',
+      name: 'Test Tenant',
+      role: 'TENANT'
+    })
+    
+    // Create an owner user
+    const ownerResponse = await axios.post(`${BASE_URL}/api/auth/signup`, {
+      email: `owner${Date.now()}@test.com`,
+      password: 'password123',
+      name: 'Test Owner',
+      role: 'OWNER'
+    })
+    
+    console.log('✅ Test users created')
+    
+    // Login as tenant
+    const tenantLoginResponse = await axios.post(`${BASE_URL}/api/auth/login`, {
+      email: `tenant${Date.now()}@test.com`,
+      password: 'password123'
+    })
+    
+    TENANT_TOKEN = tenantLoginResponse.data.token
+    
+    // Login as owner
+    const ownerLoginResponse = await axios.post(`${BASE_URL}/api/auth/login`, {
+      email: `owner${Date.now()}@test.com`,
+      password: 'password123'
+    })
+    
+    OWNER_TOKEN = ownerLoginResponse.data.token
+    
+    console.log('✅ Users logged in')
+    
+  } catch (error) {
+    console.error('❌ User setup failed:', error.response?.data || error.message)
+    throw error
+  }
+}
 
 async function simulatePaymentFlow() {
   try {
@@ -204,10 +249,8 @@ async function main() {
   console.log('🧪 UPI Payment System Test Script')
   console.log('================================\n')
 
-  // Note: This script assumes the server is running and mock tokens work
-  // In a real scenario, you'd need proper authentication
-
   try {
+    await setupUsers()
     await simulatePaymentFlow()
     await simulateRejectionFlow()
 
@@ -221,8 +264,8 @@ async function main() {
 }
 
 // Run if called directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main()
 }
 
-module.exports = { simulatePaymentFlow, simulateRejectionFlow }
+export { simulatePaymentFlow, simulateRejectionFlow }

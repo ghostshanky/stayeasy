@@ -1,4 +1,5 @@
 import React from 'react';
+import { Page } from '../types';
 
 interface NavLinkProps {
   icon: string;
@@ -22,7 +23,17 @@ const NavLink: React.FC<NavLinkProps> = ({ icon, label, onClick, isActive = fals
   );
 };
 
-const SideNavBar: React.FC = () => {
+interface SideNavBarProps {
+  onNavigate?: (page: Page) => void;
+}
+
+const SideNavBar: React.FC<SideNavBarProps> = ({ onNavigate }) => {
+  const handleNavigation = (page: Page) => {
+    if (onNavigate) {
+      onNavigate(page);
+    }
+  };
+
   return (
     <aside className="hidden lg:flex flex-shrink-0 w-64 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark flex-col justify-between p-4">
       <div className="flex flex-col gap-8">
@@ -31,15 +42,15 @@ const SideNavBar: React.FC = () => {
           <h1 className="text-text-light-primary dark:text-text-dark-primary text-xl font-bold">Stays.io</h1>
         </div>
         <nav className="flex flex-col gap-1">
-          <NavLink icon="dashboard" label="Dashboard" onClick={() => console.log('Dashboard clicked')} isActive={true} />
-          <NavLink icon="apartment" label="My Listings" onClick={() => console.log('My Listings clicked')} />
-          <NavLink icon="calendar_month" label="Bookings" onClick={() => console.log('Bookings clicked')} />
-          <NavLink icon="credit_card" label="Payments" onClick={() => console.log('Payments clicked')} />
-          <NavLink icon="chat" label="Messages" onClick={() => console.log('Messages clicked')} />
+          <NavLink icon="dashboard" label="Dashboard" onClick={() => handleNavigation('tenantDashboard')} isActive={true} />
+          <NavLink icon="apartment" label="My Listings" onClick={() => handleNavigation('searchResults')} />
+          <NavLink icon="calendar_month" label="Bookings" onClick={() => handleNavigation('tenantDashboard')} />
+          <NavLink icon="credit_card" label="Payments" onClick={() => handleNavigation('tenantDashboard')} />
+          <NavLink icon="chat" label="Messages" onClick={() => handleNavigation('tenantDashboard')} />
         </nav>
       </div>
       <div className="flex flex-col gap-2">
-        <NavLink icon="settings" label="Settings" onClick={() => console.log('Settings clicked')} />
+        <NavLink icon="settings" label="Settings" onClick={() => handleNavigation('tenantDashboard')} />
         <div className="flex gap-3 p-2 border-t border-border-light dark:border-border-dark pt-4">
           <div 
             className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"

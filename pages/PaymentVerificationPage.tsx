@@ -1,6 +1,6 @@
 import React from 'react';
 import { Page } from '../types';
-import { OwnerDashboard } from '../client/owner-dashboard';
+import OwnerDashboard from '../client/owner-dashboard';
 
 const PaymentVerificationPage = ({ navigate }: { navigate: (page: Page) => void }) => {
     // In a real app, you'd get the owner ID from authentication context

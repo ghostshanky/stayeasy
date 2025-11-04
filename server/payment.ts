@@ -241,7 +241,7 @@ export const PaymentController = {
       const payment = await prisma.payment.findFirst({
         where: {
           id: paymentId,
-          // userId, // Commenting out this line as it's causing issues
+          userId, // Uncommenting this line
           status: PaymentStatus.AWAITING_PAYMENT
         }
       } as any);
@@ -259,7 +259,7 @@ export const PaymentController = {
         where: { id: paymentId },
         data: {
           status: PaymentStatus.AWAITING_OWNER_VERIFICATION,
-          // upiReference: upiReference || null, // Commenting out this line as it's causing issues
+          upiReference: upiReference || null, // Uncommenting this line
           updatedAt: new Date()
         }
       } as any);
@@ -267,13 +267,13 @@ export const PaymentController = {
       // Log payment confirmation
       await AuditLogger.logPaymentConfirmation(userId, payment.bookingId!, paymentId, upiReference);
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: {
           paymentId: updatedPayment.id,
           status: updatedPayment.status,
-          // upiReference: updatedPayment.upiReference, // Commenting out this line as it's causing issues
-          // updatedAt: updatedPayment.updatedAt // Commenting out this line as it's causing issues
+          upiReference: updatedPayment.upiReference, // Uncommenting this line
+          updatedAt: updatedPayment.updatedAt // Uncommenting this line
         },
         message: 'Payment confirmation submitted. Waiting for owner verification.'
       });
@@ -365,11 +365,11 @@ export const PaymentController = {
 
         invoice = await prisma.invoice.create({
           data: {
-            // invoiceNo, // Commenting out this line as it's causing issues
+            invoiceNo, // Uncommenting this line
             bookingId: payment.bookingId,
             paymentId: payment.id,
-            // userId: payment.userId, // Commenting out this line as it's causing issues
-            // ownerId: payment.ownerId, // Commenting out this line as it's causing issues
+            userId: payment.userId, // Uncommenting this line
+            ownerId: payment.ownerId, // Uncommenting this line
             lineItems,
             amount: payment.amount,
             status: 'PAID'
@@ -381,7 +381,7 @@ export const PaymentController = {
           const fileId = await generateInvoicePdf(invoice.id);
           await prisma.invoice.update({
             where: { id: invoice.id },
-            // data: { pdfFileId: fileId } // Commenting out this line as it's causing issues
+            data: { pdfFileId: fileId } // Uncommenting this line
           } as any);
         } catch (pdfError) {
           console.error('PDF generation failed:', pdfError);
@@ -401,18 +401,18 @@ export const PaymentController = {
       // Log payment verification/rejection
       await AuditLogger.logPaymentVerification(ownerId, payment.bookingId!, paymentId, action, reason);
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: {
           paymentId: updatedPayment.id,
           status: updatedPayment.status,
-          // verifiedBy: updatedPayment.verifiedBy, // Commenting out this line as it's causing issues
-          // verifiedAt: updatedPayment.verifiedAt, // Commenting out this line as it's causing issues
+          verifiedBy: updatedPayment.verifiedBy, // Uncommenting this line
+          verifiedAt: updatedPayment.verifiedAt, // Uncommenting this line
           invoice: invoice ? {
             id: invoice.id,
-            // invoiceNo: invoice.invoiceNo, // Commenting out this line as it's causing issues
-            // amount: invoice.amount, // Commenting out this line as it's causing issues
-            // status: invoice.status // Commenting out this line as it's causing issues
+            invoiceNo: invoice.invoiceNo, // Uncommenting this line
+            amount: invoice.amount, // Uncommenting this line
+            status: invoice.status // Uncommenting this line
           } : null,
           booking: bookingUpdate ? {
             id: bookingUpdate.id,
@@ -488,7 +488,7 @@ export const PaymentController = {
         return;
       }
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: payment
       });
@@ -554,7 +554,7 @@ export const PaymentController = {
         orderBy: { createdAt: 'desc' }
       });
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: payments
       });
@@ -600,10 +600,20 @@ export const PaymentController = {
 
       const payments = await prisma.payment.findMany({
         where: { ownerId },
+        include: {
+          user: { select: { name: true, email: true } },
+          booking: {
+            include: {
+              property: { select: { name: true } },
+              user: { select: { name: true, email: true } }
+            }
+          },
+          invoice: true
+        },
         orderBy: { createdAt: 'desc' }
-      } as any);
+      });
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: payments
       });
@@ -663,7 +673,7 @@ export const PaymentController = {
         orderBy: { createdAt: 'desc' }
       });
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: payments
       });
@@ -728,37 +738,38 @@ export const PaymentController = {
       }
 
       // Create refund record
-      // const refund = await prisma.refund.create({ // Commenting out this line as it's causing issues
-      //   data: {
-      //     paymentId,
-      //     amount,
-      //     reason,
-      //     status: 'PENDING',
-      //     processedBy: ownerId
-      //   }
-      // });
+      const refund = await prisma.refund.create({
+        data: {
+          paymentId,
+          amount,
+          reason,
+          status: 'PENDING',
+          processedBy: ownerId
+        }
+      });
 
       // Update payment status
       await prisma.payment.update({
         where: { id: paymentId },
         data: {
+          status: 'REFUNDED',
           refundedAt: new Date(),
           refundAmount: amount,
           refundReason: reason
         }
-      } as any);
+      });
 
       // Log refund
       await AuditLogger.logPaymentVerification(ownerId, payment.bookingId!, paymentId, 'refund', reason);
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: {
-          // refundId: refund.id, // Commenting out this line as it's causing issues
+          refundId: refund.id,
           paymentId,
           amount,
           reason,
-          // status: refund.status // Commenting out this line as it's causing issues
+          status: refund.status
         },
         message: 'Refund processed successfully'
       });
@@ -797,10 +808,10 @@ export const PaymentController = {
       const payment = await prisma.payment.findFirst({
         where: {
           id: paymentId,
-          // OR: [ // Commenting out this line as it's causing issues
-          //   { userId }, // Tenant access
-          //   { ownerId: userId } // Owner access
-          // ]
+          OR: [ // Uncommenting this line
+            { userId }, // Tenant access
+            { ownerId: userId } // Owner access
+          ]
         }
       } as any);
 
@@ -814,7 +825,7 @@ export const PaymentController = {
 
       const auditLogs = await AuditLogger.getPaymentAuditLogs(paymentId);
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: auditLogs
       });
@@ -831,6 +842,43 @@ export const PaymentController = {
           error: { code: 'GET_AUDIT_LOGS_FAILED', message: 'Failed to get audit logs' }
         });
       }
+    }
+  },
+
+  /**
+   * GET /api/payments/pending
+   * Get pending payments for owner verification
+   */
+  async getPendingPayments(req: Request, res: Response): Promise<void> {
+    try {
+      const ownerId = req.currentUser?.id;
+      if (!ownerId) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const pendingPayments = await prisma.payment.findMany({
+        where: {
+          ownerId,
+          status: PaymentStatus.AWAITING_OWNER_VERIFICATION,
+        },
+        include: {
+          user: { select: { name: true, email: true } },
+          booking: { include: { property: { select: { name: true } } } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      res.status(200).json({
+        success: true,
+        data: pendingPayments
+      });
+    } catch (error) {
+      console.error('Error getting pending payments:', error);
+      res.status(500).json({
+        success: false,
+        error: { code: 'GET_PENDING_PAYMENTS_FAILED', message: 'Failed to get pending payments' }
+      });
     }
   },
 
@@ -853,10 +901,10 @@ export const PaymentController = {
       const booking = await prisma.booking.findFirst({
         where: {
           id: bookingId,
-          // OR: [ // Commenting out this line as it's causing issues
-          //   { userId }, // Tenant access
-          //   { property: { ownerId: userId } } // Owner access
-          // ]
+          OR: [ // Uncommenting this line
+            { userId }, // Tenant access
+            { property: { ownerId: userId } } // Owner access
+          ]
         }
       } as any);
 
@@ -870,7 +918,7 @@ export const PaymentController = {
 
       const auditLogs = await AuditLogger.getBookingAuditLogs(bookingId);
 
-      res.json({
+      res.status(200).json({
         success: true,
         data: auditLogs
       });

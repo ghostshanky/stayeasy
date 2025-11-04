@@ -5,7 +5,33 @@ import { generateInvoicePdf } from '../prisma/pdfGenerator';
 import { AuditLogger } from '../server/audit-logger';
 
 // Mock PrismaClient
-jest.mock('@prisma/client');
+jest.mock('@prisma/client', () => {
+  const mockPrisma = {
+    booking: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    payment: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    invoice: {
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    refund: {
+      create: jest.fn(),
+    },
+  };
+  return {
+    PrismaClient: jest.fn(() => mockPrisma),
+  };
+});
+
 const mockPrisma = new PrismaClient() as any;
 
 // Mock dependencies

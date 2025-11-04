@@ -10,6 +10,7 @@ import OwnerDashboard from './pages/OwnerDashboard';
 import SearchResultsPage from './pages/SearchResultsPage';
 import TenantDashboard from './pages/TenantDashboard';
 import AuthPage from './pages/AuthPage';
+import PaymentVerificationPage from './pages/PaymentVerificationPage';
 
 const StayEasyLogo = () => (
     <div className="size-7 text-primary">
@@ -58,6 +59,8 @@ function App() {
                 return <OwnerDashboard navigate={navigate} />;
             case 'tenantDashboard':
                 return <TenantDashboard navigate={navigate} />;
+            case 'paymentVerification':
+                return <PaymentVerificationPage navigate={navigate} />;
             case 'login':
                 return <AuthPage navigate={navigate} setIsAuthenticated={setIsAuthenticated} initialMode="login" />;
             case 'signup':
@@ -80,7 +83,7 @@ function App() {
                             <a onClick={() => navigate('landing')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Home</a>
                             <a onClick={() => navigate('searchResults')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Explore</a>
                             <a onClick={() => navigate('ownerDashboard')} className="cursor-pointer text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">List your property</a>
-                            <button onClick={() => console.log('Help clicked')} className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Help</button>
+                            <button onClick={() => navigate('landing')} className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary transition-colors">Help</button>
                         </div>
                          <div className="flex items-center gap-2">
                             {isAuthenticated ? (

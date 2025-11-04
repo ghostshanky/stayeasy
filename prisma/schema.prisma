@@ -28,6 +28,8 @@ enum PaymentStatus {
   REJECTED
   CANCELLED
   REFUNDED
+  COMPLETED
+  FAILED
 }
 
 model User {
@@ -49,6 +51,7 @@ model User {
   chats         Chat[]         @relation("UserChats")
   chatsAsOwner  Chat[]         @relation("OwnerChats")
   sessions      Session[]
+  refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
   notifications Notification[]
   paymentsAsUser Payment[]
@@ -150,9 +153,12 @@ model Payment {
   rejectionReason String?
   completedAt    DateTime?
   refundedAt     DateTime?
+  refundAmount   Int?
+  refundReason   String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   invoice        Invoice?
+  refunds        Refund[]
 
   @@map("payments")
   @@index([bookingId])
@@ -281,6 +287,22 @@ model AuditLog {
   @@index([createdAt])
 }
 
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  device    String?
+  ip        String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
 model Notification {
   id        String   @id @default(cuid())
   userId    String
@@ -293,4 +315,19 @@ model Notification {
   @@index([userId])
   @@index([read])
   @@index([createdAt])
+}
+
+model Refund {
+  id          String   @id @default(cuid())
+  paymentId   String
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amount      Int
+  reason      String?
+  status      String   @default("PENDING")
+  processedBy String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("refunds")
+  @@index([paymentId])
 }

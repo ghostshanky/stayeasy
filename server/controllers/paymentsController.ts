@@ -188,6 +188,42 @@ export class PaymentsController {
   }
 
   /**
+   * GET /api/payments/owner/:ownerId
+   * Returns a list of all payments for the specified owner (only accessible by the owner themselves).
+   */
+  static async getOwnerPayments(req: Request, res: Response) {
+    try {
+      const { ownerId } = req.params
+      const currentUserId = req.currentUser!.id
+
+      // Ensure only the owner can access their own payments
+      if (ownerId !== currentUserId) {
+        return res.status(403).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'You can only view your own payments.' } })
+      }
+
+      const payments = await prisma.payment.findMany({
+        where: { ownerId },
+        include: {
+          user: { select: { name: true, email: true } },
+          booking: {
+            include: {
+              property: { select: { name: true, address: true } },
+              user: { select: { name: true, email: true } }
+            }
+          },
+          invoice: true
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      res.status(200).json({ success: true, data: payments })
+    } catch (error) {
+      console.error('Error fetching owner payments:', error)
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch owner payments.' } })
+    }
+  }
+
+  /**
    * POST /api/payments/verify
    * Owner verifies or rejects a payment.
    */
@@ -226,8 +262,6 @@ export class PaymentsController {
         } else {
           return PaymentsController.handleRejection(tx, paymentId, ownerId, note)
         }
-      }, {
-        isolation: Prisma.TransactionIsolationLevel.Serializable, // Strongest isolation for financial transactions
       })
 
       res.status(200).json({

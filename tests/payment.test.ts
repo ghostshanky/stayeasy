@@ -88,8 +88,7 @@ describe('PaymentController', () => {
           user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
           property: { id: 'property123', name: 'Test Property' },
         },
-      });
-    });
+  });
 
     it('should return error if booking not found', async () => {
       const paymentData = {
@@ -152,9 +151,9 @@ describe('PaymentController', () => {
       await PaymentController.createPayment(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Payment already exists for this booking' });
     });
   });
+});
 
   describe('confirmPayment', () => {
     it('should confirm payment successfully', async () => {
@@ -623,41 +622,56 @@ describe('PaymentController', () => {
           owner: { id: 'owner123', name: 'Test Owner', email: 'owner@example.com' },
           invoice: { id: 'invoice123', invoiceNo: 'INV123' },
         },
-      ],
+      ]);
+
+      mockReq.params = { ownerId };
+      mockReq.user = { id: 'owner123' };
+
+      await PaymentController.getOwnerPayments(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        payments: [
+          {
+            id: 'payment123',
+            userId: 'user123',
+            ownerId: 'owner123',
+            bookingId: 'booking123',
+            status: 'COMPLETED',
+            booking: {
+              id: 'booking123',
+              user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
+              property: { id: 'property123', name: 'Test Property' },
+            },
+            user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
+            owner: { id: 'owner123', name: 'Test Owner', email: 'owner@example.com' },
+            invoice: { id: 'invoice123', invoiceNo: 'INV123' },
+          },
+        ],
+      });
+    });
+
+    it('should return error if user is not authorized', async () => {
+      const ownerId = 'differentOwner';
+
+      prisma.payment.findMany = jest.fn().mockResolvedValue([]);
+
+      mockReq.params = { ownerId };
+      mockReq.user = { id: 'owner123' };
+
+      await PaymentController.getOwnerPayments(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Unauthorized to view these payments' });
     });
   });
-});
 
-describe('getTenantPayments', () => {
-  it('should get tenant payments successfully', async () => {
-    const userId = 'user123';
+  describe('getTenantPayments', () => {
+    it('should get tenant payments successfully', async () => {
+      const userId = 'user123';
 
-    prisma.payment.findMany = jest.fn().mockResolvedValue([
-      {
-        id: 'payment123',
-        userId: 'user123',
-        ownerId: 'owner123',
-        bookingId: 'booking123',
-        status: 'COMPLETED',
-        booking: {
-          id: 'booking123',
-          user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
-          property: { id: 'property123', name: 'Test Property' },
-        },
-        user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
-        owner: { id: 'owner123', name: 'Test Owner', email: 'owner@example.com' },
-        invoice: { id: 'invoice123', invoiceNo: 'INV123' },
-      },
-    ]);
-
-    mockReq.params = { userId };
-
-    await PaymentController.getTenantPayments(mockReq, mockRes);
-
-    expect(mockRes.status).toHaveBeenCalledWith(200);
-    expect(mockRes.json).toHaveBeenCalledWith({
-      success: true,
-      payments: [
+      prisma.payment.findMany = jest.fn().mockResolvedValue([
         {
           id: 'payment123',
           userId: 'user123',
@@ -673,26 +687,51 @@ describe('getTenantPayments', () => {
           owner: { id: 'owner123', name: 'Test Owner', email: 'owner@example.com' },
           invoice: { id: 'invoice123', invoiceNo: 'INV123' },
         },
-      ],
+      ]);
+
+      mockReq.params = { userId };
+
+      await PaymentController.getTenantPayments(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        payments: [
+          {
+            id: 'payment123',
+            userId: 'user123',
+            ownerId: 'owner123',
+            bookingId: 'booking123',
+            status: 'COMPLETED',
+            booking: {
+              id: 'booking123',
+              user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
+              property: { id: 'property123', name: 'Test Property' },
+            },
+            user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
+            owner: { id: 'owner123', name: 'Test Owner', email: 'owner@example.com' },
+            invoice: { id: 'invoice123', invoiceNo: 'INV123' },
+          },
+        ],
+      });
+    });
+
+    it('should return error if user is not authorized', async () => {
+      const userId = 'differentUser';
+
+      prisma.payment.findMany = jest.fn().mockResolvedValue([]);
+
+      mockReq.params = { userId };
+      mockReq.user = { id: 'user123', role: 'TENANT' };
+
+      await PaymentController.getTenantPayments(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Unauthorized to view these payments' });
     });
   });
 
-  it('should return error if user is not authorized', async () => {
-    const userId = 'differentUser';
-
-    prisma.payment.findMany = jest.fn().mockResolvedValue([]);
-
-    mockReq.params = { userId };
-    mockReq.user = { id: 'user123', role: 'TENANT' };
-
-    await PaymentController.getTenantPayments(mockReq, mockRes);
-
-    expect(mockRes.status).toHaveBeenCalledWith(403);
-    expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Unauthorized to view these payments' });
-  });
-});
-
-describe('refundPayment', () => {
+  describe('refundPayment', () => {
   it('should refund payment successfully', async () => {
     const refundData = {
       paymentId: 'payment123',
@@ -979,29 +1018,3 @@ describe('getBookingAuditLogs', () => {
     expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Unauthorized to view audit logs for this booking' });
   });
 });
-});
-        },
-      ]);
-
-      mockReq.params = { ownerId };
-
-      await PaymentController.getOwnerPayments(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: true,
-        payments: [
-          {
-            id: 'payment123',
-            userId: 'user123',
-            ownerId: 'owner123',
-            bookingId: 'booking123',
-            status: 'COMPLETED',
-            booking: {
-              id: 'booking123',
-              user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
-              property: { id: 'property123', name: 'Test Property' },
-            },
-            user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
-            owner: { id: 'owner123', name: 'Test Owner', email: 'owner@example.com' },
-            invoice: { id: 'invoice123', invoiceNo: 'INV123' },

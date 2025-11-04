@@ -93,7 +93,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ navigate, setIsAuthenticated, initi
                         <input className="w-full bg-gray-100 dark:bg-gray-800/50 border-none p-3 my-2 text-sm rounded text-text-light-primary dark:text-text-dark-primary placeholder:text-text-light-secondary dark:placeholder:text-text-dark-secondary" type="password" placeholder="Password" required value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
                         {error && <p className="text-error text-xs mt-2">{error}</p>
 }
-                        <button onClick={() => console.log('Forgot password clicked')} className="text-xs text-text-light-secondary dark:text-text-dark-secondary my-3 hover:underline">Forgot your password?</button>
+                        <button onClick={() => navigate('landing')} className="text-xs text-text-light-secondary dark:text-text-dark-secondary my-3 hover:underline">Forgot your password?</button>
                         <button type="submit" disabled={loading} className="bg-primary text-white text-sm font-bold py-3 px-11 rounded-lg uppercase tracking-wider hover:bg-primary/90 transition-transform flex items-center justify-center min-w-[120px] min-h-[42px]">
                              {renderButtonContent('Login')}
                         </button>

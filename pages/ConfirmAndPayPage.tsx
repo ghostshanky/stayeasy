@@ -23,13 +23,13 @@ const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => 
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:3000/api/payments/create', {
+      const response = await axios.post('http://localhost:3001/api/payments/create', {
         bookingId: bookingDetails.id,
-        amount: bookingDetails.totalAmount || 100, // Default amount for demo
+        amount: bookingDetails.totalAmount ? bookingDetails.totalAmount * 100 : 10000, // Convert to paise
       });
 
       if (response.data.success) {
-        setPaymentData(response.data);
+        setPaymentData(response.data.data);
       } else {
         setError('Failed to create payment');
       }
@@ -48,9 +48,13 @@ const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => 
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:3000/api/payments/confirm', {
+      // Generate a random transaction ID for demo purposes
+      const transactionId = 'TXN' + Date.now() + Math.random().toString(36).substr(2, 9).toUpperCase();
+      
+      const response = await axios.post('http://localhost:3001/api/payments/confirm', {
         paymentId: paymentData.paymentId,
-        transactionId: paymentData.transactionId,
+        transactionId: transactionId,
+        upiReference: 'UPIREF' + Date.now()
       });
 
       if (response.data.success) {
@@ -144,7 +148,7 @@ const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => 
                 <h3 className="text-xl font-semibold mb-4">Scan QR Code to Pay</h3>
                 <div className="flex justify-center mb-4">
                   <img
-                    src={paymentData.qrCode}
+                    src={paymentData.qrCode || paymentData.upiUri}
                     alt="UPI Payment QR Code"
                     className="border-4 border-gray-200 dark:border-gray-600 rounded-lg"
                   />

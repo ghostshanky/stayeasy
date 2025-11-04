@@ -24,7 +24,7 @@ router.get('/:paymentId', mediumRateLimiter, PaymentController.getPayment);
 router.get('/booking/:bookingId', mediumRateLimiter, PaymentController.getPaymentsByBooking);
 
 // GET /api/payments/owner/:ownerId (medium rate limiting)
-router.get('/owner/:ownerId', mediumRateLimiter, PaymentController.getOwnerPayments);
+router.get('/owner/:ownerId', mediumRateLimiter, requireAuth, PaymentController.getOwnerPayments);
 
 // GET /api/payments/tenant/:userId (medium rate limiting)
 router.get('/tenant/:userId', mediumRateLimiter, PaymentController.getTenantPayments);
@@ -48,6 +48,6 @@ router.get('/pending', mediumRateLimiter, (req, res, next) => {
     });
   }
   next();
-}, PaymentController.getOwnerPayments);
+}, PaymentController.getPendingPayments);
 
 export default router;

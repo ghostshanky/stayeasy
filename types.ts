@@ -1,5 +1,5 @@
 
-export type Page = 'landing' | 'searchResults' | 'propertyDetails' | 'confirmAndPay' | 'ownerDashboard' | 'tenantDashboard' | 'login' | 'signup';
+export type Page = 'landing' | 'searchResults' | 'propertyDetails' | 'confirmAndPay' | 'ownerDashboard' | 'tenantDashboard' | 'login' | 'signup' | 'paymentVerification';
 
 export enum ListingStatus {
   Listed = 'Listed',

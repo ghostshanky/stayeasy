@@ -27,6 +27,5 @@ beforeEach(async () => {
   await prisma.booking.deleteMany()
   await prisma.propertyDetail.deleteMany()
   await prisma.property.deleteMany()
-  await prisma.owner.deleteMany()
   await prisma.user.deleteMany()
 })

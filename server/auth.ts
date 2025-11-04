@@ -278,11 +278,11 @@ export class AuthService {
     })
 
     // Create audit log
-    const user = await this.getUserById(payload.userId)
+    const user = await this.getUserById(userId)
     if (user) {
       await AuditLogger.logUserAction(user.id, 'USER_LOGOUT', `User ${user.name} (${user.email}) logged out`)
     }
-  }  
+  }
 
   private static generateEmailToken(): string {
     return Math.random().toString(36).substring(2) + Date.now().toString(36)
