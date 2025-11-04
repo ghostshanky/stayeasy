@@ -186,9 +186,7 @@ export class ChatService {
       return await tx.message.findUnique({
         where: { id: message.id },
         include: {
-          files: true,
-          sender: { select: { id: true, name: true, role: true } },
-          recipient: { select: { id: true, name: true, role: true } }
+          files: true
         }
       })
     })

@@ -131,11 +131,14 @@ export async function getChatMetrics() {
 
 // Cleanup orphaned data
 export async function cleanupOrphanedData() {
-  // Remove messages with deleted chats
+  // Remove messages with deleted chats (this shouldn't happen due to cascade deletes)
+  // Since we have cascade deletes, this query should return 0 results
   const orphanedMessages = await prisma.message.deleteMany({
     where: {
-      chat: {
-        is: null
+      chatId: {
+        not: {
+          in: await prisma.chat.findMany({ select: { id: true } }).then(chats => chats.map(c => c.id))
+        }
       }
     }
   })

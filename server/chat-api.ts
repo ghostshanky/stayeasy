@@ -20,8 +20,8 @@ router.get('/chats', requireAuth, async (req, res) => {
     const { page = 1, limit = 20 } = req.query
     const offset = (Number(page) - 1) * Number(limit)
 
-    const userId = req.currentUser!.id
-    const userRole = req.currentUser!.role
+    const userId = req.currentUser?.id
+    const userRole = req.currentUser?.role
 
     // Get chats where user is participant
     const chats = await prisma.chat.findMany({
@@ -301,8 +301,8 @@ router.post('/chats', requireAuth, async (req, res) => {
       // Create new chat
       chat = await prisma.chat.create({
         data: {
-          userId: req.currentUser.role === 'TENANT' ? userId : recipientId,
-          ownerId: req.currentUser.role === 'OWNER' ? userId : recipientId
+          userId: req.currentUser?.role === 'TENANT' ? userId : recipientId,
+          ownerId: req.currentUser?.role === 'OWNER' ? userId : recipientId
         }
       })
     }
