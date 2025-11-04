@@ -38,7 +38,7 @@ export async function runArchiveJob() {
       data: {
         action: 'ARCHIVE_JOB_FAILED',
         details: JSON.stringify({
-          error: error.message,
+          error: (error as Error).message,
           timestamp: new Date().toISOString()
         })
       }
@@ -134,7 +134,9 @@ export async function cleanupOrphanedData() {
   // Remove messages with deleted chats
   const orphanedMessages = await prisma.message.deleteMany({
     where: {
-      chat: null
+      chat: {
+        is: null
+      }
     }
   })
 

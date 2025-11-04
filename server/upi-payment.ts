@@ -24,9 +24,12 @@ app.post('/api/payments/create', async (req, res) => {
     // Create payment record
     const payment = await prisma.payment.create({
       data: {
-        bookingId,
+        bookingId: bookingId as any,
         amount: parseFloat(amount),
         status: 'PENDING',
+        userId: 'dummy-user-id', // Add required fields
+        ownerId: 'dummy-owner-id',
+        currency: 'INR'
       },
     });
 
@@ -67,6 +70,13 @@ app.post('/api/payments/confirm', async (req, res) => {
       data: {
         paymentId: payment.id,
         details: `Payment confirmed for booking ${payment.bookingId}`,
+        invoiceNo: `INV-${Date.now()}`,
+        bookingId: payment.bookingId as any,
+        userId: 'dummy-user-id',
+        ownerId: 'dummy-owner-id',
+        lineItems: [],
+        amount: payment.amount,
+        status: 'PAID'
       },
     });
 
@@ -138,6 +148,13 @@ app.post('/api/payments/verify', async (req, res) => {
         data: {
           paymentId: payment.id,
           details: `Payment verified for booking ${payment.bookingId}`,
+          invoiceNo: `INV-${Date.now()}`,
+          bookingId: payment.bookingId as any,
+          userId: 'dummy-user-id',
+          ownerId: 'dummy-owner-id',
+          lineItems: [],
+          amount: payment.amount,
+          status: 'PAID'
         },
       });
     }

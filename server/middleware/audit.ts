@@ -54,7 +54,7 @@ export class AuditService {
  * @param action - The type of action being performed.
  */
 export function audit(
-  modelName: keyof PrismaClient,
+  modelName: string,
   idSource: (req: Request, res: Response) => string | undefined,
   action: 'UPDATE' | 'DELETE'
 ) {
@@ -64,7 +64,7 @@ export function audit(
       return next(); // Cannot audit without an ID
     }
 
-    const prismaModel = prisma[modelName] as any;
+    const prismaModel = (prisma as any)[modelName];
     const oldData = await prismaModel.findUnique({ where: { id: modelId } });
 
     // Monkey-patch res.json to capture the new state after the handler runs
@@ -90,7 +90,7 @@ export function audit(
 /**
  * Special audit wrapper for CREATE actions, as there is no 'oldData'.
  */
-export function auditCreate(modelName: keyof PrismaClient) {
+export function auditCreate(modelName: string) {
     return (req: Request, res: Response, next: NextFunction) => {
         const originalJson = res.json;
         res.json = function (body) {

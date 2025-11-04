@@ -396,9 +396,7 @@ router.post('/verify', requireAuth, requireRole(['OWNER']), async (req, res) => 
           ownerId: payment.ownerId,
           lineItems,
           amount: payment.amount,
-          status: 'PAID'
-        }
-      })
+          status: 'PAID',
 
       // Generate PDF (simplified)
       const pdfPath = await InvoiceGenerator.generateInvoicePDF({

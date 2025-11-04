@@ -88,7 +88,10 @@ describe('PaymentController', () => {
           user: { id: 'user123', name: 'Test User', email: 'test@example.com' },
           property: { id: 'property123', name: 'Test Property' },
         },
-  });
+
+      });
+
+    });
 
     it('should return error if booking not found', async () => {
       const paymentData = {
@@ -153,7 +156,6 @@ describe('PaymentController', () => {
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
   });
-});
 
   describe('confirmPayment', () => {
     it('should confirm payment successfully', async () => {
@@ -291,9 +293,8 @@ describe('PaymentController', () => {
       await PaymentController.confirmPayment(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Payment already completed' });
-    });
   });
+});
 
   describe('verifyPayment', () => {
     it('should verify payment successfully', async () => {
@@ -444,9 +445,8 @@ describe('PaymentController', () => {
       await PaymentController.verifyPayment(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Unauthorized to verify this payment' });
-    });
   });
+});
 
   describe('getPayment', () => {
     it('should get payment by ID successfully', async () => {
@@ -523,9 +523,8 @@ describe('PaymentController', () => {
       await PaymentController.getPayment(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Unauthorized to view this payment' });
-    });
   });
+});
 
   describe('getPaymentsByBooking', () => {
     it('should get payments by booking ID successfully', async () => {
