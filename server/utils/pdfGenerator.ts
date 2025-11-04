@@ -90,7 +90,9 @@ export async function generateInvoicePdf(invoiceId: string): Promise<string> {
   const fileRecord = await prisma.file.create({
     data: {
       url: `/uploads/invoices/${invoice.invoiceNo}.pdf`, // Relative URL for client access
-      type: 'application/pdf',
+      fileName: `${invoice.invoiceNo}.pdf`,
+      fileType: 'application/pdf',
+      userId: invoice.userId,
     },
   })
 

@@ -23,9 +23,7 @@ export const confirmPaymentSchema = z.object({
 // Payment verification validation schema
 export const verifyPaymentSchema = z.object({
   paymentId: z.string().min(1, 'Payment ID is required'),
-  action: z.enum(['verify', 'reject'], {
-    errorMap: () => ({ message: 'Action must be either "verify" or "reject"' }),
-  }),
+  action: z.enum(['verify', 'reject']),
   reason: z.string().optional(),
 });
 
