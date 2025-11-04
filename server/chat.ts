@@ -1,5 +1,5 @@
 import { Server as HTTPServer } from 'http'
-import { Server as SocketServer } from 'socket.io'
+import { Server as SocketServer, Socket } from 'socket.io'
 import jwt from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
 
@@ -55,7 +55,7 @@ export class ChatService {
   }
 
   private setupEventHandlers() {
-    this.io.on('connection', (socket: AuthenticatedSocket) => {
+    this.io.on('connection', (socket: any) => {
       console.log(`User ${socket.userId} connected`)
 
       // Join user's room for private messages
@@ -77,6 +77,7 @@ export class ChatService {
       socket.on('send_message', async (data: {
         chatId: string
         content: string
+        tempId?: string
         propertyId?: string
         attachments?: Array<{ url: string, type: string }>
       }) => {
@@ -134,7 +135,7 @@ export class ChatService {
     propertyId?: string
     attachments?: Array<{ url: string, type: string }>
   }) {
-    const { chatId, content, propertyId, attachments } = data
+    const { chatId, content, attachments } = data
 
     // Verify user has access to this chat
     // This check is critical for security
@@ -162,7 +163,6 @@ export class ChatService {
           chatId,
           senderId: socket.userId,
           recipientId,
-          propertyId,
           content,
           createdAt: new Date(),
           senderType: socket.userRole,
@@ -175,7 +175,9 @@ export class ChatService {
           data: attachments.map(attachment => ({
             messageId: message.id,
             url: attachment.url,
-            type: attachment.type
+            fileName: attachment.url.split('/').pop() || 'attachment',
+            fileType: attachment.type,
+            userId: socket.userId
           }))
         })
       }
@@ -186,8 +188,7 @@ export class ChatService {
         include: {
           files: true,
           sender: { select: { id: true, name: true, role: true } },
-          recipient: { select: { id: true, name: true, role: true } },
-          property: { select: { id: true, name: true } }
+          recipient: { select: { id: true, name: true, role: true } }
         }
       })
     })
@@ -246,11 +247,11 @@ export class ChatService {
         chatId,
         senderId: 'system',
         recipientId: 'system', // System messages don't have recipients
-        content
+        content,
+        senderType: 'SYSTEM'
       },
       include: {
-        files: true,
-        sender: { select: { id: true, name: true, role: true } }
+        files: true
       }
     })
 

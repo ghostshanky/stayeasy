@@ -1017,3 +1017,4 @@ describe('getBookingAuditLogs', () => {
     expect(mockRes.json).toHaveBeenCalledWith({ success: false, error: 'Unauthorized to view audit logs for this booking' });
   });
 });
+});

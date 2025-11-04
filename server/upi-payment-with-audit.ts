@@ -396,7 +396,8 @@ router.post('/verify', requireAuth, requireRole(['OWNER']), async (req, res) => 
           ownerId: payment.ownerId,
           lineItems,
           amount: payment.amount,
-          status: 'PAID'
+          status: 'PAID',
+          details: `Invoice for booking ${payment.bookingId}`
         }
       })
 
@@ -411,7 +412,7 @@ router.post('/verify', requireAuth, requireRole(['OWNER']), async (req, res) => 
       // Update invoice with PDF file reference
       await prisma.invoice.update({
         where: { id: invoice.id },
-        data: { fileId: pdfPath }
+        data: { pdfFileId: pdfPath }
       })
 
       // Update booking status to CONFIRMED
