@@ -396,7 +396,9 @@ router.post('/verify', requireAuth, requireRole(['OWNER']), async (req, res) => 
           ownerId: payment.ownerId,
           lineItems,
           amount: payment.amount,
-          status: 'PAID',
+          status: 'PAID'
+        }
+      })
 
       // Generate PDF (simplified)
       const pdfPath = await InvoiceGenerator.generateInvoicePDF({
@@ -409,7 +411,7 @@ router.post('/verify', requireAuth, requireRole(['OWNER']), async (req, res) => 
       // Update invoice with PDF file reference
       await prisma.invoice.update({
         where: { id: invoice.id },
-        data: { pdfFileId: pdfPath }
+        data: { fileId: pdfPath }
       })
 
       // Update booking status to CONFIRMED
