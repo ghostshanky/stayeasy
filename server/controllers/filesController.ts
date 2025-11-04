@@ -94,7 +94,7 @@ export class FilesController {
         },
       });
 
-      await AuditLogger.logUserAction(userId, 'FILE_UPLOAD_START', `User initiated upload for ${fileName}`, { fileId: file.id });
+      await AuditLogger.logUserAction(userId, 'FILE_UPLOAD_START', `User initiated upload for ${fileName}`);
 
       res.status(200).json({ success: true, data: { uploadUrl, fileId: file.id } });
     } catch (error) {
@@ -148,7 +148,7 @@ export class FilesController {
         data: { status: 'AVAILABLE', size, thumbnailUrl },
       });
 
-      await AuditLogger.logUserAction(userId, 'FILE_UPLOAD_COMPLETE', `File ${file.fileName} is now available`, { fileId });
+      await AuditLogger.logUserAction(userId, 'FILE_UPLOAD_COMPLETE', `File ${file.fileName} is now available`);
 
       res.status(200).json({ success: true, data: updatedFile });
     } catch (error) {

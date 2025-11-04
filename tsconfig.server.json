@@ -4,13 +4,13 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "./server/dist",
-    "rootDir": "./server",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["server/**/*"],
+  "include": ["server/**/*", "prisma/pdfGenerator.ts"],
   "exclude": ["node_modules", "dist"]
 }

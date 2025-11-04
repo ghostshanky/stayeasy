@@ -3,7 +3,7 @@ import { Request, Response } from 'express'
 import { z } from 'zod'
 import QRCode from 'qrcode'
 import { AuditLogger } from '../audit-logger.js'
-import { generateInvoicePdf } from '../utils/pdfGenerator.js'
+import { generateInvoicePdf } from '../../prisma/pdfGenerator'
 
 const prisma = new PrismaClient()
 

@@ -90,7 +90,7 @@ export class AuditLogger {
     return await prisma.auditLog.findMany({
       where: { paymentId },
       include: {
-        user: {
+        actor: {
           select: { id: true, name: true, email: true, role: true }
         }
       },
@@ -105,7 +105,7 @@ export class AuditLogger {
     return await prisma.auditLog.findMany({
       where: { bookingId },
       include: {
-        user: {
+        actor: {
           select: { id: true, name: true, email: true, role: true }
         }
       },
@@ -120,7 +120,7 @@ export class AuditLogger {
     return await prisma.auditLog.findMany({
       where: { actorId },
       include: {
-        user: {
+        actor: {
           select: { id: true, name: true, email: true, role: true }
         }
       },
@@ -132,13 +132,85 @@ export class AuditLogger {
   /**
    * Log user action
    */
-  static async logUserAction(userId: string, action: string, details: string) {
+  static async logUserAction(userId: string, action: string, details: string, metadata?: any) {
     await prisma.auditLog.create({
       data: {
         userId,
         action,
         details,
         actorId: userId
+      }
+    })
+  }
+
+  /**
+   * Log booking creation
+   */
+  static async logBookingCreation(tenantId: string, propertyId: string, bookingId: string, checkInDate: Date, checkOutDate: Date) {
+    await prisma.auditLog.create({
+      data: {
+        userId: tenantId,
+        action: 'BOOKING_CREATED',
+        details: `Booking created for property ${propertyId} from ${checkInDate.toISOString().split('T')[0]} to ${checkOutDate.toISOString().split('T')[0]}`,
+        actorId: tenantId,
+        bookingId
+      }
+    })
+  }
+
+  /**
+   * Log booking update
+   */
+  static async logBookingUpdate(actorId: string, bookingId: string, updates: any) {
+    await prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: 'BOOKING_UPDATED',
+        details: `Booking ${bookingId} updated: ${JSON.stringify(updates)}`,
+        actorId,
+        bookingId
+      }
+    })
+  }
+
+  /**
+   * Log property creation
+   */
+  static async logPropertyCreation(ownerId: string, propertyId: string, name: string) {
+    await prisma.auditLog.create({
+      data: {
+        userId: ownerId,
+        action: 'PROPERTY_CREATED',
+        details: `Property "${name}" created`,
+        actorId: ownerId
+      }
+    })
+  }
+
+  /**
+   * Log property update
+   */
+  static async logPropertyUpdate(ownerId: string, propertyId: string, updates: any) {
+    await prisma.auditLog.create({
+      data: {
+        userId: ownerId,
+        action: 'PROPERTY_UPDATED',
+        details: `Property ${propertyId} updated: ${JSON.stringify(updates)}`,
+        actorId: ownerId
+      }
+    })
+  }
+
+  /**
+   * Log property deletion
+   */
+  static async logPropertyDeletion(ownerId: string, propertyId: string) {
+    await prisma.auditLog.create({
+      data: {
+        userId: ownerId,
+        action: 'PROPERTY_DELETED',
+        details: `Property ${propertyId} deleted`,
+        actorId: ownerId
       }
     })
   }
