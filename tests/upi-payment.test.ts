@@ -1,6 +1,6 @@
 import request from 'supertest'
 import { PrismaClient } from '@prisma/client'
-import app from '../server/server.js'
+import app from '../server/server'
 
 const prisma = new PrismaClient()
 
@@ -249,7 +249,7 @@ describe('UPI Payment System', () => {
 
   describe('UPI URI Generation', () => {
     it('should generate valid UPI URI', () => {
-      const { UPIPaymentUtils } = require('../server/upi-payment.js')
+      const { UPIPaymentUtils } = require('../server/upi-payment')
 
       const uri = UPIPaymentUtils.generateUPIPaymentURI({
         payeeUPI: 'merchant@upi',
@@ -267,7 +267,7 @@ describe('UPI Payment System', () => {
     })
 
     it('should generate unique invoice numbers', () => {
-      const { UPIPaymentUtils } = require('../server/upi-payment.js')
+      const { UPIPaymentUtils } = require('../server/upi-payment')
 
       const invoice1 = UPIPaymentUtils.generateInvoiceNumber()
       const invoice2 = UPIPaymentUtils.generateInvoiceNumber()
@@ -280,7 +280,7 @@ describe('UPI Payment System', () => {
 
   describe('Invoice Generation', () => {
     it('should generate invoice HTML', () => {
-      const { InvoiceGenerator } = require('../server/upi-payment.js')
+      const { InvoiceGenerator } = require('../server/upi-payment')
 
       const mockInvoice = {
         id: 'inv-123',

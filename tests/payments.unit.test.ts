@@ -1,7 +1,7 @@
-import { PaymentsController } from '../server/controllers/paymentsController.js'
+import { PaymentsController } from '../server/controllers/paymentsController'
 import { PrismaClient } from '@prisma/client'
-import { AuditLogger } from '../server/audit-logger.js'
-import { generateInvoicePdf } from '../server/utils/pdfGenerator.js'
+import { AuditLogger } from '../server/audit-logger'
+import { generateInvoicePdf } from '../server/utils/pdfGenerator'
 
 // Mock the Prisma client
 jest.mock('@prisma/client', () => {
@@ -28,8 +28,8 @@ jest.mock('@prisma/client', () => {
 })
 
 // Mock other dependencies
-jest.mock('../server/audit-logger.js')
-jest.mock('../server/utils/pdfGenerator.js')
+jest.mock('../server/audit-logger')
+jest.mock('../server/utils/pdfGenerator')
 
 const mockPrisma = new PrismaClient() as jest.Mocked<PrismaClient> & {
   $transaction: jest.Mock,
