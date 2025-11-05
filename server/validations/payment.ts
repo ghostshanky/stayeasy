@@ -6,11 +6,6 @@ export const createPaymentSchema = z.object({
   amount: z.number().positive('Amount must be positive').optional(),
   upiId: z.string().email('Invalid UPI ID format').optional(),
   merchantName: z.string().min(1, 'Merchant name is required').optional(),
-}).refine(data => {
-  // If amount is not provided, it will be calculated from booking
-  return true;
-}, {
-  message: 'Amount is required when provided',
 });
 
 // Payment confirmation validation schema

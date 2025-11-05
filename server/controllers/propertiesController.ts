@@ -226,7 +226,7 @@ export class PropertiesController {
       const propertiesWithRating = properties.map(property => ({
         ...property,
         averageRating: property.reviews.length > 0
-          ? property.reviews.reduce((sum, review) => sum + review.rating, 0) / property.reviews.length
+          ? property.reviews.reduce((sum: number, review: { rating: number }) => sum + review.rating, 0) / property.reviews.length
           : null
       }))
 
@@ -282,7 +282,7 @@ export class PropertiesController {
 
       // Calculate average rating
       const averageRating = property.reviews.length > 0
-        ? property.reviews.reduce((sum, review) => sum + review.rating, 0) / property.reviews.length
+        ? property.reviews.reduce((sum: number, review: { rating: number }) => sum + review.rating, 0) / property.reviews.length
         : null
 
       res.status(200).json({
