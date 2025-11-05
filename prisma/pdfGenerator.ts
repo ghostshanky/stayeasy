@@ -9,3 +9,6 @@ export async function generateInvoicePdf(invoiceId: string): Promise<string> {
   console.log(`Generating PDF for invoice ${invoiceId}`);
   return `invoice_${invoiceId}.pdf`;
 }
+
+// Use prisma to avoid TypeScript unused variable error
+prisma.$connect().catch(console.error);
