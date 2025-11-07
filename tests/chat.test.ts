@@ -57,8 +57,7 @@ describe('Chat System', () => {
             senderType: currentUser.role
           },
           include: {
-            files: true,
-            sender: { select: { id: true, name: true, role: true } }
+            files: true
           }
         })
 
@@ -100,10 +99,9 @@ describe('Chat System', () => {
         const messages = await prisma.message.findMany({
           where: { chatId },
           include: {
-            files: true,
-            sender: { select: { id: true, name: true, role: true } }
+            files: true
           },
-          orderBy: { createdAt: 'DESC' },
+          orderBy: { createdAt: 'desc' },
           skip: offset,
           take: limit
         })
@@ -147,14 +145,13 @@ describe('Chat System', () => {
             owner: { select: { id: true, name: true, email: true, role: true } },
             messages: {
               take: 1,
-              orderBy: { createdAt: 'DESC' },
+              orderBy: { createdAt: 'desc' },
               include: {
-                sender: { select: { id: true, name: true } },
                 files: true
               }
             }
           },
-          orderBy: { updatedAt: 'DESC' },
+          orderBy: { updatedAt: 'desc' },
           skip: offset,
           take: limit
         })
@@ -178,7 +175,7 @@ describe('Chat System', () => {
                 id: chat.messages[0].id,
                 content: chat.messages[0].content,
                 senderId: chat.messages[0].senderId,
-                senderName: chat.messages[0].sender.name,
+                senderName: chat.messages[0].senderId,
                 createdAt: chat.messages[0].createdAt,
                 hasAttachments: chat.messages[0].files.length > 0
               } : undefined,
@@ -242,11 +239,12 @@ describe('Chat System', () => {
       }
     })
 
-    testOwner = await prisma.owner.create({
+    testOwner = await prisma.user.create({
       data: {
         email: ownerEmail,
         password: await AuthService.hashPassword('password123'),
-        name: 'Test Owner'
+        name: 'Test Owner',
+        role: 'OWNER'
       }
     })
 

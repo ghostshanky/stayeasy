@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PaymentController } from '../payment';
+import { PaymentsController } from '../controllers/paymentsController';
 import { requireAuth } from '../middleware';
 import { strictRateLimiter, mediumRateLimiter } from '../rateLimiter';
 
@@ -49,5 +50,8 @@ router.get('/pending', mediumRateLimiter, (req, res, next) => {
   }
   next();
 }, PaymentController.getPendingPayments);
+
+// POST /api/payments/webhook (no auth required for webhooks, but should be secured in production)
+router.post('/webhook', PaymentsController.handleWebhook);
 
 export default router;

@@ -552,4 +552,56 @@ export class BookingsController {
       })
     }
   }
+
+  /**
+   * PUT /api/owner/bookings/:id/cancel
+   * Cancels a booking by the property owner
+   */
+  static async cancelBookingByOwner(req: Request, res: Response) {
+    try {
+      const ownerId = req.currentUser!.id
+      const bookingId = req.params.id
+      const { reason } = req.body
+
+      // Find booking and verify ownership
+      const booking = await prisma.booking.findFirst({
+        where: {
+          id: bookingId,
+          property: { ownerId },
+          status: { in: ['PENDING', 'CONFIRMED'] }
+        },
+        include: {
+          property: true,
+          user: { select: { name: true, email: true } }
+        }
+      })
+
+      if (!booking) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'BOOKING_NOT_FOUND', message: 'Booking not found, you do not own the property, or booking cannot be cancelled.' }
+        })
+      }
+
+      // Update booking status to cancelled
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'CANCELLED' }
+      })
+
+      // Log audit event
+      await AuditLogger.logBookingStatusChange(ownerId, bookingId, booking.status, 'CANCELLED')
+
+      res.status(200).json({
+        success: true,
+        message: 'Booking cancelled successfully'
+      })
+    } catch (error: any) {
+      console.error('Owner booking cancellation error:', error)
+      res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to cancel booking.' }
+      })
+    }
+  }
 }

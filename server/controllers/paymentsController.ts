@@ -367,6 +367,121 @@ export class PaymentsController {
       booking: null,
     }
   }
+
+  /**
+   * POST /api/payments/webhook
+   * Handles payment webhooks from external payment providers
+   */
+  static async handleWebhook(req: Request, res: Response) {
+    try {
+      const { paymentId, status, details } = req.body
+
+      // Validate webhook signature (implementation depends on payment provider)
+      // For now, we'll assume the webhook is authenticated
+
+      if (!paymentId || !status) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_WEBHOOK_DATA', message: 'Missing paymentId or status' }
+        })
+      }
+
+      // Find the payment
+      const payment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+        include: { booking: true }
+      })
+
+      if (!payment) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'PAYMENT_NOT_FOUND', message: 'Payment not found' }
+        })
+      }
+
+      // Handle different webhook statuses
+      if (status === 'COMPLETED' && payment.status === 'AWAITING_PAYMENT') {
+        // Payment was successful
+        await prisma.$transaction(async (tx) => {
+          // Update payment status
+          await tx.payment.update({
+            where: { id: paymentId },
+            data: {
+              status: 'VERIFIED',
+              verifiedBy: 'WEBHOOK',
+              verifiedAt: new Date(),
+              completedAt: new Date()
+            }
+          })
+
+          // Update booking status
+          await tx.booking.update({
+            where: { id: payment.bookingId! },
+            data: { status: 'CONFIRMED' }
+          })
+
+          // Create invoice
+          const invoiceNo = `INV-${Date.now()}-${paymentId.slice(-6).toUpperCase()}`
+          const invoice = await tx.invoice.create({
+            data: {
+              invoiceNo,
+              paymentId,
+              bookingId: payment.bookingId,
+              userId: payment.userId,
+              ownerId: payment.ownerId,
+              amount: payment.amount,
+              status: 'PAID',
+              lineItems: [{
+                description: `Accommodation for booking ${payment.bookingId}`,
+                amount: payment.amount
+              }],
+              details: `Payment completed via webhook for booking ${payment.bookingId}`
+            },
+          })
+
+          // Generate PDF
+          const pdfFileId = await generateInvoicePdf(invoice.id)
+          await tx.invoice.update({
+            where: { id: invoice.id },
+            data: { pdfFileId },
+          })
+
+          // Log audit events
+          await AuditLogger.logPaymentVerification('WEBHOOK', payment.bookingId, paymentId, 'verify')
+          await AuditLogger.logInvoiceGeneration('WEBHOOK', payment.bookingId, paymentId, invoice.id, invoiceNo)
+          await AuditLogger.logBookingStatusChange('WEBHOOK', payment.bookingId, 'PENDING', 'CONFIRMED')
+        })
+
+        res.status(200).json({ success: true, message: 'Payment processed successfully' })
+
+      } else if (status === 'FAILED' && payment.status === 'AWAITING_PAYMENT') {
+        // Payment failed
+        await prisma.payment.update({
+          where: { id: paymentId },
+          data: {
+            status: 'FAILED',
+            completedAt: new Date()
+          }
+        })
+
+        // Log audit event
+        await AuditLogger.logPaymentVerification('WEBHOOK', payment.bookingId!, paymentId, 'reject')
+
+        res.status(200).json({ success: true, message: 'Payment failure recorded' })
+
+      } else {
+        // Status update not applicable
+        res.status(200).json({ success: true, message: 'Webhook received but no action taken' })
+      }
+
+    } catch (error: any) {
+      console.error('Webhook processing error:', error)
+      res.status(500).json({
+        success: false,
+        error: { code: 'WEBHOOK_PROCESSING_ERROR', message: 'Failed to process webhook' }
+      })
+    }
+  }
 }
 
 /**

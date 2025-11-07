@@ -1,8 +1,34 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Page } from '../types';
 
-const LandingPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+const LandingPage = () => {
+    const navigate = useNavigate();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [stayType, setStayType] = useState('');
+    const [priceRange, setPriceRange] = useState('');
+    const [showStayTypeDropdown, setShowStayTypeDropdown] = useState(false);
+    const [showPriceRangeDropdown, setShowPriceRangeDropdown] = useState(false);
+
+    const stayTypeOptions = ['Hostel', 'PG', 'Co-living'];
+    const priceRangeOptions = ['Under ₹5,000', '₹5,000 - ₹10,000', '₹10,000 - ₹15,000', 'Above ₹15,000'];
+
+    const handleSearch = () => {
+        // Navigate to search results with filters
+        navigate('/search');
+    };
+
+    const handleStayTypeSelect = (option: string) => {
+        setStayType(option);
+        setShowStayTypeDropdown(false);
+    };
+
+    const handlePriceRangeSelect = (option: string) => {
+        setPriceRange(option);
+        setShowPriceRangeDropdown(false);
+    };
+
     return (
         <div className="bg-background-light dark:bg-background-dark text-[#111518] dark:text-gray-200">
             <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col gap-10 md:gap-16">
@@ -25,19 +51,65 @@ const LandingPage = ({ navigate }: { navigate: (page: Page) => void }) => {
                             <div className="flex flex-col md:flex-row items-center gap-3 w-full">
                                 <div className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg flex-1 w-full">
                                     <span className="material-symbols-outlined text-gray-500">search</span>
-                                    <input className="w-full bg-transparent focus:outline-none text-[#111518] dark:text-gray-200 placeholder-gray-500" placeholder="Enter a city or area" type="text" />
+                                    <input
+                                        className="w-full bg-transparent focus:outline-none text-[#111518] dark:text-gray-200 placeholder-gray-500"
+                                        placeholder="Enter a city or area"
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
                                 </div>
-                                <div className="flex gap-3 flex-wrap justify-center w-full md:w-auto">
-                                    <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-200 dark:bg-gray-800 px-4">
-                                        <p className="text-[#111518] dark:text-gray-200 text-sm font-medium leading-normal">Stay Type</p>
-                                        <span className="material-symbols-outlined text-[#111518] dark:text-gray-200">expand_more</span>
-                                    </button>
-                                    <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-200 dark:bg-gray-800 px-4">
-                                        <p className="text-[#111518] dark:text-gray-200 text-sm font-medium leading-normal">Price Range</p>
-                                        <span className="material-symbols-outlined text-[#111518] dark:text-gray-200">expand_more</span>
-                                    </button>
+                                <div className="flex gap-3 flex-wrap justify-center w-full md:w-auto relative">
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowStayTypeDropdown(!showStayTypeDropdown)}
+                                            className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-200 dark:bg-gray-800 px-4 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                            <p className="text-[#111518] dark:text-gray-200 text-sm font-medium leading-normal">
+                                                {stayType || 'Stay Type'}
+                                            </p>
+                                            <span className="material-symbols-outlined text-[#111518] dark:text-gray-200">expand_more</span>
+                                        </button>
+                                        {showStayTypeDropdown && (
+                                            <div className="absolute top-full mt-1 w-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg z-20">
+                                                {stayTypeOptions.map((option) => (
+                                                    <button
+                                                        key={option}
+                                                        onClick={() => handleStayTypeSelect(option)}
+                                                        className="w-full text-left px-4 py-2 text-sm text-[#111518] dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg"
+                                                    >
+                                                        {option}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowPriceRangeDropdown(!showPriceRangeDropdown)}
+                                            className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-200 dark:bg-gray-800 px-4 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                            <p className="text-[#111518] dark:text-gray-200 text-sm font-medium leading-normal">
+                                                {priceRange || 'Price Range'}
+                                            </p>
+                                            <span className="material-symbols-outlined text-[#111518] dark:text-gray-200">expand_more</span>
+                                        </button>
+                                        {showPriceRangeDropdown && (
+                                            <div className="absolute top-full mt-1 w-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg z-20">
+                                                {priceRangeOptions.map((option) => (
+                                                    <button
+                                                        key={option}
+                                                        onClick={() => handlePriceRangeSelect(option)}
+                                                        className="w-full text-left px-4 py-2 text-sm text-[#111518] dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg"
+                                                    >
+                                                        {option}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <button onClick={() => navigate('searchResults')} className="flex w-full md:w-auto min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+                                <button onClick={handleSearch} className="flex w-full md:w-auto min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
                                     <span className="truncate">Search</span>
                                 </button>
                             </div>
@@ -156,25 +228,25 @@ const LandingPage = ({ navigate }: { navigate: (page: Page) => void }) => {
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">StayEasy</h4>
                             <ul className="space-y-2">
-                                <li><button onClick={() => navigate('landing')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">About Us</button></li>
+                                <li><button onClick={() => navigate('/')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">About Us</button></li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">Discover</h4>
                             <ul className="space-y-2">
-                                <li><button onClick={() => navigate('landing')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Trust & Safety</button></li>
+                                <li><button onClick={() => navigate('/')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Trust & Safety</button></li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">Hosting</h4>
                             <ul className="space-y-2">
-                                <li><button onClick={() => navigate('ownerDashboard')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">List your property</button></li>
+                                <li><button onClick={() => navigate('/dashboard/owner')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">List your property</button></li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">Support</h4>
                             <ul className="space-y-2">
-                                <li><button onClick={() => navigate('landing')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Help Center</button></li>
+                                <li><button onClick={() => navigate('/')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Help Center</button></li>
                             </ul>
                         </div>
                     </div>

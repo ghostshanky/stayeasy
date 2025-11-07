@@ -44,9 +44,9 @@ const SideNavBar: React.FC<SideNavBarProps> = ({ onNavigate }) => {
         <nav className="flex flex-col gap-1">
           <NavLink icon="dashboard" label="Dashboard" onClick={() => handleNavigation('tenantDashboard')} isActive={true} />
           <NavLink icon="apartment" label="My Listings" onClick={() => handleNavigation('searchResults')} />
-          <NavLink icon="calendar_month" label="Bookings" onClick={() => handleNavigation('tenantDashboard')} />
-          <NavLink icon="credit_card" label="Payments" onClick={() => handleNavigation('tenantDashboard')} />
-          <NavLink icon="chat" label="Messages" onClick={() => handleNavigation('tenantDashboard')} />
+          <NavLink icon="calendar_month" label="Bookings" onClick={() => handleNavigation('bookings')} />
+          <NavLink icon="credit_card" label="Payments" onClick={() => handleNavigation('payments')} />
+          <NavLink icon="chat" label="Messages" onClick={() => handleNavigation('messages')} />
         </nav>
       </div>
       <div className="flex flex-col gap-2">

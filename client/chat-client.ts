@@ -1,5 +1,6 @@
 // Client-side chat implementation with Socket.IO
 import { io, Socket } from 'socket.io-client'
+import { useState, useEffect } from 'react'
 
 export interface ChatMessage {
   id: string
@@ -373,7 +374,7 @@ export function useChatClient(authToken: string, serverUrl?: string) {
   useEffect(() => {
     client.connect()
       .then(() => setIsConnected(true))
-      .catch((error) => setConnectionError(error.message))
+      .catch((error: any) => setConnectionError(error?.message || String(error)))
 
     client.on('reconnect_failed', () => {
       setConnectionError('Failed to reconnect to chat server')

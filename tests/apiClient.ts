@@ -1,16 +1,17 @@
 import axios from 'axios';
 
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api', // Your backend API URL
+// Create a test-specific API client instance
+const testApiClient = axios.create({
+  baseURL: process.env.TEST_API_URL || 'http://localhost:3001/api',
   headers: {
     'Content-Type': 'application/json',
-  },
+  }
 });
 
-// Interceptor to add the auth token to every request
-apiClient.interceptors.request.use(
+// Add auth token interceptor
+testApiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken'); // Assuming you store the token here after login
+    const token = process.env.TEST_AUTH_TOKEN;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -19,4 +20,4 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-export default apiClient;
+export default testApiClient;

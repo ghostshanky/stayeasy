@@ -43,10 +43,10 @@ const OwnerSideNavBar: React.FC<OwnerSideNavBarProps> = ({ onNavigate }) => {
         </div>
         <nav className="flex flex-col gap-1">
           <NavLink icon="dashboard" label="Dashboard" onClick={() => handleNavigation('ownerDashboard')} isActive={true} />
-          <NavLink icon="apartment" label="My Listings" onClick={() => handleNavigation('ownerDashboard')} />
-          <NavLink icon="calendar_month" label="Bookings" onClick={() => handleNavigation('ownerDashboard')} />
-          <NavLink icon="credit_card" label="Payments" onClick={() => handleNavigation('ownerDashboard')} />
-          <NavLink icon="chat" label="Messages" onClick={() => handleNavigation('ownerDashboard')} />
+          <NavLink icon="apartment" label="My Listings" onClick={() => handleNavigation('myListings')} />
+          <NavLink icon="calendar_month" label="Bookings" onClick={() => handleNavigation('bookings')} />
+          <NavLink icon="credit_card" label="Payments" onClick={() => handleNavigation('payments')} />
+          <NavLink icon="chat" label="Messages" onClick={() => handleNavigation('messages')} />
         </nav>
       </div>
       <div className="flex flex-col gap-2">

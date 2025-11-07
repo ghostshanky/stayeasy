@@ -55,7 +55,7 @@ export class AuditLogger {
   /**
    * Log invoice generation
    */
-  static async logInvoiceGeneration(actorId: string, bookingId: string, paymentId: string, invoiceId: string, invoiceNo: string) {
+  static async logInvoiceGeneration(actorId: string, bookingId: string, paymentId: string, invoiceNo: string) {
     await prisma.auditLog.create({
       data: {
         userId: actorId,
@@ -132,7 +132,7 @@ export class AuditLogger {
   /**
    * Log user action
    */
-  static async logUserAction(userId: string, action: string, details: string, metadata?: any) {
+  static async logUserAction(userId: string, action: string, details: string) {
     await prisma.auditLog.create({
       data: {
         userId,
@@ -211,6 +211,66 @@ export class AuditLogger {
         action: 'PROPERTY_DELETED',
         details: `Property ${propertyId} deleted`,
         actorId: ownerId
+      }
+    })
+  }
+
+  /**
+   * Log review creation
+   */
+  static async logReviewCreation(tenantId: string, reviewId: string, rating: number) {
+    await prisma.auditLog.create({
+      data: {
+        userId: tenantId,
+        action: 'REVIEW_CREATED',
+        details: `Review created for property with rating ${rating}`,
+        actorId: tenantId,
+        reviewId
+      }
+    })
+  }
+
+  /**
+   * Log review update
+   */
+  static async logReviewUpdate(tenantId: string, propertyId: string, reviewId: string, updates: any) {
+    await prisma.auditLog.create({
+      data: {
+        userId: tenantId,
+        action: 'REVIEW_UPDATED',
+        details: `Review ${reviewId} for property ${propertyId} updated: ${JSON.stringify(updates)}`,
+        actorId: tenantId,
+        reviewId
+      }
+    })
+  }
+
+  /**
+   * Log review deletion
+   */
+  static async logReviewDeletion(tenantId: string, propertyId: string, reviewId: string) {
+    await prisma.auditLog.create({
+      data: {
+        userId: tenantId,
+        action: 'REVIEW_DELETED',
+        details: `Review ${reviewId} for property ${propertyId} deleted`,
+        actorId: tenantId,
+        reviewId
+      }
+    })
+  }
+
+  /**
+   * Log review moderation
+   */
+  static async logReviewModeration(adminId: string, reviewId: string, action: string, reason?: string) {
+    await prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'REVIEW_MODERATED',
+        details: `Review ${reviewId} ${action.toLowerCase()}${reason ? `. Reason: ${reason}` : ''}`,
+        actorId: adminId,
+        reviewId
       }
     })
   }

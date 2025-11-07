@@ -81,6 +81,7 @@ model Property {
   bookings  Booking[]
   reviews   Review[]
   files     File[]
+  availabilities Availability[]
 
   @@map("properties")
   @@index([ownerId])
@@ -282,6 +283,7 @@ model AuditLog {
   bookingId String?
   paymentId String?
   invoiceId String?
+  reviewId  String?
 
   @@map("audit_logs")
   @@index([actorId])
@@ -331,4 +333,19 @@ model Refund {
 
   @@map("refunds")
   @@index([paymentId])
+}
+
+model Availability {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("availabilities")
+  @@index([propertyId])
+  @@index([startDate])
+  @@index([endDate])
 }

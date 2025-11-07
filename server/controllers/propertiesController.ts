@@ -24,7 +24,6 @@ const propertyQuerySchema = z.object({
   city: z.string().optional(),
   minPrice: z.number().optional(),
   maxPrice: z.number().optional(),
-  type: z.string().optional(),
   amenities: z.string().optional(),
   page: z.number().int().min(1).default(1),
   limit: z.number().int().min(1).max(100).default(10)
@@ -180,7 +179,7 @@ export class PropertiesController {
         })
       }
 
-      const { city, minPrice, maxPrice, type, amenities, page, limit } = validation.data
+      const { city, minPrice, maxPrice, amenities, page, limit } = validation.data
 
       const where: any = {}
 
@@ -343,6 +342,155 @@ export class PropertiesController {
       res.status(500).json({
         success: false,
         error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch properties.' }
+      })
+    }
+  }
+
+  /**
+   * PUT /api/owner/properties/:id/availability
+   * Manages availability for a property owned by the authenticated owner
+   */
+  static async manageAvailability(req: Request, res: Response) {
+    try {
+      const ownerId = req.currentUser!.id
+      const propertyId = req.params.id
+      const { availableDates } = req.body
+
+      // Validate input
+      if (!Array.isArray(availableDates)) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_INPUT', message: 'availableDates must be an array' }
+        })
+      }
+
+      // Verify property ownership
+      const property: any = await prisma.property.findFirst({
+        where: { id: propertyId, ownerId }
+      })
+
+      if (!property) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'PROPERTY_NOT_FOUND', message: 'Property not found or you do not own it.' }
+        })
+      }
+
+      // Validate date ranges
+      for (const range of availableDates) {
+        if (!range.start || !range.end) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'INVALID_INPUT', message: 'Each date range must have start and end dates' }
+          })
+        }
+
+        const startDate = new Date(range.start)
+        const endDate = new Date(range.end)
+
+        if (startDate >= endDate) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'INVALID_DATES', message: 'End date must be after start date' }
+          })
+        }
+      }
+
+      // Delete existing availability and create new ones
+      await prisma.availability.deleteMany({
+        where: { propertyId }
+      })
+
+      const availabilities = await prisma.availability.createMany({
+        data: availableDates.map(range => ({
+          propertyId,
+          startDate: new Date(range.start),
+          endDate: new Date(range.end)
+        }))
+      })
+
+      // Log audit event
+      await AuditLogger.logPropertyUpdate(ownerId, propertyId, { availability: availableDates })
+
+      res.status(200).json({
+        success: true,
+        message: 'Availability updated successfully',
+        data: { count: availabilities.count }
+      })
+    } catch (error: any) {
+      console.error('Manage availability error:', error)
+      res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to update availability.' }
+      })
+    }
+  }
+
+  /**
+   * POST /api/owner/properties/:id/images
+   * Uploads images for a property owned by the authenticated owner
+   */
+  static async uploadPropertyImages(req: Request, res: Response) {
+    try {
+      const ownerId = req.currentUser!.id
+      const propertyId = req.params.id
+      const { imageUrls } = req.body
+
+      // Validate input
+      if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_INPUT', message: 'imageUrls must be a non-empty array' }
+        })
+      }
+
+      if (imageUrls.length > 10) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'TOO_MANY_IMAGES', message: 'Maximum 10 images allowed' }
+        })
+      }
+
+      // Verify property ownership
+      const property = await prisma.property.findFirst({
+        where: { id: propertyId, ownerId }
+      })
+
+      if (!property) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'PROPERTY_NOT_FOUND', message: 'Property not found or you do not own it.' }
+        })
+      }
+
+      // Create file records for each image
+      const fileRecords = imageUrls.map(url => ({
+        url,
+        fileName: url.split('/').pop() || 'image.jpg',
+        fileType: 'image/jpeg',
+        purpose: 'PROPERTY_IMAGE' as const,
+        userId: ownerId,
+        propertyId,
+        status: 'AVAILABLE' as const
+      }))
+
+      const files = await prisma.file.createMany({
+        data: fileRecords
+      })
+
+      // Log audit event
+      await AuditLogger.logPropertyUpdate(ownerId, propertyId, { imagesUploaded: imageUrls.length })
+
+      res.status(201).json({
+        success: true,
+        message: 'Images uploaded successfully',
+        data: { uploaded: files.count }
+      })
+    } catch (error: any) {
+      console.error('Upload property images error:', error)
+      res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to upload images.' }
       })
     }
   }

@@ -9,10 +9,12 @@ import filesRouter from './controllers/filesController.js'
 import dataGovernanceRouter from './controllers/dataGovernanceController.js'
 import propertiesRoutes from './routes/properties.js'
 import bookingsRoutes from './routes/bookings.js'
+import reviewsRoutes from './routes/reviews.js'
+import invoicesRoutes from './routes/invoices.js'
 
 const app = express()
 const server = createServer(app)
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3002
 
 // Initialize Socket.IO chat service
 const chatService = new ChatService(server)
@@ -54,6 +56,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+// Welcome endpoint
+app.get('/api/welcome', (req, res) => {
+  console.log(`Request received: ${req.method} ${req.path}`)
+  res.json({ message: 'Welcome to the StayEasy API!' })
+})
+
 // Mount API routes
 app.use('/api', chatApi)
 app.use('/api/payments', paymentRoutes)
@@ -61,6 +69,8 @@ app.use('/api/files', filesRouter)
 app.use('/api', dataGovernanceRouter)
 app.use('/api', propertiesRoutes)
 app.use('/api', bookingsRoutes)
+app.use('/api', reviewsRoutes)
+app.use('/api', invoicesRoutes)
 
 // Auth routes
 app.post('/api/auth/signup', async (req, res) => {

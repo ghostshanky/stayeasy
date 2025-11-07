@@ -13,7 +13,7 @@ export interface ChatMessage {
   // ... other fields
 }
 
-const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const SERVER_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
 
 export function useChat(chatId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -68,7 +68,6 @@ export function useChat(chatId: string | null) {
       socket.emit('join_chat', chatId);
       // Fetch any messages missed while disconnected
       if (messages.length > 0) {
-        const lastMessageDate = messages[messages.length - 1].createdAt;
         // You could implement a `fetchSince` endpoint or just refetch
       } else {
         fetchHistory(null);

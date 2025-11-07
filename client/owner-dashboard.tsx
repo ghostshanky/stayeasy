@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Payment {
   id: string;
@@ -180,6 +180,7 @@ export function OwnerDashboard({ ownerId }: OwnerDashboardProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">Payment Verification Dashboard</h2>
+          <div className="text-sm text-text-light-secondary dark:text-text-dark-secondary">Owner ID: {ownerId}</div>
           <p className="text-text-light-secondary dark:text-text-dark-secondary">
             Review and verify tenant payments for your properties
           </p>
