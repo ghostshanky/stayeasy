@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Listing, StatCardData, ListingStatus, StatChangeDirection } from './types';
 
 // Use environment variable or default to localhost for development
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
