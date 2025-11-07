@@ -1,11 +1,9 @@
-import { Prisma, PrismaClient } from '@prisma/client'
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import QRCode from 'qrcode'
+import { supabase } from '../../lib/supabase.js'
 import { AuditLogger } from '../audit-logger.js'
 import { generateInvoicePdf } from '../../prisma/pdfGenerator'
-
-const prisma = new PrismaClient()
 
 // --- Input Validation Schemas ---
 const createPaymentSchema = z.object({
@@ -39,66 +37,80 @@ export class PaymentsController {
       const { bookingId } = validation.data
       const userId = req.currentUser!.id
 
-      const result = await prisma.$transaction(async (tx) => {
-        // 1. Validate booking exists, belongs to the user, and is in a payable state.
-        const booking = await tx.booking.findFirst({
-          where: { id: bookingId, userId, status: 'PENDING' },
-          include: { property: { include: { owner: true } } },
+      // 1. Validate booking exists, belongs to the user, and is in a payable state.
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          property:properties(
+            *,
+            owner:users(*)
+          )
+        `)
+        .eq('id', bookingId)
+        .eq('user_id', userId)
+        .eq('status', 'PENDING')
+        .single()
+
+      if (bookingError || !booking) {
+        return res.status(404).json({ success: false, error: { code: 'BOOKING_NOT_FOUND', message: 'Booking not found or not eligible for payment.' } })
+      }
+
+      // 2. Check if a payment has already been initiated.
+      const { data: existingPayment } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('booking_id', bookingId)
+        .not('status', 'in', '("REJECTED","CANCELLED")')
+        .single()
+
+      if (existingPayment) {
+        return res.status(409).json({ success: false, error: { code: 'PAYMENT_EXISTS', message: 'A payment for this booking has already been initiated.' } })
+      }
+
+      // 3. Calculate amount.
+      const checkIn = new Date(booking.check_in)
+      const checkOut = new Date(booking.check_out)
+      const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
+      const amountInPaisa = validation.data.amount ? validation.data.amount * 100 : Math.round(booking.property.price * nights * 100)
+
+      // 4. Generate UPI URI.
+      const ownerUpiId = booking.property.owner.email // Using email as a mock UPI ID
+      const upiUri = `upi://pay?pa=${ownerUpiId}&pn=${encodeURIComponent(booking.property.owner.name)}&am=${(amountInPaisa / 100).toFixed(2)}&tn=${bookingId}`
+
+      // 5. Create the payment record.
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          booking_id: bookingId,
+          user_id: userId,
+          owner_id: booking.property.owner_id,
+          amount: amountInPaisa,
+          upi_uri: upiUri,
+          status: 'AWAITING_PAYMENT',
         })
+        .select()
+        .single()
 
-        if (!booking) {
-          throw new Error('BOOKING_NOT_FOUND')
-        }
+      if (paymentError) {
+        console.error('Payment creation error:', paymentError)
+        return res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to create payment.' } })
+      }
 
-        // 2. Check if a payment has already been initiated.
-        const existingPayment = await tx.payment.findFirst({ where: { bookingId, status: { notIn: ['REJECTED', 'CANCELLED'] } } })
-        if (existingPayment) {
-          throw new Error('PAYMENT_EXISTS')
-        }
+      // 6. Log the audit event.
+      await AuditLogger.logPaymentCreation(userId, bookingId, payment.id, amountInPaisa)
 
-        // 3. Calculate amount.
-        const nights = Math.ceil((booking.checkOut.getTime() - booking.checkIn.getTime()) / (1000 * 60 * 60 * 24))
-        const amountInPaisa = validation.data.amount ? validation.data.amount * 100 : Math.round(booking.property.price * nights * 100)
-
-        // 4. Generate UPI URI.
-        const ownerUpiId = booking.property.owner.email // Using email as a mock UPI ID
-        const upiUri = `upi://pay?pa=${ownerUpiId}&pn=${encodeURIComponent(booking.property.owner.name)}&am=${(amountInPaisa / 100).toFixed(2)}&tn=${bookingId}`
-
-        // 5. Create the payment record.
-        const payment = await tx.payment.create({
-          data: {
-            bookingId,
-            userId,
-            ownerId: booking.property.ownerId,
-            amount: amountInPaisa,
-            upiUri,
-            status: 'AWAITING_PAYMENT',
-          },
-        })
-
-        // 6. Log the audit event.
-        await AuditLogger.logPaymentCreation(userId, bookingId, payment.id, amountInPaisa)
-
-        return { payment, upiUri }
-      })
-
-      const qrDataUrl = await QRCode.toDataURL(result.upiUri)
+      const qrDataUrl = await QRCode.toDataURL(upiUri)
 
       res.status(201).json({
         success: true,
         data: {
-          paymentId: result.payment.id,
-          upiUri: result.upiUri,
+          paymentId: payment.id,
+          upiUri: upiUri,
           qrDataUrl: qrDataUrl,
         },
       })
     } catch (error: any) {
-      if (error.message === 'BOOKING_NOT_FOUND') {
-        return res.status(404).json({ success: false, error: { code: 'BOOKING_NOT_FOUND', message: 'Booking not found or not eligible for payment.' } })
-      }
-      if (error.message === 'PAYMENT_EXISTS') {
-        return res.status(409).json({ success: false, error: { code: 'PAYMENT_EXISTS', message: 'A payment for this booking has already been initiated.' } })
-      }
       console.error('Payment creation error:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to create payment.' } })
     }
@@ -118,43 +130,47 @@ export class PaymentsController {
       const { paymentId, upiReference } = validation.data
       const userId = req.currentUser!.id
 
-      const result = await prisma.$transaction(async (tx) => {
-        // 1. Find payment and validate ownership and status.
-        const payment = await tx.payment.findFirst({
-          where: { id: paymentId, userId, status: 'AWAITING_PAYMENT' },
+      // 1. Find payment and validate ownership and status.
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', paymentId)
+        .eq('user_id', userId)
+        .eq('status', 'AWAITING_PAYMENT')
+        .single()
+
+      if (paymentError || !payment) {
+        return res.status(404).json({ success: false, error: { code: 'PAYMENT_NOT_FOUND', message: 'Payment not found or not in a confirmable state.' } })
+      }
+
+      // 2. Update payment status.
+      const { data: updatedPayment, error: updateError } = await supabase
+        .from('payments')
+        .update({
+          status: 'AWAITING_OWNER_VERIFICATION',
+          upi_reference: upiReference,
         })
+        .eq('id', paymentId)
+        .select()
+        .single()
 
-        if (!payment) {
-          throw new Error('PAYMENT_NOT_FOUND')
-        }
+      if (updateError) {
+        console.error('Payment update error:', updateError)
+        return res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to confirm payment.' } })
+      }
 
-        // 2. Update payment status.
-        const updatedPayment = await tx.payment.update({
-          where: { id: paymentId },
-          data: {
-            status: 'AWAITING_OWNER_VERIFICATION',
-            upiReference: upiReference,
-          },
-        })
-
-        // 3. Log audit event.
-        await AuditLogger.logPaymentConfirmation(userId, payment.bookingId!, paymentId, upiReference)
-
-        return updatedPayment
-      })
+      // 3. Log audit event.
+      await AuditLogger.logPaymentConfirmation(userId, payment.booking_id, paymentId, upiReference)
 
       res.status(200).json({
         success: true,
         data: {
-          paymentId: result.id,
-          status: result.status,
+          paymentId: updatedPayment.id,
+          status: updatedPayment.status,
         },
         message: 'Payment submitted for verification.',
       })
     } catch (error: any) {
-      if (error.message === 'PAYMENT_NOT_FOUND') {
-        return res.status(404).json({ success: false, error: { code: 'PAYMENT_NOT_FOUND', message: 'Payment not found or not in a confirmable state.' } })
-      }
       console.error('Payment confirmation error:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to confirm payment.' } })
     }
@@ -168,17 +184,24 @@ export class PaymentsController {
     try {
       const ownerId = req.currentUser!.id
 
-      const pendingPayments = await prisma.payment.findMany({
-        where: {
-          ownerId,
-          status: 'AWAITING_OWNER_VERIFICATION',
-        },
-        include: {
-          user: { select: { name: true, email: true } },
-          booking: { include: { property: { select: { name: true } } } },
-        },
-        orderBy: { createdAt: 'asc' },
-      })
+      const { data: pendingPayments, error } = await supabase
+        .from('payments')
+        .select(`
+          *,
+          user:users(name, email),
+          booking:bookings(
+            *,
+            property:properties(name)
+          )
+        `)
+        .eq('owner_id', ownerId)
+        .eq('status', 'AWAITING_OWNER_VERIFICATION')
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching pending payments:', error)
+        return res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch pending payments.' } })
+      }
 
       res.status(200).json({ success: true, data: pendingPayments })
     } catch (error) {
@@ -201,20 +224,25 @@ export class PaymentsController {
         return res.status(403).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'You can only view your own payments.' } })
       }
 
-      const payments = await prisma.payment.findMany({
-        where: { ownerId },
-        include: {
-          user: { select: { name: true, email: true } },
-          booking: {
-            include: {
-              property: { select: { name: true, address: true } },
-              user: { select: { name: true, email: true } }
-            }
-          },
-          invoice: true
-        },
-        orderBy: { createdAt: 'desc' },
-      })
+      const { data: payments, error } = await supabase
+        .from('payments')
+        .select(`
+          *,
+          user:users(name, email),
+          booking:bookings(
+            *,
+            property:properties(name, address),
+            user:users(name, email)
+          ),
+          invoice:invoices(*)
+        `)
+        .eq('owner_id', ownerId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching owner payments:', error)
+        return res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch owner payments.' } })
+      }
 
       res.status(200).json({ success: true, data: payments })
     } catch (error) {
@@ -238,12 +266,14 @@ export class PaymentsController {
       const ownerId = req.currentUser!.id
 
       // Check for idempotency first, outside the transaction
-      const existingPayment = await prisma.payment.findFirst({
-        where: { id: paymentId, ownerId },
-        select: { status: true, id: true },
-      })
+      const { data: existingPayment, error: paymentError } = await supabase
+        .from('payments')
+        .select('id, status')
+        .eq('id', paymentId)
+        .eq('owner_id', ownerId)
+        .single()
 
-      if (!existingPayment) {
+      if (paymentError || !existingPayment) {
         return res.status(404).json({ success: false, error: { code: 'PAYMENT_NOT_FOUND', message: 'Payment not found or you do not have permission to verify it.' } })
       }
 
@@ -255,14 +285,10 @@ export class PaymentsController {
         return res.status(409).json({ success: false, error: { code: 'INVALID_STATE', message: `Payment is not awaiting verification. Current status: ${existingPayment.status}` } })
       }
 
-      // Main transactional logic
-      const result = await prisma.$transaction(async (tx) => {
-        if (verified) {
-          return PaymentsController.handleVerification(tx, paymentId, ownerId)
-        } else {
-          return PaymentsController.handleRejection(tx, paymentId, ownerId, note)
-        }
-      })
+      // Main logic (Supabase doesn't support transactions like Prisma, so handle sequentially)
+      const result = verified
+        ? await PaymentsController.handleVerification(paymentId, ownerId)
+        : await PaymentsController.handleRejection(paymentId, ownerId, note)
 
       res.status(200).json({
         success: true,
@@ -276,93 +302,135 @@ export class PaymentsController {
     }
   }
 
-  private static async handleVerification(tx: Prisma.TransactionClient, paymentId: string, ownerId: string) {
-    // 1. Update Payment status
-    const payment = await tx.payment.update({
-      where: { id: paymentId },
-      data: {
-        status: 'VERIFIED',
-        verifiedBy: ownerId,
-        verifiedAt: new Date(),
-      },
-      include: { booking: true }
-    })
+  private static async handleVerification(paymentId: string, ownerId: string) {
+    // 1. Get payment details
+    const { data: payment, error: paymentError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('id', paymentId)
+      .single()
 
-    if (!payment.bookingId) {
+    if (paymentError || !payment) {
+      throw new Error('Payment not found')
+    }
+
+    if (!payment.booking_id) {
       throw new Error('Booking ID missing on payment record.')
     }
 
-    // 2. Update Booking status
-    const booking = await tx.booking.update({
-      where: { id: payment.bookingId },
-      data: { status: 'CONFIRMED' },
-    })
+    // 2. Update Payment status
+    const { error: updatePaymentError } = await supabase
+      .from('payments')
+      .update({
+        status: 'VERIFIED',
+        verified_by: ownerId,
+        verified_at: new Date().toISOString(),
+      })
+      .eq('id', paymentId)
 
-    // 3. Create Invoice
+    if (updatePaymentError) {
+      throw new Error('Failed to update payment status')
+    }
+
+    // 3. Update Booking status
+    const { error: updateBookingError } = await supabase
+      .from('bookings')
+      .update({ status: 'CONFIRMED' })
+      .eq('id', payment.booking_id)
+
+    if (updateBookingError) {
+      throw new Error('Failed to update booking status')
+    }
+
+    // 4. Create Invoice
     const invoiceNo = `INV-${Date.now()}-${payment.id.slice(-6).toUpperCase()}`
-    const invoice = await tx.invoice.create({
-      data: {
-        invoiceNo,
-        paymentId: payment.id,
-        bookingId: payment.bookingId,
-        userId: payment.userId,
-        ownerId: payment.ownerId,
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .insert({
+        invoice_no: invoiceNo,
+        payment_id: payment.id,
+        booking_id: payment.booking_id,
+        user_id: payment.user_id,
+        owner_id: payment.owner_id,
         amount: payment.amount,
         status: 'PAID',
-        lineItems: [{
-          description: `Accommodation for booking ${payment.bookingId}`,
+        line_items: [{
+          description: `Accommodation for booking ${payment.booking_id}`,
           amount: payment.amount
         }],
-        details: `Payment verified for booking ${payment.bookingId}`
-      },
-    })
+        details: `Payment verified for booking ${payment.booking_id}`
+      })
+      .select()
+      .single()
 
-    // 4. Generate and link PDF (outside of DB transaction but logically part of the flow)
+    if (invoiceError) {
+      throw new Error('Failed to create invoice')
+    }
+
+    // 5. Generate and link PDF (outside of DB transaction but logically part of the flow)
     // In a real-world scenario, this might be offloaded to a background job.
     const pdfFileId = await generateInvoicePdf(invoice.id)
-    await tx.invoice.update({
-      where: { id: invoice.id },
-      data: { pdfFileId },
-    })
+    const { error: updateInvoiceError } = await supabase
+      .from('invoices')
+      .update({ pdf_file_id: pdfFileId })
+      .eq('id', invoice.id)
 
-    // 5. Log audit events
-    await AuditLogger.logPaymentVerification(ownerId, payment.bookingId, paymentId, 'verify')
-    await AuditLogger.logInvoiceGeneration(ownerId, payment.bookingId, paymentId, invoice.id, invoiceNo)
-    await AuditLogger.logBookingStatusChange(ownerId, payment.bookingId, 'PENDING', 'CONFIRMED')
+    if (updateInvoiceError) {
+      console.error('Failed to update invoice with PDF file ID:', updateInvoiceError)
+    }
+
+    // 6. Log audit events
+    await AuditLogger.logPaymentVerification(ownerId, payment.booking_id, paymentId, 'verify')
+    await AuditLogger.logInvoiceGeneration(ownerId, payment.booking_id, paymentId, invoice.id, invoiceNo)
+    await AuditLogger.logBookingStatusChange(ownerId, payment.booking_id, 'PENDING', 'CONFIRMED')
 
     return {
       paymentId: payment.id,
-      status: payment.status,
+      status: 'VERIFIED',
       invoice: {
         id: invoice.id,
-        invoiceNo: invoice.invoiceNo,
+        invoiceNo: invoice.invoice_no,
       },
       booking: {
-        id: booking.id,
-        status: booking.status,
+        id: payment.booking_id,
+        status: 'CONFIRMED',
       },
     }
   }
 
-  private static async handleRejection(tx: Prisma.TransactionClient, paymentId: string, ownerId: string, note?: string) {
-    // 1. Update Payment status
-    const payment = await tx.payment.update({
-      where: { id: paymentId },
-      data: {
-        status: 'REJECTED',
-        verifiedBy: ownerId,
-        verifiedAt: new Date(),
-        rejectionReason: note,
-      },
-      select: { id: true, status: true, bookingId: true }
-    })
+  private static async handleRejection(paymentId: string, ownerId: string, note?: string) {
+    // 1. Get payment details
+    const { data: payment, error: paymentError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('id', paymentId)
+      .single()
 
-    // 2. Log audit event
-    await AuditLogger.logPaymentVerification(ownerId, payment.bookingId!, paymentId, 'reject', note)
+    if (paymentError || !payment) {
+      throw new Error('Payment not found')
+    }
+
+    // 2. Update Payment status
+    const { error: updateError } = await supabase
+      .from('payments')
+      .update({
+        status: 'REJECTED',
+        verified_by: ownerId,
+        verified_at: new Date().toISOString(),
+        rejection_reason: note,
+      })
+      .eq('id', paymentId)
+
+    if (updateError) {
+      throw new Error('Failed to update payment status')
+    }
+
+    // 3. Log audit event
+    await AuditLogger.logPaymentVerification(ownerId, payment.booking_id!, paymentId, 'reject', note)
 
     return {
       paymentId: payment.id,
-      status: payment.status,
+      status: 'REJECTED',
       invoice: null,
       booking: null,
     }
@@ -387,12 +455,13 @@ export class PaymentsController {
       }
 
       // Find the payment
-      const payment = await prisma.payment.findUnique({
-        where: { id: paymentId },
-        include: { booking: true }
-      })
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', paymentId)
+        .single()
 
-      if (!payment) {
+      if (paymentError || !payment) {
         return res.status(404).json({
           success: false,
           error: { code: 'PAYMENT_NOT_FOUND', message: 'Payment not found' }
@@ -402,70 +471,90 @@ export class PaymentsController {
       // Handle different webhook statuses
       if (status === 'COMPLETED' && payment.status === 'AWAITING_PAYMENT') {
         // Payment was successful
-        await prisma.$transaction(async (tx) => {
-          // Update payment status
-          await tx.payment.update({
-            where: { id: paymentId },
-            data: {
-              status: 'VERIFIED',
-              verifiedBy: 'WEBHOOK',
-              verifiedAt: new Date(),
-              completedAt: new Date()
-            }
+        // Update payment status
+        const { error: updatePaymentError } = await supabase
+          .from('payments')
+          .update({
+            status: 'VERIFIED',
+            verified_by: 'WEBHOOK',
+            verified_at: new Date().toISOString(),
+            completed_at: new Date().toISOString()
           })
+          .eq('id', paymentId)
 
-          // Update booking status
-          await tx.booking.update({
-            where: { id: payment.bookingId! },
-            data: { status: 'CONFIRMED' }
+        if (updatePaymentError) {
+          throw new Error('Failed to update payment status')
+        }
+
+        // Update booking status
+        const { error: updateBookingError } = await supabase
+          .from('bookings')
+          .update({ status: 'CONFIRMED' })
+          .eq('id', payment.booking_id!)
+
+        if (updateBookingError) {
+          throw new Error('Failed to update booking status')
+        }
+
+        // Create invoice
+        const invoiceNo = `INV-${Date.now()}-${paymentId.slice(-6).toUpperCase()}`
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('invoices')
+          .insert({
+            invoice_no: invoiceNo,
+            payment_id: paymentId,
+            booking_id: payment.booking_id,
+            user_id: payment.user_id,
+            owner_id: payment.owner_id,
+            amount: payment.amount,
+            status: 'PAID',
+            line_items: [{
+              description: `Accommodation for booking ${payment.booking_id}`,
+              amount: payment.amount
+            }],
+            details: `Payment completed via webhook for booking ${payment.booking_id}`
           })
+          .select()
+          .single()
 
-          // Create invoice
-          const invoiceNo = `INV-${Date.now()}-${paymentId.slice(-6).toUpperCase()}`
-          const invoice = await tx.invoice.create({
-            data: {
-              invoiceNo,
-              paymentId,
-              bookingId: payment.bookingId,
-              userId: payment.userId,
-              ownerId: payment.ownerId,
-              amount: payment.amount,
-              status: 'PAID',
-              lineItems: [{
-                description: `Accommodation for booking ${payment.bookingId}`,
-                amount: payment.amount
-              }],
-              details: `Payment completed via webhook for booking ${payment.bookingId}`
-            },
-          })
+        if (invoiceError) {
+          throw new Error('Failed to create invoice')
+        }
 
-          // Generate PDF
-          const pdfFileId = await generateInvoicePdf(invoice.id)
-          await tx.invoice.update({
-            where: { id: invoice.id },
-            data: { pdfFileId },
-          })
+        // Generate PDF
+        const pdfFileId = await generateInvoicePdf(invoice.id)
+        const { error: updateInvoiceError } = await supabase
+          .from('invoices')
+          .update({ pdf_file_id: pdfFileId })
+          .eq('id', invoice.id)
 
-          // Log audit events
-          await AuditLogger.logPaymentVerification('WEBHOOK', payment.bookingId, paymentId, 'verify')
-          await AuditLogger.logInvoiceGeneration('WEBHOOK', payment.bookingId, paymentId, invoice.id, invoiceNo)
-          await AuditLogger.logBookingStatusChange('WEBHOOK', payment.bookingId, 'PENDING', 'CONFIRMED')
-        })
+        if (updateInvoiceError) {
+          console.error('Failed to update invoice with PDF file ID:', updateInvoiceError)
+        }
+
+        // Log audit events
+        await AuditLogger.logPaymentVerification('WEBHOOK', payment.booking_id, paymentId, 'verify')
+        await AuditLogger.logInvoiceGeneration('WEBHOOK', payment.booking_id, paymentId, invoice.id, invoiceNo)
+        await AuditLogger.logBookingStatusChange('WEBHOOK', payment.booking_id, 'PENDING', 'CONFIRMED')
 
         res.status(200).json({ success: true, message: 'Payment processed successfully' })
 
       } else if (status === 'FAILED' && payment.status === 'AWAITING_PAYMENT') {
         // Payment failed
-        await prisma.payment.update({
-          where: { id: paymentId },
-          data: {
+        const { error: updateError } = await supabase
+          .from('payments')
+          .update({
             status: 'FAILED',
-            completedAt: new Date()
-          }
-        })
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', paymentId)
+
+        if (updateError) {
+          throw new Error('Failed to update payment status')
+        }
 
         // Log audit event
-        await AuditLogger.logPaymentVerification('WEBHOOK', payment.bookingId!, paymentId, 'reject')
+        await AuditLogger.logPaymentVerification('WEBHOOK', payment.booking_id!, paymentId, 'reject')
 
         res.status(200).json({ success: true, message: 'Payment failure recorded' })
 

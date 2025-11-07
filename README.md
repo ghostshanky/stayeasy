@@ -53,7 +53,7 @@ Create a `.env` file with the following variables:
 DATABASE_URL="postgresql://username:password@localhost:5432/stayeasy?schema=public"
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
 JWT_REFRESH_SECRET="your-super-secret-refresh-key-change-in-production"
-PORT=3001
+PORT=3002
 ```
 
 ## API Endpoints

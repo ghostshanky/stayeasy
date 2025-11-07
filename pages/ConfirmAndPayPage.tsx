@@ -23,7 +23,7 @@ const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => 
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:3001/api/payments/create', {
+      const response = await axios.post('http://localhost:3002/api/payments/create', {
         bookingId: bookingDetails.id,
         amount: bookingDetails.totalAmount ? bookingDetails.totalAmount * 100 : 10000, // Convert to paise
       });
@@ -51,7 +51,7 @@ const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => 
       // Generate a random transaction ID for demo purposes
       const transactionId = 'TXN' + Date.now() + Math.random().toString(36).substr(2, 9).toUpperCase();
       
-      const response = await axios.post('http://localhost:3001/api/payments/confirm', {
+      const response = await axios.post('http://localhost:3002/api/payments/confirm', {
         paymentId: paymentData.paymentId,
         transactionId: transactionId,
         upiReference: 'UPIREF' + Date.now()

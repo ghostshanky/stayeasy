@@ -1,9 +1,10 @@
 
 import axios from 'axios';
 import { Listing, StatCardData, ListingStatus, StatChangeDirection } from './types';
+import { supabase } from './lib/supabase';
 
 // Use environment variable or default to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -135,58 +136,160 @@ export const getOwnerStats = async (): Promise<StatCardData[]> => {
 };
 
 export const getProperties = async (): Promise<Listing[]> => {
-    // In a real app:
-    // const response = await apiClient.get('/properties');
-    // return response.data; // Assuming backend returns data in the correct format
+    try {
+        // Fetch properties from Supabase
+        const { data: properties, error } = await supabase
+            .from('properties')
+            .select(`
+                id,
+                name,
+                address,
+                price,
+                available,
+                description,
+                files!inner(url),
+                reviews(rating)
+            `)
+            .eq('available', true)
+            .limit(20);
 
-    // Mock response
-    await new Promise(res => setTimeout(res, 1000));
-    return [
-        {
-            id: 1,
-            name: 'Cozy Shared Room near University',
-            location: 'Koramangala, Bangalore',
-            price: '₹8,500',
-            priceValue: 8500,
-            rating: 4.8,
-            imageUrl: 'https://example.com/image1.jpg',
-            status: ListingStatus.Listed,
-            details: 'Shared room'
-        },
-        {
-            id: 2,
-            name: 'Modern PG for Professionals',
-            location: 'Hiranandani, Mumbai',
-            price: '₹15,000',
-            priceValue: 15000,
-            rating: 4.5,
-            imageUrl: 'https://example.com/image2.jpg',
-            status: ListingStatus.Listed,
-            details: 'Private room'
-        },
-        {
-            id: 3,
-            name: 'Student Hub Downtown',
-            location: 'FC Road, Pune',
-            price: '₹7,200',
-            priceValue: 7200,
-            rating: 4.6,
-            imageUrl: 'https://example.com/image3.jpg',
-            status: ListingStatus.Listed,
-            details: 'Shared room'
-        },
-        {
-            id: 4,
-            name: 'The Executive Stay',
-            location: 'Cyber City, Gurgaon',
-            price: '₹22,500',
-            priceValue: 22500,
-            rating: 4.9,
-            imageUrl: 'https://example.com/image4.jpg',
-            status: ListingStatus.Listed,
-            details: 'Private room'
+        if (error) {
+            console.error('Error fetching properties:', error);
+            throw error;
         }
-    ] as Listing[];
+
+        // Calculate average ratings and map to Listing format
+        const listings: Listing[] = properties.map((property: any) => {
+            const reviews = property.reviews || [];
+            const averageRating = reviews.length > 0
+                ? reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / reviews.length
+                : 0;
+
+            return {
+                id: property.id,
+                name: property.name,
+                location: property.address,
+                price: `₹${property.price.toLocaleString()}`,
+                priceValue: property.price,
+                rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+                imageUrl: property.files?.[0]?.url || 'https://via.placeholder.com/400x300?text=No+Image',
+                status: property.available ? ListingStatus.Listed : ListingStatus.Unlisted,
+                details: property.description || 'No description available'
+            };
+        });
+
+        return listings;
+    } catch (error) {
+        console.error('Failed to fetch properties from Supabase:', error);
+        // Fallback to mock data if Supabase fails
+        return [
+            {
+                id: '1',
+                name: 'Cozy Shared Room near University',
+                location: 'Koramangala, Bangalore',
+                price: '₹8,500',
+                priceValue: 8500,
+                rating: 4.8,
+                imageUrl: 'https://via.placeholder.com/400x300?text=Property+1',
+                status: ListingStatus.Listed,
+                details: 'Shared room'
+            },
+            {
+                id: '2',
+                name: 'Modern PG for Professionals',
+                location: 'Hiranandani, Mumbai',
+                price: '₹15,000',
+                priceValue: 15000,
+                rating: 4.5,
+                imageUrl: 'https://via.placeholder.com/400x300?text=Property+2',
+                status: ListingStatus.Listed,
+                details: 'Private room'
+            },
+            {
+                id: '3',
+                name: 'Student Hub Downtown',
+                location: 'FC Road, Pune',
+                price: '₹7,200',
+                priceValue: 7200,
+                rating: 4.6,
+                imageUrl: 'https://via.placeholder.com/400x300?text=Property+3',
+                status: ListingStatus.Listed,
+                details: 'Shared room'
+            },
+            {
+                id: '4',
+                name: 'The Executive Stay',
+                location: 'Cyber City, Gurgaon',
+                price: '₹22,500',
+                priceValue: 22500,
+                rating: 4.9,
+                imageUrl: 'https://via.placeholder.com/400x300?text=Property+4',
+                status: ListingStatus.Listed,
+                details: 'Private room'
+            }
+        ] as Listing[];
+    }
+};
+
+// API functions for admin dashboard
+export const getAdminStats = async (): Promise<any> => {
+    try {
+        const response = await apiClient.get('/admin/stats');
+        return response.data.data;
+    } catch (error) {
+        console.error('Failed to fetch admin stats:', error);
+        throw error;
+    }
+};
+
+export const getAdminUsers = async (params?: { role?: string; page?: number; limit?: number }): Promise<any> => {
+    try {
+        const response = await apiClient.get('/admin/users', { params });
+        return response.data;
+    } catch (error) {
+        console.error('Failed to fetch admin users:', error);
+        throw error;
+    }
+};
+
+export const getAuditLogs = async (params?: { userId?: string; action?: string; page?: number; limit?: number }): Promise<any> => {
+    try {
+        const response = await apiClient.get('/admin/audit-logs', { params });
+        return response.data;
+    } catch (error) {
+        console.error('Failed to fetch audit logs:', error);
+        throw error;
+    }
+};
+
+export const updateUser = async (userId: string, updates: any): Promise<any> => {
+    try {
+        const response = await apiClient.put(`/admin/users/${userId}`, updates);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to update user:', error);
+        throw error;
+    }
+};
+
+export const deleteUser = async (userId: string): Promise<any> => {
+    try {
+        const response = await apiClient.delete(`/admin/users/${userId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to delete user:', error);
+        throw error;
+    }
+};
+
+export const removeContent = async (type: string, id: string): Promise<any> => {
+    try {
+        const response = await apiClient.delete(`/admin/content/${type}/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to remove content:', error);
+        throw error;
+    }
 };
 
 export default {

@@ -222,7 +222,7 @@ export class ChatClient {
   }> = []
 
   constructor(
-    private serverUrl: string = 'http://localhost:3001',
+    private serverUrl: string = 'http://localhost:3002',
     private authToken: string
   ) {}
 
@@ -495,7 +495,7 @@ it('should handle message delivery via WebSocket', async () => {
 ### Reconnection Test
 ```typescript
 it('should queue messages when disconnected', () => {
-  const client = new ChatClient('http://localhost:3001', 'mock-token')
+  const client = new ChatClient('http://localhost:3002', 'mock-token')
 
   // Simulate disconnection
   client['socket'] = { connected: false } as any
@@ -544,7 +544,7 @@ app.use('/api', chatApi)
 
 ### Client Usage
 ```typescript
-const chatClient = new ChatClient('http://localhost:3001', authToken)
+const chatClient = new ChatClient('http://localhost:3002', authToken)
 
 await chatClient.connect()
 chatClient.joinChat('chat_123')

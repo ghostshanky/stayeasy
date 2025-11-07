@@ -365,7 +365,7 @@ export class PropertiesController {
       }
 
       // Verify property ownership
-      const property: any = await prisma.property.findFirst({
+      const property = await prisma.property.findFirst({
         where: { id: propertyId, ownerId }
       })
 

@@ -1,5 +1,5 @@
 
-export type Page = 'landing' | 'searchResults' | 'propertyDetails' | 'confirmAndPay' | 'ownerDashboard' | 'tenantDashboard' | 'login' | 'signup' | 'paymentVerification' | 'myListings' | 'bookings' | 'payments' | 'messages';
+export type Page = 'landing' | 'searchResults' | 'propertyDetails' | 'confirmAndPay' | 'ownerDashboard' | 'tenantDashboard' | 'adminDashboard' | 'login' | 'signup' | 'paymentVerification' | 'myListings' | 'bookings' | 'payments' | 'messages';
 
 export enum ListingStatus {
   Listed = 'Listed',
@@ -7,7 +7,7 @@ export enum ListingStatus {
 }
 
 export interface Listing {
-  id: number;
+  id: string | number;
   name: string;
   details: string;
   imageUrl: string;

@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Page } from '../types';
+import { Page, Listing } from '../types';
+import { getProperties } from '../api';
 
 const LandingPage = () => {
     const navigate = useNavigate();
@@ -10,9 +11,34 @@ const LandingPage = () => {
     const [priceRange, setPriceRange] = useState('');
     const [showStayTypeDropdown, setShowStayTypeDropdown] = useState(false);
     const [showPriceRangeDropdown, setShowPriceRangeDropdown] = useState(false);
+    const [topProperties, setTopProperties] = useState<Listing[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const stayTypeOptions = ['Hostel', 'PG', 'Co-living'];
     const priceRangeOptions = ['Under ₹5,000', '₹5,000 - ₹10,000', '₹10,000 - ₹15,000', 'Above ₹15,000'];
+
+    useEffect(() => {
+        const fetchTopProperties = async () => {
+            try {
+                setLoading(true);
+                const properties = await getProperties();
+                // Get top 6 properties sorted by rating
+                const topRated = properties
+                    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+                    .slice(0, 6);
+                setTopProperties(topRated);
+                setError(null);
+            } catch (err) {
+                console.error('Failed to fetch top properties:', err);
+                setError('Failed to load properties. Please try again later.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTopProperties();
+    }, []);
 
     const handleSearch = () => {
         // Navigate to search results with filters
@@ -120,36 +146,33 @@ const LandingPage = () => {
                 {/* Top-Rated Properties */}
                 <section>
                     <h2 className="text-[#111518] dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Explore Our Top-Rated Properties</h2>
-                    <div className="flex overflow-x-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        <div className="flex items-stretch p-4 gap-4">
-                            <div className="flex h-full flex-1 flex-col gap-3 rounded-lg min-w-64">
-                                <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-lg flex flex-col" aria-label="Modern hostel dorm room with bunk beds" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCU1Drh0rqdaWUHOGHsHiICFNbnQ0H-NW87EoE509p4WlCwhzCza6V8w2-eZdwgtmMOs8WFkwyXexpW2W2FLiQrYP_Hj3sc7MPe_kBFXQO9ld93fHFMe10GhDCmKc2C5adjSIlptWQmhqBsRmFL49gh81JsHhmJUhmxV5-CH-hUdca1QnVE-tZ1OY_qC10ltuMqxTIvsrgjy5CPNW-rWTPMYJsyf_Y_tcZFdOJA670eVebLgbWNqXMN4w-oUSRBbx76oME7uzHZN4U")' }}></div>
-                                <div>
-                                    <div className="flex justify-between items-center">
-                                        <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">Urban Nest Hostel</p>
-                                        <div className="flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-orange-accent text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                                            <span className="text-sm font-medium">4.8</span>
+                    {loading && <div className="text-center py-10">Loading properties...</div>}
+                    {error && <div className="text-center py-10 text-error">{error}</div>}
+                    {!loading && !error && (
+                        <div className="flex overflow-x-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div className="flex items-stretch p-4 gap-4">
+                                {topProperties.length > 0 ? (
+                                    topProperties.map((property) => (
+                                        <div key={property.id} className="flex h-full flex-1 flex-col gap-3 rounded-lg min-w-64 cursor-pointer hover:scale-105 transition-transform duration-200" onClick={() => navigate('propertyDetails')}>
+                                            <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-lg" style={{ backgroundImage: `url("${property.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}")` }}></div>
+                                            <div>
+                                                <div className="flex justify-between items-center">
+                                                    <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">{property.name}</p>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-orange-accent text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                                        <span className="text-sm font-medium">{property.rating || 'N/A'}</span>
+                                                    </div>
+                                                </div>
+                                                <p className="text-gray-600 dark:text-gray-400 text-sm font-normal leading-normal">{property.location} - {property.price}/month</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <p className="text-gray-600 dark:text-gray-400 text-sm font-normal leading-normal">Downtown, Delhi - ₹8,000/month</p>
-                                </div>
-                            </div>
-                            <div className="flex h-full flex-1 flex-col gap-3 rounded-lg min-w-64">
-                                <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-lg flex flex-col" aria-label="Cozy private room in a co-living PG" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuC13YHX1O7VrmIU0suwYrYDLyNdFU-AwhzuI9dsDtO4Ni94PNefqgRTS7c-9SOPquiOIpp7stJSrsn08xMpKcYKz0wRSDFJI8-8NF2bAH85-y2MDp3ZbRupw-NSltq0731GNIhCdH2QW5eC-4NZQ1q7YgTWhXJJPba2JIMVPEt9XCXljIpOXHrfkORyrIKR0pqttFy9d42_jWkuzE8DHne47Uv_-fsB7xHcanLu7YgXsGq5IfzERgs9RMgoT_803jvEzWd01dP6UV4")' }}></div>
-                                <div>
-                                    <div className="flex justify-between items-center">
-                                        <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">Pro Co-Living PG</p>
-                                        <div className="flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-orange-accent text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                                            <span className="text-sm font-medium">4.9</span>
-                                        </div>
-                                    </div>
-                                    <p className="text-gray-600 dark:text-gray-400 text-sm font-normal leading-normal">Koramangala, Bangalore - ₹15,000/month</p>
-                                </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-10 text-gray-500 dark:text-gray-400">No properties available at the moment.</div>
+                                )}
                             </div>
                         </div>
-                    </div>
+                    )}
                 </section>
                 
                 {/* Features Section */}

@@ -59,7 +59,7 @@ export class ChatClient {
   }> = []
 
   constructor(
-    private serverUrl: string = 'http://localhost:3001',
+    private serverUrl: string = 'http://localhost:3002',
     private authToken: string
   ) {}
 
@@ -392,7 +392,7 @@ export function useChatClient(authToken: string, serverUrl?: string) {
 // Usage example:
 /*
 // Initialize client
-const chatClient = new ChatClient('http://localhost:3001', authToken)
+const chatClient = new ChatClient('http://localhost:3002', authToken)
 
 // Connect
 await chatClient.connect()

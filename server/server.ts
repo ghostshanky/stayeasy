@@ -11,6 +11,11 @@ import propertiesRoutes from './routes/properties.js'
 import bookingsRoutes from './routes/bookings.js'
 import reviewsRoutes from './routes/reviews.js'
 import invoicesRoutes from './routes/invoices.js'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.SUPABASE_URL || 'https://test.supabase.co'
+const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzI0MzI0MCwiZXhwIjoxOTU4ODE5MjQwfQ.test'
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 const app = express()
 const server = createServer(app)
@@ -20,7 +25,7 @@ const PORT = process.env.PORT || 3002
 const chatService = new ChatService(server)
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
   credentials: true
 }))
 app.use(express.json({ limit: '10mb' }))
@@ -71,6 +76,56 @@ app.use('/api', propertiesRoutes)
 app.use('/api', bookingsRoutes)
 app.use('/api', reviewsRoutes)
 app.use('/api', invoicesRoutes)
+
+// Public properties endpoint (no auth required)
+app.get('/api/properties', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('properties')
+      .select(`
+        id,
+        name,
+        address,
+        price,
+        available,
+        description,
+        files!inner(url),
+        reviews(rating)
+      `)
+      .eq('available', true)
+      .limit(20);
+
+    if (error) {
+      console.error('Error fetching properties:', error);
+      return res.status(500).json({ error: 'Failed to fetch properties' });
+    }
+
+    // Calculate average ratings and map to response format
+    const properties = data.map((property: any) => {
+      const reviews = property.reviews || [];
+      const averageRating = reviews.length > 0
+        ? reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / reviews.length
+        : 0;
+
+      return {
+        id: property.id,
+        name: property.name,
+        location: property.address,
+        price: `₹${property.price.toLocaleString()}`,
+        priceValue: property.price,
+        rating: Math.round(averageRating * 10) / 10,
+        imageUrl: property.files?.[0]?.url || 'https://via.placeholder.com/400x300?text=No+Image',
+        status: property.available ? 'Listed' : 'Unlisted',
+        details: property.description || 'No description available'
+      };
+    });
+
+    res.json(properties);
+  } catch (error) {
+    console.error('Failed to fetch properties:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // Auth routes
 app.post('/api/auth/signup', async (req, res) => {
