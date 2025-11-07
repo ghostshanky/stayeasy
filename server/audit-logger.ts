@@ -55,7 +55,7 @@ export class AuditLogger {
   /**
    * Log invoice generation
    */
-  static async logInvoiceGeneration(actorId: string, bookingId: string, paymentId: string, invoiceNo: string) {
+  static async logInvoiceGeneration(actorId: string, bookingId: string, paymentId: string, invoiceId: string, invoiceNo: string) {
     await prisma.auditLog.create({
       data: {
         userId: actorId,
@@ -63,7 +63,8 @@ export class AuditLogger {
         details: `Invoice ${invoiceNo} generated for booking ${bookingId}`,
         actorId,
         bookingId,
-        paymentId
+        paymentId,
+        invoiceId
       }
     })
   }
