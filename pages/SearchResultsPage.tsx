@@ -1,69 +1,63 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Page, Listing } from '../types';
-import { getProperties } from '../api';
+import React, { useState, useMemo } from 'react';
+import { Page, Listing, Property } from '../types';
+import { useProperties } from '../client/src/hooks/useProperties';
 
 interface ListingCardProps {
-    listing: Listing;
+    listing: Property;
     navigate: (page: Page) => void;
 }
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing, navigate }) => (
     <div className="flex flex-col gap-3 pb-3 group cursor-pointer" onClick={() => navigate('propertyDetails')}>
         <div className="relative w-full overflow-hidden">
-            <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-xl transition-transform duration-300 group-hover:scale-105" style={{ backgroundImage: `url("${listing.imageUrl}")` }}></div>
+            <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-xl transition-transform duration-300 group-hover:scale-105" style={{ backgroundImage: `url("${listing.images?.[0] || 'https://via.placeholder.com/400x300?text=No+Image'}")` }}></div>
             <button className="absolute top-3 right-3 text-white">
                 <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}> favorite </span>
             </button>
         </div>
         <div>
             <div className="flex justify-between items-start">
-                <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">{listing.name}</p>
+                <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">{listing.title}</p>
                 <div className="flex items-center gap-1 text-[#111518] dark:text-gray-300">
                     <span className="material-symbols-outlined text-lg text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}> star </span>
                     <span className="text-sm font-medium">{listing.rating}</span>
                 </div>
             </div>
             <p className="text-gray-600 dark:text-gray-400 text-sm font-normal leading-normal">{listing.location}</p>
-            <p className="text-[#111518] dark:text-white text-sm font-semibold leading-normal mt-1">{listing.price} <span className="font-normal text-gray-600 dark:text-gray-400">/ month</span></p>
+            <p className="text-[#111518] dark:text-white text-sm font-semibold leading-normal mt-1">₹{listing.price_per_night} <span className="font-normal text-gray-600 dark:text-gray-400">/ night</span></p>
         </div>
     </div>
 );
 
 const SearchResultsPage = ({ navigate }: { navigate: (page: Page) => void }) => {
-    const [allListings, setAllListings] = useState<Listing[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+    const { items: allListings, loading } = useProperties(50, 1);
     const [error, setError] = useState<string | null>(null);
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
-
-    useEffect(() => {
-        const fetchListings = async () => {
-            try {
-                setLoading(true);
-                const data = await getProperties();
-                setAllListings(data);
-                setError(null);
-            } catch (err) {
-                setError("Failed to fetch properties. Please try again later.");
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchListings();
-    }, []);
 
     const filteredListings = useMemo(() => {
         const min = minPrice ? parseInt(minPrice) : 0;
         const max = maxPrice ? parseInt(maxPrice) : Infinity;
 
         return allListings.filter(listing => {
-            const price = listing.priceValue ?? 0;
+            const price = listing.price_per_night ?? 0;
             return price >= min && price <= max;
         });
     }, [allListings, minPrice, maxPrice]);
+
+    // Convert Property to Listing for compatibility
+    const convertedListings: Listing[] = allListings.map(property => ({
+        id: property.id,
+        name: property.title,
+        details: '',
+        imageUrl: property.images?.[0] || '',
+        location: property.location,
+        status: { Listed: 'Listed', Unlisted: 'Unlisted' }[property.title.includes('PG') ? 'Listed' : 'Unlisted'] as any,
+        rating: property.rating,
+        price: `₹${property.price_per_night}`,
+        priceValue: property.price_per_night
+    }));
 
     return (
         <main className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 py-8">
@@ -109,7 +103,7 @@ const SearchResultsPage = ({ navigate }: { navigate: (page: Page) => void }) => 
                     {error && <div className="text-center py-10 text-error">{error}</div>}
                     {!loading && !error && (
                         <div className="grid grid-cols-1 @md:grid-cols-2 @4xl:grid-cols-3 gap-6">
-                            {filteredListings.map(listing => <ListingCard key={listing.id} listing={listing} navigate={navigate} />)}
+                            {filteredListings.map(property => <ListingCard key={property.id} listing={property} navigate={navigate} />)}
                         </div>
                     )}
                 </div>

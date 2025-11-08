@@ -18,6 +18,16 @@ export interface Listing {
   priceValue?: number;
 }
 
+// Supabase property types
+export interface Property {
+  id: string;
+  title: string;
+  location: string;
+  price_per_night: number;
+  images: string[];
+  rating?: number;
+}
+
 export enum StatChangeDirection {
     Increase = 'increase',
     Decrease = 'decrease',

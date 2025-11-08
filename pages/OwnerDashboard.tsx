@@ -1,45 +1,142 @@
 import React, { useState, useEffect } from 'react';
-import { Page, Listing, StatCardData } from '../types';
-import { getOwnerStats, getOwnerProperties } from '../api';
+import { Page, Listing, StatCardData, StatChangeDirection, ListingStatus } from '../types';
 import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
 import OwnerStatCard from '../components/owner/OwnerStatCard';
 import OwnerListingsTable from '../components/owner/OwnerListingsTable';
+import { useOwnerProperties } from '../client/src/hooks/useOwnerProperties';
+import { supabase } from '../client/src/lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
-
-const OwnerDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
+const OwnerDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) => void }) => {
+    const navigate = useNavigate();
     const [stats, setStats] = useState<StatCardData[]>([]);
-    const [listings, setListings] = useState<Listing[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('listings'); // 'listings' or 'payments'
+    const { items: properties, loading: listingsLoading } = useOwnerProperties();
+
+    // Transform properties to listings format
+    const listings: Listing[] = properties.map(property => ({
+        id: property.id,
+        name: property.name,
+        details: property.description || 'No description',
+        imageUrl: property.files && property.files.length > 0 ? property.files[0].url : 'https://via.placeholder.com/400x300?text=No+Image',
+        location: property.address,
+        status: property.available ? ListingStatus.Listed : ListingStatus.Unlisted,
+        price: `₹${property.price.toLocaleString()}`,
+        priceValue: property.price
+    }));
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchStats = async () => {
             try {
                 setLoading(true);
-                const [statsData, listingsData] = await Promise.all([
-                    getOwnerStats(),
-                    getOwnerProperties(),
-                ]);
-                setStats(statsData);
-                setListings(listingsData);
+                // In a real app, this would fetch actual stats from the backend
+                const mockStats: StatCardData[] = [
+                    {
+                        title: 'Total Properties',
+                        value: '5',
+                        change: '+2',
+                        changeDirection: StatChangeDirection.Increase,
+                        changeColorClass: 'text-green-600'
+                    },
+                    {
+                        title: 'Active Bookings',
+                        value: '12',
+                        change: '+3',
+                        changeDirection: StatChangeDirection.Increase,
+                        changeColorClass: 'text-green-600'
+                    },
+                    {
+                        title: 'Monthly Revenue',
+                        value: '₹45,000',
+                        change: '+15%',
+                        changeDirection: StatChangeDirection.Increase,
+                        changeColorClass: 'text-green-600'
+                    },
+                    {
+                        title: 'Average Rating',
+                        value: '4.7',
+                        change: '+0.2',
+                        changeDirection: StatChangeDirection.Increase,
+                        changeColorClass: 'text-green-600'
+                    }
+                ];
+                setStats(mockStats);
                 setError(null);
             } catch (err) {
-                console.error("Failed to fetch owner data:", err);
+                console.error("Failed to fetch owner stats:", err);
                 setError("Could not load dashboard data. Please try again later.");
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchData();
+        fetchStats();
     }, []);
 
+    const handleEdit = (id: string | number) => {
+        navigate(`/owner/edit-property/${id}`);
+    };
+
+    const handleDelete = async (id: string | number) => {
+        if (window.confirm('Are you sure you want to delete this property? This action cannot be undone.')) {
+            try {
+                const { error } = await (supabase as any)
+                    .from('properties')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) {
+                    throw error;
+                }
+
+                // Refresh the listings
+                window.location.reload();
+            } catch (err) {
+                console.error('Error deleting property:', err);
+                alert('Failed to delete property. Please try again.');
+            }
+        }
+    };
+
+    const handleToggleStatus = async (id: string | number) => {
+        try {
+            // Get current property status
+            const { data: property, error: fetchError } = await (supabase as any)
+                .from('properties')
+                .select('available')
+                .eq('id', id)
+                .single();
+
+            if (fetchError) {
+                throw fetchError;
+            }
+
+            // Toggle the status
+            const newStatus = !property.available;
+
+            const { error: updateError } = await (supabase as any)
+                .from('properties')
+                .update({ available: newStatus })
+                .eq('id', id);
+
+            if (updateError) {
+                throw updateError;
+            }
+
+            // Refresh the listings
+            window.location.reload();
+        } catch (err) {
+            console.error('Error toggling property status:', err);
+            alert('Failed to update property status. Please try again.');
+        }
+    };
 
     return (
         <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
-            <OwnerSideNavBar onNavigate={navigate} />
+            <OwnerSideNavBar onNavigate={pageNavigate} />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
                 <div className="mx-auto max-w-7xl">
                     <OwnerHeader userName="Alex" />
@@ -74,14 +171,19 @@ const OwnerDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
                                             />
                                         ))}
                                     </div>
-                                    <OwnerListingsTable listings={listings} />
+                                    <OwnerListingsTable 
+                                        listings={listings} 
+                                        onEdit={handleEdit}
+                                        onDelete={handleDelete}
+                                        onToggleStatus={handleToggleStatus}
+                                    />
                                 </>
                             ) : (
                                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                                     <div className="flex justify-between items-center mb-6">
                                         <h2 className="text-xl font-bold text-text-light-primary dark:text-text-dark-primary">Pending Payment Verifications</h2>
                                         <button 
-                                            onClick={() => navigate('paymentVerification')}
+                                            onClick={() => pageNavigate('paymentVerification')}
                                             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
                                         >
                                             View All Payments

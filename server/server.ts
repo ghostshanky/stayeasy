@@ -14,10 +14,12 @@ import reviewsRoutes from './routes/reviews.js'
 import invoicesRoutes from './routes/invoices.js'
 import adminRoutes from './routes/admin.js'
 import { createClient } from '@supabase/supabase-js'
+import { supabaseServer } from './lib/supabaseServer.js'
 
+// Client-side Supabase client (for public operations)
 const supabaseUrl = process.env.SUPABASE_URL || 'https://test.supabase.co'
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzI0MzI0MCwiZXhwIjoxOTU4ODE5MjQwfQ.test'
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzI0MzI0MCwiZXhwIjoxOTU4ODE5MjQwfQ.test'
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const app = express()
 const server = createServer(app)
