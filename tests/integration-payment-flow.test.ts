@@ -1,5 +1,6 @@
 import request from 'supertest'
 import { PrismaClient } from '@prisma/client'
+import { AuthService } from '../server/auth.js'
 import app from '../server/server.js'
 
 const prisma = new PrismaClient()
@@ -19,7 +20,8 @@ describe('UPI Payment Integration Tests', () => {
         email: 'tenant-integration@test.com',
         password: 'hashedpass',
         name: 'Test Tenant Integration',
-        role: 'TENANT'
+        role: 'TENANT',
+        emailVerified: true
       }
     })
 
@@ -28,7 +30,8 @@ describe('UPI Payment Integration Tests', () => {
         email: 'owner-integration@test.com',
         password: 'hashedpass',
         name: 'Test Owner Integration',
-        role: 'OWNER'
+        role: 'OWNER',
+        emailVerified: true
       }
     })
 
@@ -43,9 +46,12 @@ describe('UPI Payment Integration Tests', () => {
       }
     })
 
-    // Mock tokens (in real scenario, these would come from login)
-    tenantToken = 'mock-tenant-token'
-    ownerToken = 'mock-owner-token'
+    // Create real tokens using AuthService
+    const tenantSession = await AuthService.createSession(tenantUser)
+    tenantToken = tenantSession.accessToken
+
+    const ownerSession = await AuthService.createSession(ownerUser)
+    ownerToken = ownerSession.accessToken
   })
 
   afterAll(async () => {
@@ -61,7 +67,7 @@ describe('UPI Payment Integration Tests', () => {
     it('should complete full payment flow from booking to invoice generation', async () => {
       // Step 1: Tenant creates booking
       const bookingResponse = await request(app)
-        .post('/api/bookings') // Assuming booking creation endpoint exists
+        .post('/api/tenant/bookings') // Correct endpoint from routes
         .set('Authorization', `Bearer ${tenantToken}`)
         .send({
           propertyId: property.id,
@@ -139,7 +145,7 @@ describe('UPI Payment Integration Tests', () => {
     it('should handle payment rejection and keep booking pending', async () => {
       // Step 1: Create booking
       const bookingResponse = await request(app)
-        .post('/api/bookings')
+        .post('/api/tenant/bookings')
         .set('Authorization', `Bearer ${tenantToken}`)
         .send({
           propertyId: property.id,
@@ -211,7 +217,7 @@ describe('UPI Payment Integration Tests', () => {
     beforeAll(async () => {
       // Create a booking and payment for dashboard testing
       const bookingResponse = await request(app)
-        .post('/api/bookings')
+        .post('/api/tenant/bookings')
         .set('Authorization', `Bearer ${tenantToken}`)
         .send({
           propertyId: property.id,
@@ -266,7 +272,7 @@ describe('UPI Payment Integration Tests', () => {
     it('should allow owner to reject payment from dashboard', async () => {
       // Create another pending payment
       const bookingResponse = await request(app)
-        .post('/api/bookings')
+        .post('/api/tenant/bookings')
         .set('Authorization', `Bearer ${tenantToken}`)
         .send({
           propertyId: property.id,
@@ -306,7 +312,7 @@ describe('UPI Payment Integration Tests', () => {
   describe('Error Handling and Edge Cases', () => {
     it('should prevent duplicate payment creation', async () => {
       const bookingResponse = await request(app)
-        .post('/api/bookings')
+        .post('/api/tenant/bookings')
         .set('Authorization', `Bearer ${tenantToken}`)
         .send({
           propertyId: property.id,

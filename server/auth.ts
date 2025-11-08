@@ -22,8 +22,8 @@ export interface JWTPayload {
 }
 
 export class AuthService {
-  private static readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
-  private static readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key'
+  private static readonly JWT_SECRET = 'stay-easy-secret'
+  private static readonly JWT_REFRESH_SECRET = 'stay-easy-refresh-secret'
   private static readonly JWT_EXPIRES_IN = '15m'
   private static readonly JWT_REFRESH_EXPIRES_IN = '30d'
 

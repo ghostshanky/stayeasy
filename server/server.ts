@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
@@ -11,6 +12,7 @@ import propertiesRoutes from './routes/properties.js'
 import bookingsRoutes from './routes/bookings.js'
 import reviewsRoutes from './routes/reviews.js'
 import invoicesRoutes from './routes/invoices.js'
+import adminRoutes from './routes/admin.js'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://test.supabase.co'
@@ -76,6 +78,7 @@ app.use('/api', propertiesRoutes)
 app.use('/api', bookingsRoutes)
 app.use('/api', reviewsRoutes)
 app.use('/api', invoicesRoutes)
+app.use('/api/admin', adminRoutes)
 
 // Public properties endpoint (no auth required)
 app.get('/api/properties', async (req, res) => {

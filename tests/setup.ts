@@ -18,6 +18,7 @@ beforeEach(async () => {
   await prisma.auditLog.deleteMany()
   await prisma.notification.deleteMany()
   await prisma.session.deleteMany()
+  await prisma.refreshToken.deleteMany()
   await prisma.file.deleteMany()
   await prisma.message.deleteMany()
   await prisma.chat.deleteMany()
