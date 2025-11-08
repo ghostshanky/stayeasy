@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
+import { sendMessage } from '../client/src/lib/messages';
 
 interface MessageHostModalProps {
   isOpen: boolean;
   onClose: () => void;
   hostName: string;
-  onSend: (message: string) => Promise<void>;
+  propertyId?: string;
 }
 
-const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, hostName, onSend }) => {
+const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, hostName, propertyId }) => {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
@@ -19,9 +19,27 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
   const handleSendClick = async () => {
     if (!message.trim()) return;
     setIsSending(true);
-    await onSend(message);
-    setIsSending(false);
-    setMessage('');
+    
+    try {
+      // In a real implementation, we would get the actual sender and receiver IDs
+      // For now, we'll use placeholder values
+      await sendMessage({
+        from_id: 'sender-id-placeholder',
+        to_id: 'receiver-id-placeholder',
+        property_id: propertyId,
+        content: message
+      });
+      
+      // Close the modal and show success message
+      onClose();
+      alert('Message sent successfully!');
+    } catch (error) {
+      alert('Failed to send message. Please try again.');
+      console.error(error);
+    } finally {
+      setIsSending(false);
+      setMessage('');
+    }
   };
 
   return (
