@@ -1,52 +1,41 @@
-# Dashboard Design and Implementation Plan
+# StayEasy Production-Ready Implementation Plan
 
-## Overview
-Design and implement proper Owner, Admin, and Tenant dashboards according to their roles.
+## Sprint 1: Critical Fixes & Branding ✅
+- [x] Fix branding: Search and replace all "Stays.io" → "StayEasy", centralize in brand.ts
+- [x] Fix Avatar Menu: Separate menu open from logout action
+- [x] Remove Prisma: Delete prisma/ folder, remove @prisma/client from package.json
+- [x] Update auth.ts to use Supabase instead of Prisma
+- [x] Update server.ts and other server files to use Supabase only
+- [x] Add missing database columns: bio, mobile, role, image_id, updated_at to users table
+- [x] Replace hardcoded explore data with Supabase fetches
+- [x] Implement persistent messaging via Supabase Realtime
 
-## Tasks
+## Sprint 2: Core Features - Explore & Messaging
+- [ ] Explore Page: Add filters, pagination, real data from Supabase
+- [ ] Messaging System: Store messages in database, show in both sender/receiver dashboards
+- [ ] Profile Page: Implement ImageKit upload, rename to <user_id>.png, store image_id
+- [ ] Owner Dashboard: Add/edit listings with ImageKit multi-image upload
+- [ ] Owner Dashboard: View bookings calendar, payments list, messages
+- [ ] Tenant Dashboard: View bookings, chat with owners, mark payments paid
 
-### 1. Update Types and Navigation
-- [ ] Update `types.ts` to include 'adminDashboard' in Page type
-- [ ] Update `App.tsx` to add admin dashboard route with authentication
+## Sprint 3: Payments & Admin
+- [ ] Payments: Implement UPI QR generator and verification flow
+- [ ] Admin Dashboard: User/property moderation, analytics
+- [ ] Global Features: Add react-hot-toast, dark mode toggle, responsive design
+- [ ] Role-based routing: Protect routes based on user roles
 
-### 2. Create Admin Dashboard Components
-- [ ] Create `components/admin/AdminSideNavBar.tsx` with admin-specific navigation
-- [ ] Create `components/admin/AdminStatCard.tsx` for admin statistics display
-- [ ] Create `pages/AdminDashboard.tsx` with user management, system stats, audit logs, and content moderation features
+## Sprint 4: Quality & Testing
+- [ ] Code Quality: ESLint/Prettier setup, remove unused deps, optimize queries
+- [ ] Testing: Add Jest tests for auth, properties, bookings, payments
+- [ ] Build & Deployment: Ensure npm run build passes, add .env.example
+- [ ] Documentation: Update README.md, create CHANGELOG.md
 
-### 3. Enhance API Functions
-- [ ] Add admin-specific API functions in `api.ts` for stats, user management, audit logs
-- [ ] Ensure proper role-based access in API calls
+## Sprint 5: Final Polish & Deployment
+- [ ] Error handling: Add global error boundaries, loading states
+- [ ] Performance: Lazy load pages, optimize images, Supabase query optimization
+- [ ] Security: Validate inputs, protect API endpoints, sanitize data
+- [ ] Deployment: Test on Vercel/Railway/Render, verify all features work
 
-### 4. Review and Improve Existing Dashboards
-- [ ] Review `pages/OwnerDashboard.tsx` for completeness and role-specific features
-- [ ] Review `pages/TenantDashboard.tsx` for completeness and role-specific features
-- [ ] Ensure proper navigation and feature access based on roles
-
-### 5. Testing and Validation
-- [ ] Test all three dashboards for proper functionality
-- [ ] Verify role-based access and navigation
-- [ ] Ensure responsive design across all dashboards
-
-## Features by Role
-
-### Owner Dashboard
-- Property listings management
-- Booking overview
-- Payment verification
-- Revenue statistics
-- Message management
-
-### Admin Dashboard
-- User management (view, edit, deactivate users)
-- System statistics (users, properties, bookings, payments)
-- Audit log viewing
-- Content moderation (remove inappropriate reviews/properties/messages)
-- Platform analytics
-
-### Tenant Dashboard
-- Booking management
-- Payment history
-- Upcoming stays
-- Review management
-- Message center
+## Current Status
+- ✅ Sprint 1 Complete: Server running with Supabase, branding consistent, avatar menu fixed
+- 🚀 Ready for Sprint 2: Core feature implementation

@@ -1,9 +1,12 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import QRCode from 'qrcode'
-import { supabase } from '../../lib/supabase.js'
+import { supabaseServer } from '../lib/supabaseServer.js'
 import { AuditLogger } from '../audit-logger.js'
 import { generateInvoicePdf } from '../../prisma/pdfGenerator'
+
+// Use the server-side Supabase client
+const supabase = supabaseServer;
 
 // --- Input Validation Schemas ---
 const createPaymentSchema = z.object({

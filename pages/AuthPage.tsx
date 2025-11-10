@@ -1,17 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, registerUser } from '../api';
+import { useAuth } from '../client/src/hooks/useAuth';
 
-interface AuthPageProps {
-    setIsAuthenticated: (isAuth: boolean) => void;
-    initialMode: 'login' | 'signup';
-}
-
-const AuthPage: React.FC<AuthPageProps> = ({ setIsAuthenticated, initialMode }) => {
+const AuthPage: React.FC = () => {
     const navigate = useNavigate();
-    const [isSignUpActive, setIsSignUpActive] = useState(initialMode === 'signup');
-    const [loading, setLoading] = useState(false);
+    const { login, signup, loading } = useAuth();
+    const [isSignUpActive, setIsSignUpActive] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Form states
@@ -21,40 +16,27 @@ const AuthPage: React.FC<AuthPageProps> = ({ setIsAuthenticated, initialMode }) 
     const [signupEmail, setSignupEmail] = useState('');
     const [signupPassword, setSignupPassword] = useState('');
 
-
-    useEffect(() => {
-        setIsSignUpActive(initialMode === 'signup');
-    }, [initialMode]);
-
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError(null);
         try {
-            await loginUser(loginEmail, loginPassword);
-            setIsAuthenticated(true);
+            await login(loginEmail, loginPassword);
             navigate('/dashboard/tenant');
-        } catch (err) {
-            setError('Failed to login. Please check your credentials.');
+        } catch (err: any) {
+            setError(err.message || 'Failed to login. Please check your credentials.');
             console.error(err);
-        } finally {
-            setLoading(false);
         }
     };
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError(null);
         try {
-            await registerUser(signupName, signupEmail, signupPassword);
-            setIsAuthenticated(true);
+            await signup(signupEmail, signupPassword, signupName);
             navigate('/dashboard/tenant');
-        } catch (err) {
-            setError('Failed to create account. Please try again.');
+        } catch (err: any) {
+            setError(err.message || 'Failed to create account. Please try again.');
             console.error(err);
-        } finally {
-            setLoading(false);
         }
     };
 

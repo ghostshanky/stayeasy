@@ -12,6 +12,6 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["server/**/*", "prisma/pdfGenerator.ts"],
+  "include": ["server/**/*"],
   "exclude": ["node_modules", "dist"]
 }

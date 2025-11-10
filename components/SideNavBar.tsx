@@ -1,5 +1,7 @@
 import React from 'react';
 import { Page } from '../types';
+import { BRAND } from '../client/src/config/brand';
+import AvatarMenu from '../client/src/components/AvatarMenu';
 
 interface NavLinkProps {
   icon: string;
@@ -34,12 +36,23 @@ const SideNavBar: React.FC<SideNavBarProps> = ({ onNavigate }) => {
     }
   };
 
+  // Mock user data - in a real app, this would come from context or props
+  const user = {
+    id: 'user123',
+    email: 'alex@example.com',
+    name: 'Alex Chen',
+    role: 'TENANT' as const,
+    avatar_url: 'https://picsum.photos/id/64/100/100',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
   return (
     <aside className="hidden lg:flex flex-shrink-0 w-64 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark flex-col justify-between p-4">
       <div className="flex flex-col gap-8">
         <div className="flex items-center gap-2 px-2">
           <span className="material-symbols-outlined text-primary text-3xl">real_estate_agent</span>
-          <h1 className="text-text-light-primary dark:text-text-dark-primary text-xl font-bold">Stays.io</h1>
+          <h1 className="text-text-light-primary dark:text-text-dark-primary text-xl font-bold">{BRAND.long}</h1>
         </div>
         <nav className="flex flex-col gap-1">
           <NavLink icon="dashboard" label="Dashboard" onClick={() => handleNavigation('tenantDashboard')} isActive={true} />
@@ -52,16 +65,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({ onNavigate }) => {
       <div className="flex flex-col gap-2">
         <NavLink icon="settings" label="Settings" onClick={() => handleNavigation('tenantDashboard')} />
         <div className="flex gap-3 p-2 border-t border-border-light dark:border-border-dark pt-4">
-          <div 
-            className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-            style={{ backgroundImage: `url('https://picsum.photos/id/64/100/100')` }}
-            role="img"
-            aria-label="Profile picture of Alex Chen"
-          ></div>
-          <div className="flex flex-col">
-            <h1 className="text-text-light-primary dark:text-text-dark-primary text-sm font-semibold leading-normal">Alex Chen</h1>
-            <p className="text-text-light-secondary dark:text-text-dark-secondary text-xs font-normal leading-normal">Property Owner</p>
-          </div>
+          <AvatarMenu user={user} />
         </div>
       </div>
     </aside>

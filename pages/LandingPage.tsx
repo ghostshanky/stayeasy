@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page, Listing } from '../types';
-import { getProperties } from '../api';
+import { useProperties } from '../client/src/hooks/useProperties';
+import { BRAND } from '../client/src/config/brand';
 
 const LandingPage = () => {
     const navigate = useNavigate();
@@ -11,34 +12,12 @@ const LandingPage = () => {
     const [priceRange, setPriceRange] = useState('');
     const [showStayTypeDropdown, setShowStayTypeDropdown] = useState(false);
     const [showPriceRangeDropdown, setShowPriceRangeDropdown] = useState(false);
-    const [topProperties, setTopProperties] = useState<Listing[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { items: topProperties, loading } = useProperties(6, 1);
     const [error, setError] = useState<string | null>(null);
 
     const stayTypeOptions = ['Hostel', 'PG', 'Co-living'];
     const priceRangeOptions = ['Under ₹5,000', '₹5,000 - ₹10,000', '₹10,000 - ₹15,000', 'Above ₹15,000'];
 
-    useEffect(() => {
-        const fetchTopProperties = async () => {
-            try {
-                setLoading(true);
-                const properties = await getProperties();
-                // Get top 6 properties sorted by rating
-                const topRated = properties
-                    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-                    .slice(0, 6);
-                setTopProperties(topRated);
-                setError(null);
-            } catch (err) {
-                console.error('Failed to fetch top properties:', err);
-                setError('Failed to load properties. Please try again later.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchTopProperties();
-    }, []);
 
     const handleSearch = () => {
         // Navigate to search results with filters
@@ -154,16 +133,16 @@ const LandingPage = () => {
                                 {topProperties.length > 0 ? (
                                     topProperties.map((property) => (
                                         <div key={property.id} className="flex h-full flex-1 flex-col gap-3 rounded-lg min-w-64 cursor-pointer hover:scale-105 transition-transform duration-200" onClick={() => navigate('propertyDetails')}>
-                                            <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-lg" style={{ backgroundImage: `url("${property.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}")` }}></div>
+                                            <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-lg" style={{ backgroundImage: `url("${property.images?.[0] || 'https://via.placeholder.com/400x300?text=No+Image'}")` }}></div>
                                             <div>
                                                 <div className="flex justify-between items-center">
-                                                    <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">{property.name}</p>
+                                                    <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">{property.title}</p>
                                                     <div className="flex items-center gap-1">
                                                         <span className="material-symbols-outlined text-orange-accent text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                                         <span className="text-sm font-medium">{property.rating || 'N/A'}</span>
                                                     </div>
                                                 </div>
-                                                <p className="text-gray-600 dark:text-gray-400 text-sm font-normal leading-normal">{property.location} - {property.price}/month</p>
+                                                <p className="text-gray-600 dark:text-gray-400 text-sm font-normal leading-normal">{property.location} - ₹{property.price_per_night}/night</p>
                                             </div>
                                         </div>
                                     ))
@@ -238,7 +217,7 @@ const LandingPage = () => {
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                                  <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star_half</span>
+                                  <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                               </div>
                           </div>
                         </div>
@@ -249,9 +228,9 @@ const LandingPage = () => {
                 <footer className="mt-16 border-t border-gray-200 dark:border-gray-800 pt-10 pb-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                         <div>
-                            <h4 className="font-bold text-[#111518] dark:text-white mb-3">StayEasy</h4>
+                            <h4 className="font-bold text-[#111518] dark:text-white mb-3">{BRAND.long}</h4>
                             <ul className="space-y-2">
-                                <li><button onClick={() => navigate('/')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">About Us</button></li>
+                                <li><button onClick={() => navigate('/about')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">About Us</button></li>
                             </ul>
                         </div>
                         <div>
@@ -269,12 +248,12 @@ const LandingPage = () => {
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">Support</h4>
                             <ul className="space-y-2">
-                                <li><button onClick={() => navigate('/')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Help Center</button></li>
+                                <li><button onClick={() => navigate('/help')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Help Center</button></li>
                             </ul>
                         </div>
                     </div>
                     <div className="mt-10 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
-                        <p>© 2024 StayEasy, Inc. All rights reserved.</p>
+                        <p>© 2025 {BRAND.company}. All rights reserved.</p>
                     </div>
                 </footer>
             </main>

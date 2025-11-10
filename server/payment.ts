@@ -2,7 +2,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import * as QRCode from 'qrcode';
-import { generateInvoicePdf } from '../prisma/pdfGenerator';
+import { generateInvoiceAsPDF } from '../prisma/pdfGenerator.ts';
 import { AuditLogger } from './audit-logger';
 
 // Enum values from Prisma schema

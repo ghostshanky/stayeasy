@@ -10,6 +10,12 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     role role DEFAULT 'TENANT',
+    bio TEXT,
+    mobile VARCHAR(20),
+    image_id VARCHAR(255),
+    email_verified BOOLEAN DEFAULT FALSE,
+    email_token VARCHAR(255),
+    email_token_expiry TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -26,10 +32,12 @@ CREATE TABLE owners (
 CREATE TABLE properties (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id VARCHAR(255) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    address TEXT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    location VARCHAR(255) NOT NULL,
     description TEXT,
-    price DECIMAL(10,2) NOT NULL,
+    price_per_night DECIMAL(10,2) NOT NULL,
+    images TEXT[] DEFAULT '{}',
+    rating DECIMAL(3,2) DEFAULT 0,
     capacity INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -98,7 +106,10 @@ CREATE TABLE messages (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
     chat_id VARCHAR(255) NOT NULL,
     sender_id VARCHAR(255) NOT NULL,
+    recipient_id VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
+    sender_type VARCHAR(50) DEFAULT 'USER',
+    read_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
 );
@@ -188,3 +199,23 @@ CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_read ON notifications(read);
 CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for properties table
+-- Allow public read access to properties
+CREATE POLICY "Properties are viewable by everyone" ON properties
+    FOR SELECT USING (true);
+
+-- Allow authenticated users to insert properties (for owners)
+CREATE POLICY "Properties can be inserted by owners" ON properties
+    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- Allow owners to update their own properties
+CREATE POLICY "Owners can update their own properties" ON properties
+    FOR UPDATE USING (auth.uid() = owner_id);
+
+-- Allow owners to delete their own properties
+CREATE POLICY "Owners can delete their own properties" ON properties
+    FOR DELETE USING (auth.uid() = owner_id);

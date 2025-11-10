@@ -18,6 +18,23 @@ export interface Listing {
   priceValue?: number;
 }
 
+// Supabase property types
+export interface Property {
+  id: string;
+  name: string;
+  location: string;
+  price: string;
+  priceValue: number;
+  rating: number;
+  imageUrl: string;
+  status: string;
+  details: string;
+  owner?: {
+    name: string;
+    email: string;
+  };
+}
+
 export enum StatChangeDirection {
     Increase = 'increase',
     Decrease = 'decrease',
