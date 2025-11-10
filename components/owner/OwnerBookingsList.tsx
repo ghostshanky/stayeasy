@@ -1,153 +1,171 @@
-import React, { useState } from 'react';
-import { useOwnerBookings } from '../../client/src/hooks/useOwnerBookings';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../client/src/lib/supabase';
 
 interface Booking {
   id: string;
-  user_id: string;
   property_id: string;
+  property_name: string;
+  tenant_name: string;
   check_in: string;
   check_out: string;
-  guests: number;
-  total_price: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  total_amount: number;
   created_at: string;
-  updated_at: string;
-  property: {
-    name: string;
-    address: string;
-  };
-  user: {
-    name: string;
-    email: string;
-  };
 }
 
-const getStatusClass = (status: string) => {
-  switch (status) {
-    case 'PENDING':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'CONFIRMED':
-      return 'bg-green-100 text-green-800';
-    case 'CANCELLED':
-      return 'bg-red-100 text-red-800';
-    case 'COMPLETED':
-      return 'bg-blue-100 text-blue-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
+interface OwnerBookingsListProps {
+  onBookingAction: (bookingId: string, action: 'confirm' | 'cancel' | 'complete') => void;
+}
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  });
-};
+const OwnerBookingsList: React.FC<OwnerBookingsListProps> = ({ onBookingAction }) => {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
 
-const OwnerBookingsList: React.FC = () => {
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const { items: bookings, loading, error } = useOwnerBookings(10, 1, statusFilter);
+  useEffect(() => {
+    fetchBookings();
+  }, [filterStatus]);
 
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(e.target.value);
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      const userId = localStorage.getItem('userId');
+
+      const response = await fetch(`/api/owner/bookings?userId=${userId}&status=${filterStatus}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'CONFIRMED': return 'bg-green-100 text-green-800';
+      case 'CANCELLED': return 'bg-red-100 text-red-800';
+      case 'COMPLETED': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getActionButtons = (booking: Booking) => {
+    switch (booking.status) {
+      case 'PENDING':
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onBookingAction(booking.id, 'confirm')}
+              className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+            >
+              Confirm
+            </button>
+            <button
+              onClick={() => onBookingAction(booking.id, 'cancel')}
+              className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        );
+      case 'CONFIRMED':
+        return (
+          <button
+            onClick={() => onBookingAction(booking.id, 'complete')}
+            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+          >
+            Mark Complete
+          </button>
+        );
+      default:
+        return null;
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-2">Loading bookings...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 p-4 rounded">
-        Error: {error}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+        <div className="text-center py-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading bookings...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <h2 className="text-xl font-bold text-text-light-primary dark:text-text-dark-primary">Bookings</h2>
-        <div className="flex gap-2">
-          <div className="w-full md:w-48">
-            <label htmlFor="status-filter" className="sr-only">Filter by status</label>
-            <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={handleStatusChange}
-              className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-surface-light dark:bg-surface-dark text-text-light-primary dark:text-text-dark-primary"
-            >
-              <option value="">All Statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="CONFIRMED">Confirmed</option>
-              <option value="CANCELLED">Cancelled</option>
-              <option value="COMPLETED">Completed</option>
-            </select>
-          </div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-white">All Bookings</h2>
+        <div className="flex items-center gap-4">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+          >
+            <option value="all">All Status</option>
+            <option value="PENDING">Pending</option>
+            <option value="CONFIRMED">Confirmed</option>
+            <option value="CANCELLED">Cancelled</option>
+            <option value="COMPLETED">Completed</option>
+          </select>
         </div>
       </div>
 
       {bookings.length === 0 ? (
-        <div className="text-center py-12">
-          <span className="material-symbols-outlined text-4xl text-text-light-secondary dark:text-text-dark-secondary mb-4">
-            event_busy
-          </span>
-          <h3 className="text-lg font-medium text-text-light-primary dark:text-text-dark-primary mb-2">
-            No bookings found
-          </h3>
-          <p className="text-text-light-secondary dark:text-text-dark-secondary">
-            {statusFilter ? `No ${statusFilter.toLowerCase()} bookings at the moment.` : 'No bookings have been made for your properties yet.'}
-          </p>
+        <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+          <p>No bookings found</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-text-light-secondary dark:text-text-dark-secondary uppercase bg-background-light dark:bg-background-dark">
+            <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th scope="col" className="px-4 py-3 font-semibold">Property</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Guest</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Dates</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Guests</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Price</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Status</th>
+                <th scope="col" className="px-6 py-3">Property</th>
+                <th scope="col" className="px-6 py-3">Tenant</th>
+                <th scope="col" className="px-6 py-3">Dates</th>
+                <th scope="col" className="px-6 py-3">Status</th>
+                <th scope="col" className="px-6 py-3">Amount</th>
+                <th scope="col" className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {bookings.map((booking) => (
-                <tr 
-                  key={booking.id} 
-                  className="border-b border-border-light dark:border-border-dark hover:bg-background-light/50 dark:hover:bg-background-dark/50"
-                >
-                  <td className="px-4 py-3 font-medium text-text-light-primary dark:text-text-dark-primary">
-                    <div className="font-bold">{booking.property.name}</div>
-                    <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                      {booking.property.address}
+                <tr key={booking.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                    {booking.property_name}
+                  </td>
+                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    {booking.tenant_name}
+                  </td>
+                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <div>
+                      <div>{new Date(booking.check_in).toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        to {new Date(booking.check_out).toLocaleDateString()}
+                      </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{booking.user.name}</div>
-                    <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                      {booking.user.email}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div>{formatDate(booking.check_in)}</div>
-                    <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                      to {formatDate(booking.check_out)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">{booking.guests}</td>
-                  <td className="px-4 py-3 font-medium">₹{booking.total_price.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(booking.status)}`}>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
                       {booking.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                    ₹{booking.total_amount.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 text-right whitespace-nowrap">
+                    {getActionButtons(booking)}
                   </td>
                 </tr>
               ))}

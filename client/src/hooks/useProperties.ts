@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { PostgrestSingleResponse } from '@supabase/supabase-js';
+import { apiClient } from "../api/apiClient";
 
 interface Property {
   id: string;
@@ -21,22 +20,18 @@ export function useProperties(limit = 12, page = 1) {
     
     const fetchProperties = async () => {
       try {
-        const res: PostgrestSingleResponse<Property[]> = await supabase
-          .from("properties")
-          .select("id, title, location, price_per_night, images, rating")
-          .order("created_at", { ascending: false })
-          .range((page - 1) * limit, page * limit - 1);
-          
+        const response = await apiClient.get(`/properties?limit=${limit}&offset=${(page - 1) * limit}`);
+        
         if (!mounted) return;
         
-        if (res.error) {
-          console.error(res.error);
+        if (response.data.success) {
+          setItems(response.data.data || []);
         } else {
-          setItems(res.data || []);
+          console.error('Failed to fetch properties:', response.data.error);
         }
       } catch (error) {
         if (mounted) {
-          console.error(error);
+          console.error('Error fetching properties:', error);
         }
       } finally {
         if (mounted) {

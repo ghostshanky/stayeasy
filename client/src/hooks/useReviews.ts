@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { PostgrestSingleResponse } from '@supabase/supabase-js';
+import { apiClient } from "../api/apiClient";
 
 interface Review {
   id: string;
@@ -24,24 +23,23 @@ export function useReviews(propertyId?: string, limit = 12, page = 1) {
     
     const fetchReviews = async () => {
       try {
-        let query = supabase
-          .from("reviews")
-          .select("id, user_id, property_id, rating, comment, created_at, user:name");
-          
+        const params = new URLSearchParams({
+          limit: limit.toString(),
+          offset: ((page - 1) * limit).toString(),
+        });
+        
         if (propertyId) {
-          query = query.eq("property_id", propertyId);
+          params.append('property_id', propertyId);
         }
-          
-        const res: PostgrestSingleResponse<Review[]> = await query
-          .order("created_at", { ascending: false })
-          .range((page - 1) * limit, page * limit - 1);
+
+        const response = await apiClient.get(`/reviews?${params}`);
           
         if (!mounted) return;
         
-        if (res.error) {
-          console.error(res.error);
+        if (response.data.success) {
+          setItems(response.data.data || []);
         } else {
-          setItems(res.data || []);
+          console.error('Failed to fetch reviews:', response.data.error);
         }
       } catch (error) {
         if (mounted) {

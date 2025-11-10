@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client'
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { AuditLogger } from '../audit-logger.js'
-
-const prisma = new PrismaClient()
+import { supabaseServer } from '../lib/supabaseServer.js'
 
 // --- Input Validation Schemas ---
 const createBookingSchema = z.object({
@@ -69,11 +67,13 @@ export class BookingsController {
       }
 
       // Check if property exists and is available
-      const property = await prisma.property.findUnique({
-        where: { id: propertyId }
-      })
+      const { data: property, error: propertyError } = await supabaseServer
+        .from('properties')
+        .select('*')
+        .eq('id', propertyId)
+        .single()
 
-      if (!property) {
+      if (propertyError || !property) {
         return res.status(404).json({
           success: false,
           error: { code: 'PROPERTY_NOT_FOUND', message: 'Property not found' }
@@ -81,34 +81,18 @@ export class BookingsController {
       }
 
       // Check for booking conflicts
-      const conflictingBooking = await prisma.booking.findFirst({
-        where: {
-          propertyId,
-          status: { in: ['PENDING', 'CONFIRMED'] },
-          OR: [
-            {
-              AND: [
-                { checkIn: { lte: checkInDate } },
-                { checkOut: { gt: checkInDate } }
-              ]
-            },
-            {
-              AND: [
-                { checkIn: { lt: checkOutDate } },
-                { checkOut: { gte: checkOutDate } }
-              ]
-            },
-            {
-              AND: [
-                { checkIn: { gte: checkInDate } },
-                { checkOut: { lte: checkOutDate } }
-              ]
-            }
-          ]
-        }
-      })
+      const { data: conflictingBookings, error: conflictError } = await supabaseServer
+        .from('bookings')
+        .select('*')
+        .eq('property_id', propertyId)
+        .in('status', ['PENDING', 'CONFIRMED'])
+        .or(`and(check_in.lte.${checkInDate.toISOString()},check_out.gt.${checkInDate.toISOString()}),and(check_in.lt.${checkOutDate.toISOString()},check_out.gte.${checkOutDate.toISOString()}),and(check_in.gte.${checkInDate.toISOString()},check_out.lte.${checkOutDate.toISOString()})`)
 
-      if (conflictingBooking) {
+      if (conflictError) {
+        throw conflictError
+      }
+
+      if (conflictingBookings && conflictingBookings.length > 0) {
         return res.status(409).json({
           success: false,
           error: { code: 'BOOKING_CONFLICT', message: 'Property is not available for the selected dates' }
@@ -116,22 +100,27 @@ export class BookingsController {
       }
 
       // Create booking
-      const booking = await prisma.booking.create({
-        data: {
-          userId: tenantId,
-          propertyId,
-          checkIn: checkInDate,
-          checkOut: checkOutDate,
+      const { data: booking, error: createError } = await supabaseServer
+        .from('bookings')
+        .insert({
+          user_id: tenantId,
+          property_id: propertyId,
+          check_in: checkInDate.toISOString(),
+          check_out: checkOutDate.toISOString(),
           status: 'PENDING'
-        },
-        include: {
-          property: {
-            include: {
-              owner: { select: { name: true, email: true } }
-            }
-          }
-        }
-      })
+        })
+        .select(`
+          *,
+          property:properties!property_id (
+            *,
+            owner:users!owner_id (name, email)
+          )
+        `)
+        .single()
+
+      if (createError) {
+        throw createError
+      }
 
       // Log audit event
       await AuditLogger.logBookingCreation(tenantId, propertyId, booking.id, checkInDate, checkOutDate)

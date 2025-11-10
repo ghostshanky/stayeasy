@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
-import { getAdminStats, getAdminUsers, getAuditLogs, updateUser, deleteUser, removeContent } from '../api';
 import AdminSideNavBar from '../components/admin/AdminSideNavBar';
 import AdminStatCard from '../components/admin/AdminStatCard';
 
@@ -9,8 +8,9 @@ interface User {
   name: string;
   email: string;
   role: string;
-  emailVerified: boolean;
-  createdAt: string;
+  email_verified: boolean;
+  created_at: string;
+  updated_at: string;
   _count: {
     properties: number;
     bookings: number;
@@ -22,30 +22,65 @@ interface AuditLog {
   id: string;
   action: string;
   details: string;
-  createdAt: string;
+  created_at: string;
   actor: {
+    id: string;
     name: string;
     email: string;
     role: string;
   };
 }
 
+interface Stats {
+  users: {
+    total: number;
+    byRole: Record<string, number>;
+  };
+  properties: {
+    total: number;
+  };
+  bookings: {
+    total: number;
+    byStatus: Record<string, number>;
+  };
+  payments: {
+    total: number;
+    totalAmount: number;
+    byStatus: Record<string, number>;
+  };
+  reviews: {
+    total: number;
+    averageRating: number | null;
+  };
+}
+
 const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'users', 'audit', 'moderation'
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRole, setSelectedRole] = useState<string>('');
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const statsData = await getAdminStats();
-        setStats(statsData);
+        const response = await fetch('/api/admin/stats', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch admin data');
+        }
+        
+        const data = await response.json();
+        setStats(data.data);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch admin data:", err);
@@ -60,10 +95,25 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
 
   const fetchUsers = async () => {
     try {
-      const params: any = { page: currentPage, limit: 10 };
-      if (selectedRole) params.role = selectedRole;
-      const usersData = await getAdminUsers(params);
-      setUsers(usersData.data || []);
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10',
+      });
+      if (selectedRole) params.append('role', selectedRole);
+      
+      const response = await fetch(`/api/admin/users?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      
+      const data = await response.json();
+      setUsers(data.data || []);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error("Failed to fetch users:", err);
     }
@@ -71,9 +121,24 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
 
   const fetchAuditLogs = async () => {
     try {
-      const params: any = { page: currentPage, limit: 10 };
-      const logsData = await getAuditLogs(params);
-      setAuditLogs(logsData.data || []);
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10',
+      });
+      
+      const response = await fetch(`/api/admin/audit-logs?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch audit logs');
+      }
+      
+      const data = await response.json();
+      setAuditLogs(data.data || []);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error("Failed to fetch audit logs:", err);
     }
@@ -89,7 +154,19 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
 
   const handleUserUpdate = async (userId: string, updates: any) => {
     try {
-      await updateUser(userId, updates);
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update user');
+      }
+      
       fetchUsers(); // Refresh the list
     } catch (err) {
       console.error("Failed to update user:", err);
@@ -99,7 +176,17 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
   const handleUserDelete = async (userId: string) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await deleteUser(userId);
+        const response = await fetch(`/api/admin/users/${userId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete user');
+        }
+        
         fetchUsers(); // Refresh the list
       } catch (err) {
         console.error("Failed to delete user:", err);
@@ -110,7 +197,17 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
   const handleContentRemoval = async (type: string, id: string) => {
     if (window.confirm(`Are you sure you want to remove this ${type}?`)) {
       try {
-        await removeContent(type, id);
+        const response = await fetch(`/api/admin/content/${type}/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to remove content');
+        }
+        
         // Refresh data based on current tab
         if (activeTab === 'users') fetchUsers();
         else if (activeTab === 'audit') fetchAuditLogs();
@@ -128,7 +225,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
         title: 'Total Users',
         value: stats.users?.total?.toString() || '0',
         change: '+12%',
-        changeDirection: 'increase' as const,
+        changeDirection: 'increase' as 'increase',
         changeColorClass: 'text-green-600',
         icon: 'people'
       },
@@ -136,7 +233,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
         title: 'Total Properties',
         value: stats.properties?.total?.toString() || '0',
         change: '+8%',
-        changeDirection: 'increase' as const,
+        changeDirection: 'increase' as 'increase',
         changeColorClass: 'text-green-600',
         icon: 'apartment'
       },
@@ -144,7 +241,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
         title: 'Active Bookings',
         value: stats.bookings?.byStatus?.CONFIRMED?.toString() || '0',
         change: '+15%',
-        changeDirection: 'increase' as const,
+        changeDirection: 'increase' as 'increase',
         changeColorClass: 'text-green-600',
         icon: 'calendar_month'
       },
@@ -152,7 +249,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
         title: 'Total Revenue',
         value: `₹${stats.payments?.totalAmount?.toLocaleString() || '0'}`,
         change: '+22%',
-        changeDirection: 'increase' as const,
+        changeDirection: 'increase' as 'increase',
         changeColorClass: 'text-green-600',
         icon: 'payments'
       }
@@ -273,7 +370,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
             <div>
               <p className="font-medium">{log.action}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">{log.details}</p>
-              <p className="text-xs text-gray-500">{new Date(log.createdAt).toLocaleString()}</p>
+              <p className="text-xs text-gray-500">{new Date(log.created_at).toLocaleString()}</p>
             </div>
             <div className="text-right">
               <p className="font-medium">{log.actor.name}</p>

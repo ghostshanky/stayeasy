@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page, Listing } from '../types';
 import { useProperties } from '../client/src/hooks/useProperties';
+import { BRAND } from '../client/src/config/brand';
 
 const LandingPage = () => {
     const navigate = useNavigate();
@@ -216,7 +217,7 @@ const LandingPage = () => {
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                                  <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star_half</span>
+                                  <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                               </div>
                           </div>
                         </div>
@@ -227,9 +228,9 @@ const LandingPage = () => {
                 <footer className="mt-16 border-t border-gray-200 dark:border-gray-800 pt-10 pb-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                         <div>
-                            <h4 className="font-bold text-[#111518] dark:text-white mb-3">StayEasy</h4>
+                            <h4 className="font-bold text-[#111518] dark:text-white mb-3">{BRAND.long}</h4>
                             <ul className="space-y-2">
-                                <li><button onClick={() => navigate('/')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">About Us</button></li>
+                                <li><button onClick={() => navigate('/about')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">About Us</button></li>
                             </ul>
                         </div>
                         <div>
@@ -247,12 +248,12 @@ const LandingPage = () => {
                         <div>
                             <h4 className="font-bold text-[#111518] dark:text-white mb-3">Support</h4>
                             <ul className="space-y-2">
-                                <li><button onClick={() => navigate('/')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Help Center</button></li>
+                                <li><button onClick={() => navigate('/help')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">Help Center</button></li>
                             </ul>
                         </div>
                     </div>
                     <div className="mt-10 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
-                        <p>© 2024 StayEasy, Inc. All rights reserved.</p>
+                        <p>© 2025 {BRAND.company}. All rights reserved.</p>
                     </div>
                 </footer>
             </main>

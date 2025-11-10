@@ -1,6 +1,6 @@
-# StayEasy Authentication System
+# StayEasy, Inc. Authentication System
 
-A comprehensive authentication system for the StayEasy hostel/PG listing platform built with Express.js, Prisma, and PostgreSQL.
+A comprehensive authentication system for the StayEasy, Inc. hostel/PG listing platform built with Express.js, Prisma, and PostgreSQL.
 
 ## Features
 

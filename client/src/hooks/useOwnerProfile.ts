@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { apiClient } from "../api/apiClient";
 
 interface OwnerProfile {
   id: string;
@@ -24,37 +24,24 @@ export function useOwnerProfile() {
 
     const fetchProfile = async () => {
       try {
-        // Get the current user
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
+        // Get the current user ID from localStorage (where the auth token is stored)
+        const token = localStorage.getItem("authToken");
+        if (!token) {
           throw new Error("No authenticated user");
         }
 
-        const userId = session.user.id;
-
-        // Fetch user profile
-        const { data, error } = await (supabase as any)
-          .from("users")
-          .select(`
-            id,
-            email,
-            name,
-            phone,
-            avatar_url,
-            upi_id,
-            created_at,
-            updated_at
-          `)
-          .eq('id', userId)
-          .single();
-
-        if (error) {
-          throw error;
-        }
+        // For now, we'll need to get the user ID from the token or another source
+        // This is a simplified approach - in a real app, you'd decode the JWT or have an endpoint to get current user
+        const response = await apiClient.get('/users/me');
 
         if (!mounted) return;
 
-        setProfile(data || null);
+        if (response.data.success) {
+          setProfile(response.data.data || null);
+        } else {
+          console.error("Error fetching owner profile:", response.data.error);
+          setError(response.data.error?.message || "Failed to fetch profile");
+        }
       } catch (err) {
         if (mounted) {
           console.error("Error fetching owner profile:", err);

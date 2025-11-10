@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { Property } from "../../../types";
+import { apiClient } from "../api/apiClient";
 
 interface OwnerProperty {
   id: string;
@@ -32,43 +31,21 @@ export function useOwnerProperties(limit = 10, page = 1) {
 
     const fetchProperties = async () => {
       try {
-        // Get the current user
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-          throw new Error("No authenticated user");
-        }
+        const params = new URLSearchParams({
+          limit: limit.toString(),
+          offset: ((page - 1) * limit).toString(),
+        });
 
-        const userId = session.user.id;
-
-        // Fetch properties owned by the current user
-        const { data, error } = await (supabase as any)
-          .from("properties")
-          .select(`
-            id,
-            name,
-            address,
-            price,
-            available,
-            description,
-            files!inner(url),
-            bookings (
-              id,
-              check_in,
-              check_out,
-              status
-            )
-          `)
-          .eq("owner_id", userId)
-          .order("created_at", { ascending: false })
-          .range((page - 1) * limit, page * limit - 1);
-
-        if (error) {
-          throw error;
-        }
+        const response = await apiClient.get(`/owner/properties?${params}`);
 
         if (!mounted) return;
 
-        setItems(data || []);
+        if (response.data.success) {
+          setItems(response.data.data || []);
+        } else {
+          console.error("Error fetching owner properties:", response.data.error);
+          setError(response.data.error?.message || "Failed to fetch properties");
+        }
       } catch (err) {
         if (mounted) {
           console.error("Error fetching owner properties:", err);

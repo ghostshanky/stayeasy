@@ -1,9 +1,7 @@
 import { Server as HTTPServer } from 'http'
 import { Server as SocketServer, Socket } from 'socket.io'
 import jwt from 'jsonwebtoken'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { supabaseServer } from './lib/supabaseServer.js'
 
 export interface AuthenticatedSocket extends Socket {
   userId: string
@@ -33,19 +31,19 @@ export class ChatService {
           return next(new Error('Authentication error'))
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-        const session = await prisma.session.findUnique({
-          where: { token: decoded.sessionToken },
-          include: { user: true }
-        })
+        const decoded = jwt.verify(token, 'stay-easy-secret') as any
+        const { data: user, error } = await supabaseServer
+          .from('users')
+          .select('*')
+          .eq('id', decoded.userId)
+          .single()
 
-        if (!session || session.expiresAt < new Date()) {
-          return next(new Error('Session expired'))
+        if (error || !user) {
+          return next(new Error('User not found'))
         }
 
-        socket.userId = session.userId
-        socket.userRole = session.user.role
-        socket.sessionId = session.id
+        socket.userId = user.id
+        socket.userRole = user.role
 
         next()
       } catch (error) {
@@ -139,67 +137,75 @@ export class ChatService {
 
     // Verify user has access to this chat
     // This check is critical for security
-    const chat = await prisma.chat.findUnique({
-      where: { id: chatId },
-      include: { user: true, owner: true }
-    })
+    const { data: chat, error: chatError } = await supabaseServer
+      .from('chats')
+      .select('*, users(*), owners(*)')
+      .eq('id', chatId)
+      .single()
 
-    if (!chat) {
+    if (chatError || !chat) {
       throw new Error('Chat not found')
     }
 
-    if (chat.userId !== socket.userId && chat.ownerId !== socket.userId) {
+    if (chat.user_id !== socket.userId && chat.owner_id !== socket.userId) {
       throw new Error('Unauthorized access to chat')
     }
 
     // Determine recipient
-    const recipientId = chat.userId === socket.userId ? chat.ownerId : chat.userId
+    const recipientId = chat.user_id === socket.userId ? chat.owner_id : chat.user_id
 
-    // Use transaction to ensure message and files are saved atomically
-    const savedMessage = await prisma.$transaction(async (tx) => {
-      // Create message
-      const message = await tx.message.create({
-        data: {
-          chatId,
-          senderId: socket.userId,
-          recipientId,
-          content,
-          createdAt: new Date(),
-          senderType: socket.userRole,
-        }
+    // Create message
+    const { data: message, error: messageError } = await supabaseServer
+      .from('messages')
+      .insert({
+        chat_id: chatId,
+        sender_id: socket.userId,
+        recipient_id: recipientId,
+        content,
+        sender_type: socket.userRole,
       })
+      .select()
+      .single()
 
-      // Create file attachments if any
-      if (attachments && attachments.length > 0) {
-        await tx.file.createMany({
-          data: attachments.map(attachment => ({
-            messageId: message.id,
-            url: attachment.url,
-            fileName: attachment.url.split('/').pop() || 'attachment',
-            fileType: attachment.type,
-            userId: socket.userId
-          }))
-        })
-      }
-
-      // Get complete message with files
-      return await tx.message.findUnique({
-        where: { id: message.id },
-        include: {
-          files: true
-        }
-      })
-    })
-
-    if (!savedMessage) {
+    if (messageError || !message) {
       throw new Error('Failed to save message')
     }
 
-    // Update chat's updatedAt timestamp for sorting chat lists
-    await prisma.chat.update({
-      where: { id: chatId },
-      data: { updatedAt: new Date() }
-    });
+    // Create file attachments if any
+    if (attachments && attachments.length > 0) {
+      const fileInserts = attachments.map(attachment => ({
+        message_id: message.id,
+        url: attachment.url,
+        file_name: attachment.url.split('/').pop() || 'attachment',
+        file_type: attachment.type,
+        user_id: socket.userId
+      }))
+
+      const { error: fileError } = await supabaseServer
+        .from('files')
+        .insert(fileInserts)
+
+      if (fileError) {
+        console.error('Failed to save attachments:', fileError)
+      }
+    }
+
+    // Get complete message with files
+    const { data: savedMessage, error: fetchError } = await supabaseServer
+      .from('messages')
+      .select('*, files(*)')
+      .eq('id', message.id)
+      .single()
+
+    if (fetchError || !savedMessage) {
+      throw new Error('Failed to retrieve saved message')
+    }
+
+    // Update chat's updated_at timestamp for sorting chat lists
+    await supabaseServer
+      .from('chats')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', chatId)
 
     // Emit to chat room
     this.io.to(`chat_${chatId}`).emit('new_message', savedMessage)
@@ -215,43 +221,51 @@ export class ChatService {
   }
 
   private async markMessagesRead(userId: string, messageIds: string[]) {
-    await prisma.message.updateMany({
-      where: {
-        id: { in: messageIds },
-        recipientId: userId,
-        readAt: null
-      },
-      data: {
-        readAt: new Date()
-      }
-    })
+    const { error } = await supabaseServer
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .in('id', messageIds)
+      .eq('recipient_id', userId)
+      .is('read_at', null)
+
+    if (error) {
+      console.error('Failed to mark messages read:', error)
+    }
   }
 
   private async getUnreadCount(userId: string): Promise<number> {
-    const result = await prisma.message.aggregate({
-      where: {
-        recipientId: userId,
-        readAt: null
-      },
-      _count: true
-    })
-    return result._count
+    const { count, error } = await supabaseServer
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', userId)
+      .is('read_at', null)
+
+    if (error) {
+      console.error('Failed to get unread count:', error)
+      return 0
+    }
+
+    return count || 0
   }
 
   // Method to send message from server (for system notifications, etc.)
   async sendSystemMessage(chatId: string, content: string) {
-    const message = await prisma.message.create({
-      data: {
-        chatId,
-        senderId: 'system',
-        recipientId: 'system', // System messages don't have recipients
+    const { data: message, error } = await supabaseServer
+      .from('messages')
+      .insert({
+        chat_id: chatId,
+        sender_id: 'system',
+        recipient_id: 'system', // System messages don't have recipients
         content,
-        senderType: 'SYSTEM'
-      },
-      include: {
-        files: true
-      }
-    })
+        sender_type: 'SYSTEM'
+      })
+      .select('*, files(*)')
+      .single()
+
+    if (error || !message) {
+      console.error('Failed to send system message:', error)
+      return
+    }
 
     this.io.to(`chat_${chatId}`).emit('new_message', message)
   }
@@ -264,25 +278,22 @@ export class ChatService {
 
 // Archive job for old messages
 export class ChatArchiver {
-  private prisma: PrismaClient
-
-  constructor() {
-    this.prisma = new PrismaClient()
-  }
-
   async archiveOldMessages(daysOld: number = 365) {
     const cutoffDate = new Date()
     cutoffDate.setDate(cutoffDate.getDate() - daysOld)
 
     // Move messages to archive table (you'd create this table separately)
-    const oldMessages = await this.prisma.message.findMany({
-      where: {
-        createdAt: { lt: cutoffDate }
-      },
-      include: { files: true }
-    })
+    const { data: oldMessages, error } = await supabaseServer
+      .from('messages')
+      .select('*, files(*)')
+      .lt('created_at', cutoffDate.toISOString())
 
-    if (oldMessages.length > 0) {
+    if (error) {
+      console.error('Failed to fetch old messages:', error)
+      return 0
+    }
+
+    if (oldMessages && oldMessages.length > 0) {
       // In a real implementation, you'd:
       // 1. Insert into archive_messages table
       // 2. Insert into archive_files table
@@ -294,19 +305,23 @@ export class ChatArchiver {
       await this.logArchiveAction(oldMessages.length, cutoffDate)
     }
 
-    return oldMessages.length
+    return oldMessages?.length || 0
   }
 
   private async logArchiveAction(messageCount: number, cutoffDate: Date) {
-    await this.prisma.auditLog.create({
-      data: {
+    const { error } = await supabaseServer
+      .from('audit_logs')
+      .insert({
         action: 'CHAT_ARCHIVE',
         details: JSON.stringify({
           messageCount,
           cutoffDate: cutoffDate.toISOString()
         })
-      }
-    })
+      })
+
+    if (error) {
+      console.error('Failed to log archive action:', error)
+    }
   }
 
   // Clean up empty chats (no messages in last 90 days)
@@ -314,26 +329,31 @@ export class ChatArchiver {
     const ninetyDaysAgo = new Date()
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
 
-    const emptyChats = await this.prisma.chat.findMany({
-      where: {
-        messages: {
-          none: {
-            createdAt: { gte: ninetyDaysAgo }
-          }
-        }
-      }
-    })
+    // Get chats with no recent messages
+    const { data: emptyChats, error } = await supabaseServer
+      .from('chats')
+      .select('id')
+      .not('messages', 'created_at.gte', ninetyDaysAgo.toISOString())
 
-    if (emptyChats.length > 0) {
-      await this.prisma.chat.deleteMany({
-        where: {
-          id: { in: emptyChats.map(c => c.id) }
-        }
-      })
+    if (error) {
+      console.error('Failed to fetch empty chats:', error)
+      return 0
+    }
+
+    if (emptyChats && emptyChats.length > 0) {
+      const { error: deleteError } = await supabaseServer
+        .from('chats')
+        .delete()
+        .in('id', emptyChats.map((c: any) => c.id))
+
+      if (deleteError) {
+        console.error('Failed to delete empty chats:', deleteError)
+        return 0
+      }
 
       console.log(`Cleaned up ${emptyChats.length} empty chats`)
     }
 
-    return emptyChats.length
+    return emptyChats?.length || 0
   }
 }

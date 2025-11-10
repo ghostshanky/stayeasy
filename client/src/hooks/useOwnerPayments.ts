@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { apiClient } from "../api/apiClient";
 
 interface OwnerPayment {
   id: string;
@@ -27,7 +27,7 @@ interface OwnerPayment {
   };
 }
 
-export function useOwnerPayments(limit = 10, page = 1, status?: string) {
+export function useOwnerPayments(ownerId: string, limit = 10, page = 1, status?: string) {
   const [items, setItems] = useState<OwnerPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,54 +39,25 @@ export function useOwnerPayments(limit = 10, page = 1, status?: string) {
 
     const fetchPayments = async () => {
       try {
-        // Get the current user
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-          throw new Error("No authenticated user");
-        }
-
-        const userId = session.user.id;
-
-        // Fetch payments for the current owner
-        let query = (supabase as any)
-          .from("payments")
-          .select(`
-            id,
-            booking_id,
-            user_id,
-            owner_id,
-            amount,
-            currency,
-            status,
-            upi_reference,
-            verified_by,
-            verified_at,
-            created_at,
-            updated_at,
-            booking:bookings(
-              check_in,
-              check_out,
-              property:properties(name)
-            ),
-            user:users(name, email)
-          `)
-          .eq('owner_id', userId)
-          .order("created_at", { ascending: false })
-          .range((page - 1) * limit, page * limit - 1);
-
+        const params = new URLSearchParams({
+          limit: limit.toString(),
+          offset: ((page - 1) * limit).toString(),
+        });
+        
         if (status) {
-          query = query.eq('status', status);
+          params.append('status', status);
         }
 
-        const { data, error } = await query;
-
-        if (error) {
-          throw error;
-        }
+        const response = await apiClient.get(`/payments/owner/${ownerId}?${params}`);
 
         if (!mounted) return;
 
-        setItems(data || []);
+        if (response.data.success) {
+          setItems(response.data.data || []);
+        } else {
+          console.error("Error fetching owner payments:", response.data.error);
+          setError(response.data.error?.message || "Failed to fetch payments");
+        }
       } catch (err) {
         if (mounted) {
           console.error("Error fetching owner payments:", err);
@@ -104,7 +75,7 @@ export function useOwnerPayments(limit = 10, page = 1, status?: string) {
     return () => {
       mounted = false;
     };
-  }, [limit, page, status]);
+  }, [ownerId, limit, page, status]);
 
   return { items, loading, error };
 }

@@ -21,11 +21,18 @@ export interface Listing {
 // Supabase property types
 export interface Property {
   id: string;
-  title: string;
+  name: string;
   location: string;
-  price_per_night: number;
-  images: string[];
-  rating?: number;
+  price: string;
+  priceValue: number;
+  rating: number;
+  imageUrl: string;
+  status: string;
+  details: string;
+  owner?: {
+    name: string;
+    email: string;
+  };
 }
 
 export enum StatChangeDirection {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { apiClient } from "../api/apiClient";
 
 interface OwnerMessage {
   id: string;
@@ -30,39 +30,22 @@ export function useOwnerMessages(limit = 10, page = 1) {
 
     const fetchMessages = async () => {
       try {
-        // Get the current user
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
+        // Get the current user ID from localStorage (where the auth token is stored)
+        const token = localStorage.getItem("authToken");
+        if (!token) {
           throw new Error("No authenticated user");
         }
 
-        const userId = session.user.id;
-
-        // Fetch messages where the current user is the receiver
-        const { data, error } = await (supabase as any)
-          .from("messages")
-          .select(`
-            id,
-            sender_id,
-            receiver_id,
-            property_id,
-            content,
-            read,
-            created_at,
-            sender:users(name, email),
-            property:properties(name)
-          `)
-          .eq('receiver_id', userId)
-          .order("created_at", { ascending: false })
-          .range((page - 1) * limit, page * limit - 1);
-
-        if (error) {
-          throw error;
-        }
+        const response = await apiClient.get(`/messages?userId=${token}&page=${page}&limit=${limit}`);
 
         if (!mounted) return;
 
-        setItems(data || []);
+        if (response.data.success) {
+          setItems(response.data.data || []);
+        } else {
+          console.error("Error fetching owner messages:", response.data.error);
+          setError(response.data.error?.message || "Failed to fetch messages");
+        }
       } catch (err) {
         if (mounted) {
           console.error("Error fetching owner messages:", err);

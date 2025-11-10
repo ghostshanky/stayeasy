@@ -1,6 +1,8 @@
 export const BRAND = {
   short: "stayeasy",
   long: "StayEasy",
-  title: "StayEasy - Book hostels & PGs",
-  defaultAvatar: "/images/default-avatar.png"
+  title: "StayEasy - Find your perfect PG or hostel easily.",
+  tagline: "Find your perfect PG or hostel easily.",
+  defaultAvatar: "/images/default-avatar.png",
+  company: "StayEasy, Inc."
 };

@@ -33,6 +33,7 @@ export default function AvatarMenu({ user }: AvatarMenuProps) {
   }, []);
 
   function onAvatarClick(e: React.MouseEvent) {
+    e.preventDefault();
     e.stopPropagation();
     setOpen(prev => !prev);
   }
@@ -52,7 +53,7 @@ export default function AvatarMenu({ user }: AvatarMenuProps) {
 
   return (
     <div ref={menuRef} className="relative inline-block">
-      <button onClick={onAvatarClick} aria-haspopup="true" aria-expanded={open}>
+      <button type="button" onClick={onAvatarClick} aria-haspopup="true" aria-expanded={open}>
         <img src={user?.avatar_url || "/default-avatar.png"} alt="avatar" className="w-10 h-10 rounded-full" />
       </button>
       {open && (

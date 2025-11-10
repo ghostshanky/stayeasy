@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client'
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { AuditLogger } from '../audit-logger.js'
-
-const prisma = new PrismaClient()
+import { supabaseServer } from '../lib/supabaseServer.js'
 
 // --- Input Validation Schemas ---
 const createReviewSchema = z.object({
@@ -43,13 +41,17 @@ export class ReviewsController {
       const { propertyId, rating, comment } = validation.data
 
       // Check if tenant has a completed booking for this property
-      const completedBooking = await prisma.booking.findFirst({
-        where: {
-          userId: tenantId,
-          propertyId,
-          status: 'COMPLETED'
-        }
-      })
+      const { data: completedBooking, error: bookingError } = await supabaseServer
+        .from('bookings')
+        .select('id')
+        .eq('user_id', tenantId)
+        .eq('property_id', propertyId)
+        .eq('status', 'COMPLETED')
+        .single()
+
+      if (bookingError && bookingError.code !== 'PGRST116') {
+        throw bookingError
+      }
 
       if (!completedBooking) {
         return res.status(403).json({
@@ -59,12 +61,16 @@ export class ReviewsController {
       }
 
       // Check if review already exists
-      const existingReview = await prisma.review.findFirst({
-        where: {
-          userId: tenantId,
-          propertyId
-        }
-      })
+      const { data: existingReview, error: reviewError } = await supabaseServer
+        .from('reviews')
+        .select('id')
+        .eq('user_id', tenantId)
+        .eq('property_id', propertyId)
+        .single()
+
+      if (reviewError && reviewError.code !== 'PGRST116') {
+        throw reviewError
+      }
 
       if (existingReview) {
         return res.status(409).json({
@@ -73,18 +79,24 @@ export class ReviewsController {
         })
       }
 
-      const review = await prisma.review.create({
-        data: {
-          userId: tenantId,
-          propertyId,
+      const { data: review, error: createError } = await supabaseServer
+        .from('reviews')
+        .insert({
+          user_id: tenantId,
+          property_id: propertyId,
           rating,
           comment
-        },
-        include: {
-          user: { select: { name: true } },
-          property: { select: { name: true } }
-        }
-      })
+        })
+        .select(`
+          *,
+          user:users!user_id (name),
+          property:properties!property_id (name)
+        `)
+        .single()
+
+      if (createError) {
+        throw createError
+      }
 
       // Log audit event
       await AuditLogger.logReviewCreation(tenantId, review.id, rating)
@@ -120,14 +132,21 @@ export class ReviewsController {
       const reviewId = req.params.id
       const updates = validation.data
 
-      const review = await prisma.review.update({
-        where: { id: reviewId, userId: tenantId },
-        data: updates,
-        include: {
-          user: { select: { name: true } },
-          property: { select: { name: true } }
-        }
-      })
+      const { data: review, error: updateError } = await supabaseServer
+        .from('reviews')
+        .update(updates)
+        .eq('id', reviewId)
+        .eq('user_id', tenantId)
+        .select(`
+          *,
+          user:users!user_id (name),
+          property:properties!property_id (name)
+        `)
+        .single()
+
+      if (updateError) {
+        throw updateError
+      }
 
       // Log audit event
       await AuditLogger.logReviewUpdate(tenantId, review.propertyId, reviewId, updates)
@@ -160,20 +179,28 @@ export class ReviewsController {
       const tenantId = req.currentUser!.id
       const reviewId = req.params.id
 
-      const review = await prisma.review.findFirst({
-        where: { id: reviewId, userId: tenantId }
-      })
+      const { data: review, error: findError } = await supabaseServer
+        .from('reviews')
+        .select('*')
+        .eq('id', reviewId)
+        .eq('user_id', tenantId)
+        .single()
 
-      if (!review) {
+      if (findError || !review) {
         return res.status(404).json({
           success: false,
           error: { code: 'REVIEW_NOT_FOUND', message: 'Review not found or you do not own it.' }
         })
       }
 
-      await prisma.review.delete({
-        where: { id: reviewId }
-      })
+      const { error: deleteError } = await supabaseServer
+        .from('reviews')
+        .delete()
+        .eq('id', reviewId)
+
+      if (deleteError) {
+        throw deleteError
+      }
 
       // Log audit event
       await AuditLogger.logReviewDeletion(tenantId, review.propertyId, reviewId)
@@ -211,19 +238,45 @@ export class ReviewsController {
       if (propertyId) where.propertyId = propertyId
       if (userId) where.userId = userId
 
-      const [reviews, total] = await Promise.all([
-        prisma.review.findMany({
-          where,
-          include: {
-            user: { select: { name: true } },
-            property: { select: { name: true } }
-          },
-          skip: (page - 1) * limit,
-          take: limit,
-          orderBy: { createdAt: 'desc' }
-        }),
-        prisma.review.count({ where })
-      ])
+      // Build query for reviews
+      let query = supabaseServer
+        .from('reviews')
+        .select(`
+          *,
+          user:users!user_id (name),
+          property:properties!property_id (name)
+        `)
+        .order('created_at', { ascending: false })
+        .range((page - 1) * limit, page * limit - 1)
+
+      if (propertyId) {
+        query = query.eq('property_id', propertyId)
+      }
+      if (userId) {
+        query = query.eq('user_id', userId)
+      }
+
+      const { data: reviews, error: reviewsError } = await query
+      if (reviewsError) {
+        throw reviewsError
+      }
+
+      // Get total count
+      let countQuery = supabaseServer
+        .from('reviews')
+        .select('*', { count: 'exact', head: true })
+
+      if (propertyId) {
+        countQuery = countQuery.eq('property_id', propertyId)
+      }
+      if (userId) {
+        countQuery = countQuery.eq('user_id', userId)
+      }
+
+      const { count: total, error: countError } = await countQuery
+      if (countError) {
+        throw countError
+      }
 
       res.status(200).json({
         success: true,
@@ -232,7 +285,7 @@ export class ReviewsController {
           page,
           limit,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil((total || 0) / limit)
         }
       })
     } catch (error: any) {
@@ -252,15 +305,17 @@ export class ReviewsController {
     try {
       const reviewId = req.params.id
 
-      const review = await prisma.review.findUnique({
-        where: { id: reviewId },
-        include: {
-          user: { select: { name: true, email: true } },
-          property: { select: { name: true, address: true } }
-        }
-      })
+      const { data: review, error: reviewError } = await supabaseServer
+        .from('reviews')
+        .select(`
+          *,
+          user:users!user_id (name, email),
+          property:properties!property_id (name, address)
+        `)
+        .eq('id', reviewId)
+        .single()
 
-      if (!review) {
+      if (reviewError || !review) {
         return res.status(404).json({
           success: false,
           error: { code: 'REVIEW_NOT_FOUND', message: 'Review not found.' }
@@ -297,12 +352,16 @@ export class ReviewsController {
         })
       }
 
-      const review = await prisma.review.findUnique({
-        where: { id: reviewId },
-        include: { property: true }
-      })
+      const { data: review, error: reviewError } = await supabaseServer
+        .from('reviews')
+        .select(`
+          *,
+          property:properties!property_id (*)
+        `)
+        .eq('id', reviewId)
+        .single()
 
-      if (!review) {
+      if (reviewError || !review) {
         return res.status(404).json({
           success: false,
           error: { code: 'REVIEW_NOT_FOUND', message: 'Review not found.' }
@@ -311,9 +370,15 @@ export class ReviewsController {
 
       let result
       if (action === 'DELETE') {
-        result = await prisma.review.delete({
-          where: { id: reviewId }
-        })
+        const { error: deleteError } = await supabaseServer
+          .from('reviews')
+          .delete()
+          .eq('id', reviewId)
+
+        if (deleteError) {
+          throw deleteError
+        }
+        result = review
       } else {
         // For APPROVE/HIDE, we could add a moderation status field
         // For now, just log the action

@@ -1,10 +1,9 @@
 
 import axios from 'axios';
 import { Listing, StatCardData, ListingStatus, StatChangeDirection } from './types';
-import { supabase } from './lib/supabase';
 
 // Use environment variable or default to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api';
+const API_BASE_URL = 'http://localhost:3002/api';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -137,51 +136,21 @@ export const getOwnerStats = async (): Promise<StatCardData[]> => {
 
 export const getProperties = async (): Promise<Listing[]> => {
     try {
-        // Fetch properties from Supabase
-        const { data: properties, error } = await supabase
-            .from('properties')
-            .select(`
-                id,
-                name,
-                address,
-                price,
-                available,
-                description,
-                files!inner(url),
-                reviews(rating)
-            `)
-            .eq('available', true)
-            .limit(20);
-
-        if (error) {
-            console.error('Error fetching properties:', error);
-            throw error;
-        }
-
-        // Calculate average ratings and map to Listing format
-        const listings: Listing[] = properties.map((property: any) => {
-            const reviews = property.reviews || [];
-            const averageRating = reviews.length > 0
-                ? reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / reviews.length
-                : 0;
-
-            return {
-                id: property.id,
-                name: property.name,
-                location: property.address,
-                price: `₹${property.price.toLocaleString()}`,
-                priceValue: property.price,
-                rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
-                imageUrl: property.files?.[0]?.url || 'https://via.placeholder.com/400x300?text=No+Image',
-                status: property.available ? ListingStatus.Listed : ListingStatus.Unlisted,
-                details: property.description || 'No description available'
-            };
-        });
-
-        return listings;
+        const response = await apiClient.get('/properties');
+        return response.data.data.map((property: any) => ({
+            id: property.id,
+            name: property.name,
+            location: property.address,
+            price: `₹${property.price.toLocaleString()}`,
+            priceValue: property.price,
+            rating: property.averageRating || 0,
+            imageUrl: property.images?.[0]?.url || 'https://via.placeholder.com/400x300?text=No+Image',
+            status: property.available ? ListingStatus.Listed : ListingStatus.Unlisted,
+            details: property.description || 'No description available'
+        }));
     } catch (error) {
-        console.error('Failed to fetch properties from Supabase:', error);
-        // Fallback to mock data if Supabase fails
+        console.error('Failed to fetch properties:', error);
+        // Fallback to mock data if API fails
         return [
             {
                 id: '1',

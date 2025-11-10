@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client'
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { AuditLogger } from '../audit-logger.js'
-
-const prisma = new PrismaClient()
+import { supabaseServer } from '../lib/supabaseServer.js'
 
 // --- Input Validation Schemas ---
 const userQuerySchema = z.object({
@@ -47,31 +45,71 @@ export class AdminController {
       const where: any = {}
       if (role) where.role = role
 
-      const [users, total] = await Promise.all([
-        prisma.user.findMany({
-          where,
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-            emailVerified: true,
-            createdAt: true,
-            updatedAt: true,
+      // Build query for users
+      let query = supabaseServer
+        .from('users')
+        .select(`
+          id,
+          email,
+          name,
+          role,
+          email_verified,
+          created_at,
+          updated_at
+        `)
+
+      if (role) {
+        query = query.eq('role', role)
+      }
+
+      // Get total count
+      let countQuery = supabaseServer
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+
+      if (role) {
+        countQuery = countQuery.eq('role', role)
+      }
+
+      const { count: total, error: countError } = await countQuery
+
+      if (countError) {
+        throw new Error(`Failed to count users: ${countError.message}`)
+      }
+
+      // Get users with pagination
+      const { data: usersData, error } = await query
+        .range((page - 1) * limit, page * limit - 1)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        throw new Error(`Failed to fetch users: ${error.message}`)
+      }
+
+      // Get counts for each user
+      const usersWithCounts = await Promise.all(
+        (usersData || []).map(async (user: any) => {
+          const [propertiesCount, bookingsCount, reviewsCount] = await Promise.all([
+            supabaseServer.from('properties').select('*', { count: 'exact', head: true }).eq('owner_id', user.id),
+            supabaseServer.from('bookings').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+            supabaseServer.from('reviews').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+          ])
+
+          return {
+            ...user,
+            emailVerified: user.email_verified,
+            createdAt: user.created_at,
+            updatedAt: user.updated_at,
             _count: {
-              select: {
-                properties: true,
-                bookings: true,
-                reviews: true
-              }
+              properties: propertiesCount.count || 0,
+              bookings: bookingsCount.count || 0,
+              reviews: reviewsCount.count || 0
             }
-          },
-          skip: (page - 1) * limit,
-          take: limit,
-          orderBy: { createdAt: 'desc' }
-        }),
-        prisma.user.count({ where })
-      ])
+          }
+        })
+      )
+
+      const users = usersWithCounts
 
       res.status(200).json({
         success: true,
@@ -80,7 +118,7 @@ export class AdminController {
           page,
           limit,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil((total || 0) / limit)
         }
       })
     } catch (error: any) {
@@ -100,68 +138,122 @@ export class AdminController {
     try {
       const userId = req.params.id
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          properties: {
-            select: {
-              id: true,
-              name: true,
-              address: true,
-              createdAt: true,
-              _count: {
-                select: {
-                  bookings: true,
-                  reviews: true
-                }
-              }
-            }
-          },
-          bookings: {
-            select: {
-              id: true,
-              checkIn: true,
-              checkOut: true,
-              status: true,
-              createdAt: true,
-              property: {
-                select: {
-                  name: true,
-                  address: true
-                }
-              }
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 10
-          },
-          reviews: {
-            select: {
-              id: true,
-              rating: true,
-              comment: true,
-              createdAt: true,
-              property: {
-                select: {
-                  name: true
-                }
-              }
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 10
-          }
-        }
-      })
+      // Get user basic info
+      const { data: user, error: userError } = await supabaseServer
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'USER_NOT_FOUND', message: 'User not found.' }
+      if (userError) {
+        if (userError.code === 'PGRST116') {
+          return res.status(404).json({
+            success: false,
+            error: { code: 'USER_NOT_FOUND', message: 'User not found.' }
+          })
+        }
+        throw new Error(`Failed to fetch user: ${userError.message}`)
+      }
+
+      // Get user's properties with counts
+      const { data: properties, error: propertiesError } = await supabaseServer
+        .from('properties')
+        .select(`
+          id,
+          name,
+          address,
+          created_at
+        `)
+        .eq('owner_id', userId)
+
+      if (propertiesError) {
+        throw new Error(`Failed to fetch properties: ${propertiesError.message}`)
+      }
+
+      // Add counts to properties
+      const propertiesWithCounts = await Promise.all(
+        (properties || []).map(async (property: any) => {
+          const [bookingsCount, reviewsCount] = await Promise.all([
+            supabaseServer.from('bookings').select('*', { count: 'exact', head: true }).eq('property_id', property.id),
+            supabaseServer.from('reviews').select('*', { count: 'exact', head: true }).eq('property_id', property.id)
+          ])
+
+          return {
+            ...property,
+            createdAt: property.created_at,
+            _count: {
+              bookings: bookingsCount.count || 0,
+              reviews: reviewsCount.count || 0
+            }
+          }
         })
+      )
+
+      // Get user's bookings (last 10)
+      const { data: bookings, error: bookingsError } = await supabaseServer
+        .from('bookings')
+        .select(`
+          id,
+          check_in,
+          check_out,
+          status,
+          created_at,
+          properties (
+            name,
+            address
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (bookingsError) {
+        throw new Error(`Failed to fetch bookings: ${bookingsError.message}`)
+      }
+
+      // Get user's reviews (last 10)
+      const { data: reviews, error: reviewsError } = await supabaseServer
+        .from('reviews')
+        .select(`
+          id,
+          rating,
+          comment,
+          created_at,
+          properties (
+            name
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (reviewsError) {
+        throw new Error(`Failed to fetch reviews: ${reviewsError.message}`)
+      }
+
+      const userDetails = {
+        ...user,
+        emailVerified: user.email_verified,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+        properties: propertiesWithCounts,
+        bookings: (bookings || []).map((booking: any) => ({
+          ...booking,
+          checkIn: booking.check_in,
+          checkOut: booking.check_out,
+          createdAt: booking.created_at,
+          property: booking.properties
+        })),
+        reviews: (reviews || []).map((review: any) => ({
+          ...review,
+          createdAt: review.created_at,
+          property: review.properties
+        }))
       }
 
       res.status(200).json({
         success: true,
-        data: user
+        data: userDetails
       })
     } catch (error: any) {
       console.error('User details fetch error:', error)
@@ -190,34 +282,45 @@ export class AdminController {
       const userId = req.params.id
       const updates = validation.data
 
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: updates,
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          emailVerified: true,
-          createdAt: true,
-          updatedAt: true
+      // Prepare update data for Supabase
+      const updateData: any = {}
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.email !== undefined) updateData.email = updates.email
+      if (updates.role !== undefined) updateData.role = updates.role
+      if (updates.emailVerified !== undefined) updateData.email_verified = updates.emailVerified
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive
+      updateData.updated_at = new Date().toISOString()
+
+      const { data: user, error } = await supabaseServer
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select('id, email, name, role, email_verified, created_at, updated_at')
+        .single()
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return res.status(404).json({
+            success: false,
+            error: { code: 'USER_NOT_FOUND', message: 'User not found.' }
+          })
         }
-      })
+        throw new Error(`Failed to update user: ${error.message}`)
+      }
 
       // Log audit event
       await AuditLogger.logUserAction(adminId, 'USER_UPDATED', `User ${userId} updated: ${JSON.stringify(updates)}`)
 
       res.status(200).json({
         success: true,
-        data: user
+        data: {
+          ...user,
+          emailVerified: user.email_verified,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at
+        }
       })
     } catch (error: any) {
-      if (error.code === 'P2025') {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'USER_NOT_FOUND', message: 'User not found.' }
-        })
-      }
       console.error('User update error:', error)
       res.status(500).json({
         success: false,
@@ -236,25 +339,33 @@ export class AdminController {
       const userId = req.params.id
 
       // Check if user exists
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, name: true, email: true }
-      })
+      const { data: user, error: userError } = await supabaseServer
+        .from('users')
+        .select('id, name, email')
+        .eq('id', userId)
+        .single()
 
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'USER_NOT_FOUND', message: 'User not found.' }
-        })
+      if (userError) {
+        if (userError.code === 'PGRST116') {
+          return res.status(404).json({
+            success: false,
+            error: { code: 'USER_NOT_FOUND', message: 'User not found.' }
+          })
+        }
+        throw new Error(`Failed to fetch user: ${userError.message}`)
       }
 
       // Instead of hard delete, we could mark as inactive
       // For now, we'll do a soft delete by updating a flag
-      // Assuming we add an isActive field to User model
-      await prisma.user.update({
-        where: { id: userId },
-        data: { /* isActive: false */ }
-      })
+      // Assuming we add an is_active field to users table
+      const { error: updateError } = await supabaseServer
+        .from('users')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', userId)
+
+      if (updateError) {
+        throw new Error(`Failed to deactivate user: ${updateError.message}`)
+      }
 
       // Log audit event
       await AuditLogger.logUserAction(adminId, 'USER_DELETED', `User ${userId} (${user.email}) deleted`)
@@ -281,22 +392,16 @@ export class AdminController {
       const adminId = req.currentUser!.id
       const { type, id } = req.params
 
-      let result
+      let error: any
       if (type === 'review') {
-        result = await prisma.review.delete({
-          where: { id }
-        })
-        await AuditLogger.logUserAction(adminId, 'CONTENT_REMOVED', `Review ${id} removed`)
+        ({ error } = await supabaseServer.from('reviews').delete().eq('id', id))
+        if (!error) await AuditLogger.logUserAction(adminId, 'CONTENT_REMOVED', `Review ${id} removed`)
       } else if (type === 'property') {
-        result = await prisma.property.delete({
-          where: { id }
-        })
-        await AuditLogger.logUserAction(adminId, 'CONTENT_REMOVED', `Property ${id} removed`)
+        ({ error } = await supabaseServer.from('properties').delete().eq('id', id))
+        if (!error) await AuditLogger.logUserAction(adminId, 'CONTENT_REMOVED', `Property ${id} removed`)
       } else if (type === 'message') {
-        result = await prisma.message.delete({
-          where: { id }
-        })
-        await AuditLogger.logUserAction(adminId, 'CONTENT_REMOVED', `Message ${id} removed`)
+        ({ error } = await supabaseServer.from('messages').delete().eq('id', id))
+        if (!error) await AuditLogger.logUserAction(adminId, 'CONTENT_REMOVED', `Message ${id} removed`)
       } else {
         return res.status(400).json({
           success: false,
@@ -304,17 +409,15 @@ export class AdminController {
         })
       }
 
+      if (error) {
+        throw new Error(`Failed to remove ${type}: ${error.message}`)
+      }
+
       res.status(200).json({
         success: true,
         message: `${type} removed successfully`
       })
     } catch (error: any) {
-      if (error.code === 'P2025') {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'CONTENT_NOT_FOUND', message: 'Content not found.' }
-        })
-      }
       console.error('Content removal error:', error)
       res.status(500).json({
         success: false,
@@ -339,24 +442,51 @@ export class AdminController {
 
       const { userId, action, page, limit } = validation.data
 
-      const where: any = {}
-      if (userId) where.userId = userId
-      if (action) where.action = action
+      // Build query for logs
+      let logsQuery = supabaseServer
+        .from('audit_logs')
+        .select(`
+          *,
+          actor:users!audit_logs_user_id_fkey (
+            id,
+            name,
+            email,
+            role
+          )
+        `)
 
-      const [logs, total] = await Promise.all([
-        prisma.auditLog.findMany({
-          where,
-          include: {
-            actor: {
-              select: { id: true, name: true, email: true, role: true }
-            }
-          },
-          skip: (page - 1) * limit,
-          take: limit,
-          orderBy: { createdAt: 'desc' }
-        }),
-        prisma.auditLog.count({ where })
-      ])
+      if (userId) {
+        logsQuery = logsQuery.eq('user_id', userId)
+      }
+      if (action) {
+        logsQuery = logsQuery.eq('action', action)
+      }
+
+      const { data: logs, error: logsError } = await logsQuery
+        .range((page - 1) * limit, page * limit - 1)
+        .order('created_at', { ascending: false })
+
+      if (logsError) {
+        throw new Error(`Failed to fetch audit logs: ${logsError.message}`)
+      }
+
+      // Get total count
+      let countQuery = supabaseServer
+        .from('audit_logs')
+        .select('*', { count: 'exact', head: true })
+
+      if (userId) {
+        countQuery = countQuery.eq('user_id', userId)
+      }
+      if (action) {
+        countQuery = countQuery.eq('action', action)
+      }
+
+      const { count: total, error: countError } = await countQuery
+
+      if (countError) {
+        throw new Error(`Failed to count audit logs: ${countError.message}`)
+      }
 
       res.status(200).json({
         success: true,
@@ -365,7 +495,7 @@ export class AdminController {
           page,
           limit,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil((total || 0) / limit)
         }
       })
     } catch (error: any) {
@@ -383,64 +513,120 @@ export class AdminController {
    */
   static async getStats(req: Request, res: Response) {
     try {
-      const [
-        userStats,
-        propertyStats,
-        bookingStats,
-        paymentStats,
-        reviewStats
-      ] = await Promise.all([
-        prisma.user.groupBy({
-          by: ['role'],
-          _count: { id: true }
-        }),
-        prisma.property.aggregate({
-          _count: { id: true }
-        }),
-        prisma.booking.groupBy({
-          by: ['status'],
-          _count: { id: true }
-        }),
-        prisma.payment.groupBy({
-          by: ['status'],
-          _sum: { amount: true },
-          _count: { id: true }
-        }),
-        prisma.review.aggregate({
-          _count: { id: true },
-          _avg: { rating: true }
-        })
-      ])
+      // Get user stats by role
+      const { data: userRoleStats, error: userError } = await supabaseServer
+        .from('users')
+        .select('role')
+
+      if (userError) {
+        throw new Error(`Failed to fetch user stats: ${userError.message}`)
+      }
+
+      const byRole = (userRoleStats || []).reduce((acc: Record<string, number>, user) => {
+        acc[user.role] = (acc[user.role] || 0) + 1
+        return acc
+      }, {})
+
+      // Get total users
+      const { count: totalUsers, error: totalUsersError } = await supabaseServer
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+
+      if (totalUsersError) {
+        throw new Error(`Failed to count users: ${totalUsersError.message}`)
+      }
+
+      // Get total properties
+      const { count: totalProperties, error: propertiesError } = await supabaseServer
+        .from('properties')
+        .select('*', { count: 'exact', head: true })
+
+      if (propertiesError) {
+        throw new Error(`Failed to count properties: ${propertiesError.message}`)
+      }
+
+      // Get booking stats by status
+      const { data: bookingStatusStats, error: bookingError } = await supabaseServer
+        .from('bookings')
+        .select('status')
+
+      if (bookingError) {
+        throw new Error(`Failed to fetch booking stats: ${bookingError.message}`)
+      }
+
+      const byStatusBookings = (bookingStatusStats || []).reduce((acc: Record<string, number>, booking) => {
+        acc[booking.status] = (acc[booking.status] || 0) + 1
+        return acc
+      }, {})
+
+      // Get total bookings
+      const { count: totalBookings, error: totalBookingsError } = await supabaseServer
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+
+      if (totalBookingsError) {
+        throw new Error(`Failed to count bookings: ${totalBookingsError.message}`)
+      }
+
+      // Get payment stats
+      const { data: paymentStats, error: paymentError } = await supabaseServer
+        .from('payments')
+        .select('status, amount')
+
+      if (paymentError) {
+        throw new Error(`Failed to fetch payment stats: ${paymentError.message}`)
+      }
+
+      const byStatusPayments = (paymentStats || []).reduce((acc: Record<string, number>, payment) => {
+        acc[payment.status] = (acc[payment.status] || 0) + 1
+        return acc
+      }, {})
+
+      const totalPayments = paymentStats?.length || 0
+      const totalAmount = (paymentStats || []).reduce((sum, payment) => sum + (payment.amount || 0), 0)
+
+      // Get review stats
+      const { count: totalReviews, error: reviewsCountError } = await supabaseServer
+        .from('reviews')
+        .select('*', { count: 'exact', head: true })
+
+      if (reviewsCountError) {
+        throw new Error(`Failed to count reviews: ${reviewsCountError.message}`)
+      }
+
+      // Get average rating
+      const { data: ratings, error: ratingsError } = await supabaseServer
+        .from('reviews')
+        .select('rating')
+
+      if (ratingsError) {
+        throw new Error(`Failed to fetch ratings: ${ratingsError.message}`)
+      }
+
+      const averageRating = ratings && ratings.length > 0
+        ? ratings.reduce((sum, review) => sum + (review.rating || 0), 0) / ratings.length
+        : null
 
       const stats = {
         users: {
-          total: userStats.reduce((sum, stat) => sum + stat._count.id, 0),
-          byRole: userStats.reduce((acc, stat) => {
-            acc[stat.role] = stat._count.id
-            return acc
-          }, {} as Record<string, number>)
+          total: totalUsers || 0,
+          byRole
         },
         properties: {
-          total: propertyStats._count.id
+          total: totalProperties || 0
         },
         bookings: {
-          total: bookingStats.reduce((sum, stat) => sum + stat._count.id, 0),
-          byStatus: bookingStats.reduce((acc, stat) => {
-            acc[stat.status] = stat._count.id
-            return acc
-          }, {} as Record<string, number>)
+          total: totalBookings || 0,
+          byStatus: byStatusBookings
         },
         payments: {
-          total: paymentStats.reduce((sum, stat) => sum + stat._count.id, 0),
-          totalAmount: paymentStats.reduce((sum, stat) => sum + (stat._sum.amount || 0), 0),
-          byStatus: paymentStats.reduce((acc, stat) => {
-            acc[stat.status] = stat._count.id
-            return acc
-          }, {} as Record<string, number>)
+          total: totalPayments,
+          totalAmount,
+          byStatus: byStatusPayments
         },
         reviews: {
-          total: reviewStats._count.id,
-          averageRating: reviewStats._avg.rating
+          total: totalReviews || 0,
+          averageRating
         }
       }
 
