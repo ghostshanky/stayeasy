@@ -53,7 +53,7 @@ router.get('/:id', async (req, res) => {
 
     const { data, error } = await supabaseServer
       .from('users')
-      .select('id, name, email, role, bio, mobile, image_id, created_at, updated_at')
+      .select('id, name, email, role, bio, mobile, image_id, createdAt, updatedAt')
       .eq('id', id)
       .single();
 
@@ -127,20 +127,23 @@ router.put('/:id', async (req, res) => {
     if (bio !== undefined) updates.bio = bio;
     if (mobile !== undefined) updates.mobile = mobile;
     if (image_id !== undefined) updates.image_id = image_id;
-    if (updated_at !== undefined) updates.updated_at = updated_at;
+    if (updated_at !== undefined) updates.updatedAt = updated_at;
+
+    console.log('Updating user with data:', updates);
 
     const { data, error } = await supabaseServer
       .from('users')
       .update(updates)
       .eq('id', id)
-      .select('id, name, email, role, bio, mobile, image_id, created_at, updated_at')
+      .select('id, name, email, role, bio, mobile, image_id')
       .single();
 
     if (error) {
       console.error('Error updating user:', error);
-      return res.status(500).json({ error: 'Failed to update user data' });
+      return res.status(500).json({ error: 'Failed to update user data', details: error.message });
     }
 
+    console.log('User updated successfully:', data);
     res.json(data);
   } catch (error) {
     console.error('Error in PUT /users/:id:', error);

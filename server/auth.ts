@@ -63,6 +63,7 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       role: user.role,
+      iat: Math.floor(Date.now() / 1000),
     }
     return jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRES_IN })
   }
@@ -72,6 +73,7 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       role: user.role,
+      iat: Math.floor(Date.now() / 1000),
     }
     return jwt.sign(payload, this.JWT_REFRESH_SECRET, { expiresIn: this.JWT_REFRESH_EXPIRES_IN })
   }
@@ -141,15 +143,19 @@ export class AuthService {
     const emailToken = this.generateEmailToken()
     console.log('✅ [AuthService.createUser] Password hashed, email token generated')
 
+    const now = new Date().toISOString()
     const { data: user, error } = await supabaseServer
       .from('users')
       .insert({
+        id: crypto.randomUUID(),
         email,
         password: hashedPassword,
         name,
         role,
         emailToken: emailToken,
         emailTokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        createdAt: now,
+        updatedAt: now,
       })
       .select()
       .single()
@@ -170,12 +176,12 @@ export class AuthService {
       password: user.password,
       name: user.name,
       role: user.role,
-      emailVerified: user.email_verified,
-      emailToken: user.email_token,
-      emailTokenExpiry: user.email_token_expiry ? new Date(user.email_token_expiry) : null,
+      emailVerified: user.emailVerified,
+      emailToken: user.emailToken,
+      emailTokenExpiry: user.emailTokenExpiry ? new Date(user.emailTokenExpiry) : null,
       image_id: user.image_id,
-      createdAt: new Date(user.created_at),
-      updatedAt: new Date(user.updated_at),
+      createdAt: new Date(user.createdAt),
+      updatedAt: new Date(user.updatedAt),
     }
   }
 
@@ -284,9 +290,10 @@ export class AuthService {
       const { error: sessionsError } = await supabaseServer
         .from('sessions')
         .insert({
+          id: crypto.randomUUID(),
           token: hashedRefreshToken,
-          expires_at: expiresAt,
-          user_id: user.id,
+          expiresAt: expiresAt,
+          userId: user.id,
         })
 
       if (sessionsError) {
@@ -295,9 +302,10 @@ export class AuthService {
         const { error: refreshTokensError } = await supabaseServer
           .from('refresh_tokens')
           .insert({
+            id: crypto.randomUUID(),
             token: hashedRefreshToken,
-            expires_at: expiresAt,
-            user_id: user.id,
+            expiresAt: expiresAt,
+            userId: user.id,
             ip,
             device,
           })

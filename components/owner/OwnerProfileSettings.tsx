@@ -157,7 +157,7 @@ const OwnerProfileSettings: React.FC = () => {
         <div className="flex flex-col items-center mb-6">
           <div className="relative">
             <img
-              src={profileData.avatar_url || '/default-avatar.png'}
+              src={profileData.avatar_url || '/default_profile_pic.jpg'}
               alt="Profile"
               className="w-24 h-24 rounded-full object-cover border-2 border-border-light dark:border-border-dark"
             />

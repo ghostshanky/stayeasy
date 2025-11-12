@@ -13,7 +13,7 @@ export interface ChatMessage {
   // ... other fields
 }
 
-const SERVER_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3002';
+const SERVER_URL = '/api';
 
 export function useChat(chatId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);

@@ -15,7 +15,7 @@ export default function Header() {
     
     const imageUrl = user?.user_metadata?.image_id
         ? `https://ik.imagekit.io/Shanky/${user.user_metadata.image_id}.png`
-        : "/default-avatar.svg";
+        : "/default_profile_pic.jpg";
 
     return (
         <>

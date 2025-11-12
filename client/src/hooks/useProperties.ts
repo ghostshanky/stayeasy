@@ -3,10 +3,11 @@ import { apiClient } from "../api/apiClient";
 
 interface Property {
   id: string;
-  title: string;
+  name: string;
   location: string;
-  price_per_night: number;
-  images: string[];
+  price: string;
+  priceValue: number;
+  images?: string[];
   rating?: number;
 }
 
@@ -24,10 +25,10 @@ export function useProperties(limit = 12, page = 1) {
         
         if (!mounted) return;
         
-        if (response.data.success) {
-          setItems(response.data.data || []);
+        if (response.data) {
+          setItems(response.data || []);
         } else {
-          console.error('Failed to fetch properties:', response.data.error);
+          console.error('Failed to fetch properties:', response.data);
         }
       } catch (error) {
         if (mounted) {

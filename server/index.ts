@@ -7,6 +7,7 @@ import messagesRoutes from './controllers/messagesController.js';
 import imageRoutes from './controllers/imageController.js';
 import mockAuthRoutes from './routes/mockAuth.js';
 import mockUserProfileRoutes from './routes/mockUserProfile.js';
+import userRoutes from './routes/users.js';
 import { supabaseServer } from './lib/supabaseServer.js';
 
 // Load environment variables
@@ -41,6 +42,7 @@ app.use('/', upiPaymentRoutes);
 app.use('/api/properties', propertiesRouter);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/images', imageRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

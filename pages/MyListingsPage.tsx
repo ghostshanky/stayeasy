@@ -1,32 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Page, Listing } from '../types';
-import { getOwnerProperties } from '../api';
+import { Page, Listing, ListingStatus } from '../types';
+import { useOwnerProperties } from '../client/src/hooks/useOwnerProperties';
+
+const convertToListing = (property: any): Listing => ({
+  id: property.id,
+  name: property.name,
+  details: property.description || 'No description available',
+  imageUrl: property.files?.[0]?.url || 'https://via.placeholder.com/400x300?text=No+Image',
+  location: property.address,
+  status: property.available ? ListingStatus.Listed : ListingStatus.Unlisted,
+  rating: 0,
+  price: `₹${property.price?.toLocaleString() || '0'}`,
+  priceValue: property.price || 0
+});
 import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
 import OwnerListingsTable from '../components/owner/OwnerListingsTable';
 
 const MyListingsPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+    const { items: properties, loading, error } = useOwnerProperties();
     const [listings, setListings] = useState<Listing[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchListings = async () => {
-            try {
-                setLoading(true);
-                const listingsData = await getOwnerProperties();
-                setListings(listingsData);
-                setError(null);
-            } catch (err) {
-                console.error("Failed to fetch listings:", err);
-                setError("Could not load listings. Please try again later.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchListings();
-    }, []);
+        if (properties) {
+            const convertedListings = properties.map(convertToListing);
+            setListings(convertedListings);
+        }
+    }, [properties]);
 
     return (
         <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
@@ -42,7 +42,16 @@ const MyListingsPage = ({ navigate }: { navigate: (page: Page) => void }) => {
                     {loading && <div className="text-center py-10">Loading listings...</div>}
                     {error && <div className="text-center py-10 text-error">{error}</div>}
                     {!loading && !error && (
-                        <OwnerListingsTable listings={listings} />
+                        <OwnerListingsTable
+                            listings={listings}
+                            onEdit={(id) => console.log('Edit listing:', id)}
+                            onDelete={(id) => {
+                                if (confirm('Are you sure you want to delete this listing?')) {
+                                    console.log('Delete listing:', id);
+                                }
+                            }}
+                            onToggleStatus={(id) => console.log('Toggle status:', id)}
+                        />
                     )}
                 </div>
             </main>

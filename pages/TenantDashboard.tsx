@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { Page, Booking } from '../types';
 import SideNavBar from '../components/SideNavBar';
-import Header from '../components/Header';
 import { supabase } from '../client/src/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+
+interface StatCardData {
+  title: string;
+  value: string;
+  change?: string;
+  changeDirection?: 'increase' | 'decrease';
+  icon: string;
+  color: string;
+}
 
 const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) => void }) => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState('User');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' or 'messages'
+  const [user, setUser] = useState<any>(null);
+
+  interface UserProfile {
+    full_name?: string;
+  }
 
   useEffect(() => {
     fetchUserData();
@@ -20,8 +32,22 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
   const fetchUserData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
       if (user) {
-        setUserName(user.email?.split('@')[0] || 'User');
+        // Fetch user profile from the database to get the actual name
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+          // Fallback to email-based name if profile not found
+          setUserName(user.email?.split('@')[0] || 'User');
+        } else {
+          setUserName((profile as any)?.full_name || user.email?.split('@')[0] || 'User');
+        }
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -42,7 +68,8 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
               id,
               title,
               location,
-              images
+              images,
+              price
             )
           `)
           .eq('tenant_id', user.id)
@@ -63,8 +90,7 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
 
   const handlePayment = async (bookingId: string) => {
     try {
-      // Navigate to payment page
-      navigate('confirmAndPay');
+      pageNavigate('confirmAndPay');
     } catch (error) {
       console.error('Error navigating to payment:', error);
       alert('Failed to process payment. Please try again.');
@@ -73,8 +99,7 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
 
   const handleChat = async (propertyId: string, ownerId: string) => {
     try {
-      // Navigate to messages page
-      navigate('messages');
+      pageNavigate('messages');
     } catch (error) {
       console.error('Error opening chat:', error);
       alert('Failed to open chat. Please try again.');
@@ -110,8 +135,71 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
     return bookings.filter(booking => new Date(booking.check_out) < now);
   };
 
+  const getTotalSpent = () => {
+    return bookings
+      .filter(booking => booking.status === 'COMPLETED')
+      .reduce((total, booking) => {
+        const price = booking.properties?.price || 0;
+        return total + price;
+      }, 0);
+  };
+
+  const getQuickActions = () => [
+    {
+      title: 'Search Properties',
+      description: 'Find your perfect stay',
+      icon: 'search',
+      action: () => pageNavigate('searchResults')
+    },
+    {
+      title: 'View Bookings',
+      description: 'Manage your reservations',
+      icon: 'calendar_month',
+      action: () => pageNavigate('bookings')
+    },
+    {
+      title: 'Make Payment',
+      description: 'Pay for upcoming stays',
+      icon: 'payments',
+      action: () => pageNavigate('payments')
+    },
+    {
+      title: 'Send Message',
+      description: 'Chat with property owners',
+      icon: 'chat',
+      action: () => pageNavigate('messages')
+    }
+  ];
+
+  const stats: StatCardData[] = [
+    {
+      title: 'Total Stays',
+      value: bookings.length.toString(),
+      icon: 'hotel',
+      color: 'text-blue-600'
+    },
+    {
+      title: 'Upcoming',
+      value: getUpcomingBookings().length.toString(),
+      icon: 'event_upcoming',
+      color: 'text-green-600'
+    },
+    {
+      title: 'Current',
+      value: getCurrentBookings().length.toString(),
+      icon: 'today',
+      color: 'text-purple-600'
+    },
+    {
+      title: 'Total Spent',
+      value: `₹${getTotalSpent().toLocaleString()}`,
+      icon: 'payments',
+      color: 'text-orange-600'
+    }
+  ];
+
   const renderBookingCard = (booking: Booking) => (
-    <div key={booking.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+    <div key={booking.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
       <div className="flex gap-4">
         <div className="flex-shrink-0">
           <img
@@ -173,75 +261,107 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
       <SideNavBar onNavigate={pageNavigate} />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
-          <Header userName={userName} />
-          
-          {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-            <button
-              onClick={() => setActiveTab('bookings')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'bookings' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-            >
-              My Bookings
-            </button>
-            <button
-              onClick={() => setActiveTab('messages')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'messages' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-            >
-              Messages
-            </button>
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Welcome back, {userName}! 👋
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Here's what's happening with your stays today
+            </p>
           </div>
-          
-          {activeTab === 'bookings' ? (
-            <div className="space-y-6">
-              {/* Upcoming Bookings */}
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Upcoming Stays</h2>
-                {getUpcomingBookings().length > 0 ? (
-                  <div className="space-y-4">
-                    {getUpcomingBookings().map(renderBookingCard)}
-                  </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                    <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
-                  </div>
-                )}
-              </div>
 
-              {/* Current Bookings */}
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Current Stay</h2>
-                {getCurrentBookings().length > 0 ? (
-                  <div className="space-y-4">
-                    {getCurrentBookings().map(renderBookingCard)}
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
                   </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                    <p className="text-gray-500 dark:text-gray-400">No active bookings</p>
+                  <div className={`p-3 rounded-lg bg-gray-100 dark:bg-gray-700`}>
+                    <span className="material-symbols-outlined text-2xl" style={{ color: stat.color }}>
+                      {stat.icon}
+                    </span>
                   </div>
-                )}
+                </div>
               </div>
+            ))}
+          </div>
 
-              {/* Past Bookings */}
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Past Stays</h2>
-                {getPastBookings().length > 0 ? (
-                  <div className="space-y-4">
-                    {getPastBookings().map(renderBookingCard)}
+          {/* Quick Actions */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {getQuickActions().map((action, index) => (
+                <button
+                  key={index}
+                  onClick={action.action}
+                  className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-all hover:scale-105 text-left"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="material-symbols-outlined text-2xl text-primary">
+                      {action.icon}
+                    </span>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">{action.title}</h3>
                   </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                    <p className="text-gray-500 dark:text-gray-400">No past bookings</p>
-                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Bookings */}
+          <div className="space-y-6">
+            {/* Upcoming Bookings */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Upcoming Stays</h2>
+                <button 
+                  onClick={() => pageNavigate('bookings')}
+                  className="text-primary hover:text-primary/80 text-sm font-medium"
+                >
+                  View All →
+                </button>
+              </div>
+              {getUpcomingBookings().length > 0 ? (
+                <div className="space-y-4">
+                  {getUpcomingBookings().slice(0, 2).map(renderBookingCard)}
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                  <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_upcoming</span>
+                  <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
+                </div>
+              )}
+            </div>
+
+            {/* Current Bookings */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Current Stay</h2>
+                {getCurrentBookings().length > 0 && (
+                  <button 
+                    onClick={() => pageNavigate('bookings')}
+                    className="text-primary hover:text-primary/80 text-sm font-medium"
+                  >
+                    View All →
+                  </button>
                 )}
               </div>
+              {getCurrentBookings().length > 0 ? (
+                <div className="space-y-4">
+                  {getCurrentBookings().slice(0, 1).map(renderBookingCard)}
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                  <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">today</span>
+                  <p className="text-gray-500 dark:text-gray-400">No active bookings</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                <p>Messages interface would be implemented here</p>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </main>
     </div>

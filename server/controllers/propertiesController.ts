@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { supabaseServer } from '../lib/supabaseServer.js';
 import { AuditLogger } from '../audit-logger.js';
+import { MockPropertiesController } from './mockPropertiesController.js';
 
 export class PropertiesController {
   // Get all properties with filtering and pagination
@@ -110,6 +111,16 @@ export class PropertiesController {
           success: false,
           error: { code: 'VALIDATION_ERROR', message: 'Missing required fields.' }
         });
+      }
+
+      // Check if we should use mock data
+      const useMockData = process.env.MOCK_AUTH === 'true' ||
+                         !process.env.SUPABASE_URL ||
+                         !process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (useMockData) {
+        console.log('🔄 Using mock properties controller for createProperty');
+        return MockPropertiesController.createProperty(req, res);
       }
 
       // Insert property
@@ -268,6 +279,16 @@ export class PropertiesController {
           success: false,
           error: { code: 'VALIDATION_ERROR', message: 'Missing ownerId parameter.' }
         });
+      }
+
+      // Check if we should use mock data
+      const useMockData = process.env.MOCK_AUTH === 'true' ||
+                         !process.env.SUPABASE_URL ||
+                         !process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (useMockData) {
+        console.log('🔄 Using mock properties controller for getOwnerProperties');
+        return MockPropertiesController.getOwnerProperties(req, res);
       }
 
       const offset = (page - 1) * limit;

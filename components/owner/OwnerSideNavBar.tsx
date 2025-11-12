@@ -42,9 +42,9 @@ const OwnerSideNavBar: React.FC<OwnerSideNavBarProps> = ({ onNavigate }) => {
     email: 'alex@example.com',
     name: 'Alex Chen',
     role: 'OWNER' as const,
-    avatar_url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBCww12N-2nPUNW7Vji6RkWmDdh9cAneatYcHKdwW0EhJ1FB9M58r70mSUGzmzBA6GyjsdkQsZ1bGKTEk9D_SibO_HzfdfL_8LcG9a_XSaKoS6n1r-9qIeU5C8b4qlC3m6cFL7EpKsrqQQypMrJr6vqumO7TBcHJnMHIVDJBoCiuOzXmrjIK_-Dkwu2-Us_amVBha6dQXaiFoggOibGhI5eLN3BiRyuG1i_aXkTKQLHEU3MSwS1AAqO4Ou9bhjhGI34P6xdUUMW_kw',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    avatar_url: '/default_profile_pic.jpg',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
 
   return (

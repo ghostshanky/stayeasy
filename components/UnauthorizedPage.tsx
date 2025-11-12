@@ -1,8 +1,53 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { apiClient } from '../client/src/api/apiClient';
+import { showToast } from '../client/src/lib/toast';
 
 export default function UnauthorizedPage() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isChangingRole, setIsChangingRole] = useState(false);
+
+  const handleBecomeHost = async () => {
+    try {
+      setIsChangingRole(true);
+      
+      // Get the current user's access token
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        showToast.error('Please login first to become a host');
+        navigate('/auth');
+        return;
+      }
+
+      // Set the token in the API client
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      // Call the backend API to update user role to OWNER
+      const response = await apiClient.patch('/auth/me/role', { role: 'OWNER' });
+
+      if (response.data.success) {
+        showToast.success('Congratulations! You are now a host. Redirecting to owner dashboard...');
+        
+        // Clear any existing tokens and redirect to owner dashboard
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        delete apiClient.defaults.headers.common['Authorization'];
+        
+        // Redirect to owner dashboard after a short delay
+        setTimeout(() => {
+          navigate('/dashboard/owner');
+        }, 2000);
+      } else {
+        throw new Error(response.data.error?.message || 'Failed to update role');
+      }
+    } catch (error: any) {
+      console.error('Error becoming host:', error);
+      showToast.error(error.response?.data?.error?.message || 'Failed to become a host. Please try again.');
+    } finally {
+      setIsChangingRole(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
@@ -47,6 +92,22 @@ export default function UnauthorizedPage() {
             >
               Login with Different Account
             </Link>
+            {location.state?.requiredRole === 'OWNER' && (
+              <button
+                onClick={handleBecomeHost}
+                disabled={isChangingRole}
+                className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              >
+                {isChangingRole ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Processing...
+                  </>
+                ) : (
+                  'Become a Host'
+                )}
+              </button>
+            )}
           </div>
 
           {location.state?.from && (
