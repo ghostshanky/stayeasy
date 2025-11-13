@@ -19,7 +19,7 @@ export default {
   },
   testEnvironmentOptions: {
     env: {
-      DATABASE_URL: 'postgresql://postgres:Stayeasy@123@db.rrcorcikdfxpdwvinotl.supabase.co:5432/postgres',
+      DATABASE_URL: 'postgresql://postgres:Stayeasy%40123@db.rrcorcikdfxpdwvinotl.supabase.co:5432/postgres',
     },
   },
 }

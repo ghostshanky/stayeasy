@@ -1,8 +1,9 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { DarkModeProvider } from './client/src/contexts/DarkModeContext';
 import { AuthProvider } from './client/src/hooks/useAuth';
+import { IKContext } from 'imagekitio-react';
 
 // Page Components
 import AboutUsPage from './pages/AboutUsPage';
@@ -25,6 +26,13 @@ import UnauthorizedPage from './components/UnauthorizedPage';
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Owner-specific pages
+import OwnerSettingsPage from './pages/OwnerSettingsPage';
+import OwnerBookingsPage from './pages/OwnerBookingsPage';
+import OwnerPaymentsPage from './pages/OwnerPaymentsPage';
+import OwnerMessagesPage from './pages/OwnerMessagesPage';
+import AddPropertyForm from './components/owner/AddPropertyForm';
+
 export const StayEasyLogo = () => (
     <div className="size-7 text-primary">
         <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="400.000000pt" height="40.000000pt" viewBox="0 0 185.000000 191.000000" preserveAspectRatio="xMidYMid meet">
@@ -44,17 +52,32 @@ function App() {
     return (
         <DarkModeProvider>
             <AuthProvider>
-                <div className="flex flex-col min-h-screen">
-                    <Header />
-                    <main className="flex-grow">
+                <IKContext
+                    publicKey="public_ZU8QLVtBgQjYo0RCbhQml7bZ3+A="
+                    urlEndpoint="https://ik.imagekit.io/Shanky"
+                    transformationPosition="path"
+                    authenticator={async () => {
+                        try {
+                            const response = await fetch('/api/imagekit/auth');
+                            const data = await response.json();
+                            return data;
+                        } catch (error) {
+                            console.error('ImageKit auth error:', error);
+                            return {};
+                        }
+                    }}
+                >
+                    <div className="flex flex-col min-h-screen">
+                        <Header />
+                        <main className="flex-grow">
                         <Routes>
                             {/* Public Routes */}
                             <Route path="/" element={<LandingPage />} />
                             <Route path="/about" element={<AboutUsPage />} />
                             <Route path="/help" element={<HelpPage />} />
-                            <Route path="/search" element={<SearchResultsPage navigate={() => {}} />} />
-                            <Route path="/property/:id" element={<PropertyDetailsPage navigate={() => {}} />} />
-                            <Route path="/confirm" element={<ConfirmAndPayPage navigate={() => {}} />} />
+                            <Route path="/search" element={<SearchResultsPage />} />
+                            <Route path="/property/:id" element={<PropertyDetailsPage />} />
+                            <Route path="/confirm" element={<ConfirmAndPayPage />} />
                             <Route path="/auth" element={<AuthPage />} />
                             
                             {/* Unauthorized Page */}
@@ -68,41 +91,41 @@ function App() {
                             } />
                             <Route path="/bookings" element={
                                 <ProtectedRoute>
-                                    <BookingsPage navigate={() => {}} />
+                                    <BookingsPage />
                                 </ProtectedRoute>
                             } />
                             <Route path="/payments" element={
                                 <ProtectedRoute>
-                                    <PaymentsPage navigate={() => {}} />
+                                    <PaymentsPage />
                                 </ProtectedRoute>
                             } />
                             <Route path="/messages" element={
                                 <ProtectedRoute>
-                                    <MessagesPage navigate={() => {}} />
+                                    <MessagesPage />
                                 </ProtectedRoute>
                             } />
                             <Route path="/verify-payment" element={
                                 <ProtectedRoute>
-                                    <PaymentVerificationPage navigate={() => {}} />
+                                    <PaymentVerificationPage />
                                 </ProtectedRoute>
                             } />
                             
                             {/* Owner Routes (require OWNER role) */}
                             <Route path="/dashboard/owner" element={
                                 <ProtectedRoute requiredRoles={['OWNER']}>
-                                    <OwnerDashboard navigate={() => {}} />
+                                    <OwnerDashboard />
                                 </ProtectedRoute>
                             } />
                             <Route path="/my-listings" element={
                                 <ProtectedRoute requiredRoles={['OWNER']}>
-                                    <MyListingsPage navigate={() => {}} />
+                                    <MyListingsPage />
                                 </ProtectedRoute>
                             } />
                             
-                            {/* Tenant Routes (require TENANT role) */}
+                            {/* Tenant Routes (require TENANT or OWNER role) */}
                             <Route path="/dashboard/tenant" element={
-                                <ProtectedRoute requiredRoles={['TENANT']}>
-                                    <TenantDashboard navigate={() => {}} />
+                                <ProtectedRoute requiredRoles={['TENANT', 'OWNER']}>
+                                    <TenantDashboard />
                                 </ProtectedRoute>
                             } />
                             
@@ -115,6 +138,33 @@ function App() {
                             <Route path="/admin-dashboard/*" element={
                                 <ProtectedRoute requiredRoles={['ADMIN']}>
                                     <Navigate to="/admin-dashboard" replace />
+                                </ProtectedRoute>
+                            } />
+
+                            {/* Owner Routes */}
+                            <Route path="/dashboard/owner/settings" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <OwnerSettingsPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/dashboard/owner/bookings" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <OwnerBookingsPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/dashboard/owner/payments" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <OwnerPaymentsPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/dashboard/owner/messages" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <OwnerMessagesPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/owner/add-property" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <AddPropertyWrapper />
                                 </ProtectedRoute>
                             } />
                             
@@ -142,9 +192,30 @@ function App() {
                             },
                         }}
                     />
-                </div>
+                    </div>
+                </IKContext>
             </AuthProvider>
         </DarkModeProvider>
+    );
+}
+
+// Wrapper component for AddPropertyForm with proper props
+const AddPropertyWrapper: React.FC = () => {
+    const navigate = useNavigate();
+    
+    const handlePropertyAdded = () => {
+        navigate('/dashboard/owner');
+    };
+    
+    const handleCancel = () => {
+        navigate('/dashboard/owner');
+    };
+    
+    return (
+        <AddPropertyForm
+            onPropertyAdded={handlePropertyAdded}
+            onCancel={handleCancel}
+        />
     );
 }
 

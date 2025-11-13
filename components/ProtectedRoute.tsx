@@ -41,22 +41,32 @@ export default function ProtectedRoute({
         }
 
         // Set the token in the API client
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        apiClient.getDefaults().headers.common['Authorization'] = `Bearer ${token}`;
 
+        console.log('🔍 [ProtectedRoute] Making request to /auth/me');
+        
         // Verify user is authenticated by calling /auth/me endpoint
         const response = await apiClient.get('/auth/me');
         
-        if (!response.data.success) {
+        console.log('🔍 [ProtectedRoute] /auth/me response:', {
+          success: response.success,
+          hasData: !!response.data,
+          hasUser: !!response.data?.user,
+          userKeys: response.data?.user ? Object.keys(response.data.user) : []
+        });
+
+        if (!response.success || !response.data?.user) {
+          console.error('❌ [ProtectedRoute] Authentication failed:', response);
           setIsAuthenticated(false);
           setLoading(false);
           return;
         }
 
         const userData: User = {
-          id: response.data.data.user.id,
-          email: response.data.data.user.email,
-          name: response.data.data.user.name,
-          role: response.data.data.user.role,
+          id: response.data.user.id,
+          email: response.data.user.email,
+          name: response.data.user.name,
+          role: response.data.user.role,
         };
 
         setUser(userData);
@@ -70,12 +80,12 @@ export default function ProtectedRoute({
           setIsAuthorized(false);
         }
       } catch (error: any) {
-        console.error('Auth check error:', error);
+        console.error('❌ [ProtectedRoute] Auth check error:', error);
         if (error.response?.status === 401) {
           // Token is invalid or expired
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
-          delete apiClient.defaults.headers.common['Authorization'];
+          delete apiClient.getDefaults().headers.common['Authorization'];
         }
         showToast.error('Authentication check failed. Please login again.');
         setIsAuthenticated(false);

@@ -15,9 +15,12 @@ import reviewsRoutes from './routes/reviews.js'
 import invoicesRoutes from './routes/invoices.js'
 import adminRoutes from './routes/admin.js'
 import imagekitRoutes from './routes/imagekit.js'
+import imageController from './controllers/imageController.js'
 import userRoutes from './routes/users.js'
+import messagesRoutes from './routes/messages.js'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseServer } from './lib/supabaseServer.js'
+import { PropertiesController } from './controllers/propertiesController.js'
 
 // Client-side Supabase client (for public operations)
 // const supabaseUrl = process.env.SUPABASE_URL || 'https://test.supabase.co'
@@ -41,14 +44,20 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     
     // Get allowed origins from environment variable or use defaults
-    const frontendUrls = process.env.FRONTEND_URL 
+    const frontendUrls = process.env.FRONTEND_URL
       ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-      : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'];
+      : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5176'];
+    
+    // Debug: Log CORS request
+    console.log(`🔍 [CORS] Request from origin: ${origin}`);
+    console.log(`🔍 [CORS] Allowed origins: ${frontendUrls.join(', ')}`);
     
     // Check if the origin is in our allowed list
     if (frontendUrls.indexOf(origin) !== -1) {
+      console.log(`✅ [CORS] Allowing request from: ${origin}`);
       callback(null, true);
     } else {
+      console.log(`❌ [CORS] Blocking request from: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -71,23 +80,35 @@ declare global {
 const authMiddleware = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('🔍 [Auth Middleware] No authorization header found')
     return next()
   }
 
   const token = authHeader.substring(7)
+  console.log('🔍 [Auth Middleware] Token received (first 20 chars):', token.substring(0, 20) + '...')
 
   // Check if we should use mock authentication
   const useMockAuth = process.env.MOCK_AUTH === 'true' ||
                      !process.env.SUPABASE_URL ||
                      !process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  const user = useMockAuth
-    ? await MockAuthService.validateSession(token)
-    : await AuthService.validateSession(token)
+  console.log('🔍 [Auth Middleware] Using mock auth:', useMockAuth)
 
-  if (user) {
-    req.currentUser = user
+  try {
+    const user = useMockAuth
+      ? await MockAuthService.validateSession(token)
+      : await AuthService.validateSession(token)
+
+    if (user) {
+      console.log('✅ [Auth Middleware] User authenticated:', user.email)
+      req.currentUser = user
+    } else {
+      console.log('❌ [Auth Middleware] Token validation failed')
+    }
+  } catch (error) {
+    console.error('❌ [Auth Middleware] Token validation error:', error)
   }
+
   next()
 }
 
@@ -115,123 +136,12 @@ app.use('/api', reviewsRoutes)
 app.use('/api', invoicesRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/imagekit', imagekitRoutes)
+app.use('/api/images', imageController)
 app.use('/api/users', userRoutes)
+app.use('/api/messages', messagesRoutes)
 
-// Public properties endpoint (no auth required)
-app.get('/api/properties', async (req, res) => {
-  try {
-    // Try to fetch from Supabase first
-    const { data, error } = await supabase
-      .from('properties')
-      .select('*')
-      .eq('available', true)
-      .limit(20);
-
-    if (error || !data) {
-      console.error('Error fetching properties from Supabase:', error);
-      // Fallback to mock data if database access fails
-      const mockProperties = [
-        {
-          id: '1',
-          name: 'Cozy Shared Room near University',
-          location: 'Koramangala, Bangalore',
-          price: '₹8,500',
-          priceValue: 8500,
-          rating: 4.8,
-          imageUrl: 'https://via.placeholder.com/400x300?text=Property+1',
-          status: 'Listed',
-          details: 'Shared room with high-speed internet, 24/7 security, and access to common areas. Perfect for students and young professionals.',
-          owner: { name: 'John Doe', email: 'john@example.com' }
-        },
-        {
-          id: '2',
-          name: 'Modern PG for Professionals',
-          location: 'Hiranandani, Mumbai',
-          price: '₹15,000',
-          priceValue: 15000,
-          rating: 4.5,
-          imageUrl: 'https://via.placeholder.com/400x300?text=Property+2',
-          status: 'Listed',
-          details: 'Private room in a modern PG with gym, swimming pool, and cafeteria. Ideal for working professionals.',
-          owner: { name: 'Jane Smith', email: 'jane@example.com' }
-        },
-        {
-          id: '3',
-          name: 'Student Hub Downtown',
-          location: 'FC Road, Pune',
-          price: '₹7,200',
-          priceValue: 7200,
-          rating: 4.6,
-          imageUrl: 'https://via.placeholder.com/400x300?text=Property+3',
-          status: 'Listed',
-          details: 'Student-friendly accommodation with study areas, laundry facilities, and mess service.',
-          owner: { name: 'Raj Patel', email: 'raj@example.com' }
-        },
-        {
-          id: '4',
-          name: 'The Executive Stay',
-          location: 'Cyber City, Gurgaon',
-          price: '₹22,500',
-          priceValue: 22500,
-          rating: 4.9,
-          imageUrl: 'https://via.placeholder.com/400x300?text=Property+4',
-          status: 'Listed',
-          details: 'Luxury private room with premium amenities, concierge service, and access to business center.',
-          owner: { name: 'Sarah Johnson', email: 'sarah@example.com' }
-        }
-      ];
-      
-      return res.json(mockProperties);
-    }
-
-    // If database query succeeds, process the data
-    const properties = data.map((property: any) => ({
-      id: property.id,
-      name: property.name,
-      location: property.address,
-      price: `₹${property.price?.toLocaleString() || '0'}`,
-      priceValue: property.price || 0,
-      rating: 0, // Skip reviews for now
-      imageUrl: 'https://via.placeholder.com/400x300?text=No+Image',
-      status: property.available ? 'Listed' : 'Unlisted',
-      details: property.description || 'No description available',
-      owner: property.owner
-    }));
-
-    res.json(properties);
-  } catch (error) {
-    console.error('Failed to fetch properties:', error);
-    // Return mock data as fallback
-    const fallbackProperties = [
-      {
-        id: '1',
-        name: 'Cozy Shared Room near University',
-        location: 'Koramangala, Bangalore',
-        price: '₹8,500',
-        priceValue: 8500,
-        rating: 4.8,
-        imageUrl: 'https://via.placeholder.com/400x300?text=Property+1',
-        status: 'Listed',
-        details: 'Shared room with high-speed internet, 24/7 security, and access to common areas. Perfect for students and young professionals.',
-        owner: { name: 'John Doe', email: 'john@example.com' }
-      },
-      {
-        id: '2',
-        name: 'Modern PG for Professionals',
-        location: 'Hiranandani, Mumbai',
-        price: '₹15,000',
-        priceValue: 15000,
-        rating: 4.5,
-        imageUrl: 'https://via.placeholder.com/400x300?text=Property+2',
-        status: 'Listed',
-        details: 'Private room in a modern PG with gym, swimming pool, and cafeteria. Ideal for working professionals.',
-        owner: { name: 'Jane Smith', email: 'jane@example.com' }
-      }
-    ];
-    
-    res.json(fallbackProperties);
-  }
-});
+// Public properties endpoint (no auth required) - uses PropertiesController for proper filtering
+app.get('/api/properties', PropertiesController.getProperties);
 
 // Auth routes with fallback to mock authentication
 app.post('/api/auth/signup', async (req, res) => {
@@ -242,7 +152,9 @@ app.post('/api/auth/signup', async (req, res) => {
     // Use MOCK_AUTH=true in .env to force mock mode
     const useMockAuth = process.env.MOCK_AUTH === 'true' ||
                        !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY
+                       !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+                       process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
+                       process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
     
     // DIAGNOSTIC: Log environment status
     console.log('🔍 [Server] Environment Status Check:')
@@ -420,12 +332,22 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
 })
 
 app.get('/api/auth/me', (req, res) => {
+  console.log('🔍 [Auth Me] Current user check:', {
+    hasCurrentUser: !!req.currentUser,
+    userEmail: req.currentUser?.email,
+    userId: req.currentUser?.id,
+    userRole: req.currentUser?.role
+  })
+
   if (!req.currentUser) {
+    console.log('❌ [Auth Me] No current user found, returning 401')
     return res.status(401).json({
       success: false,
       error: { code: 'NOT_AUTHENTICATED', message: 'Not authenticated' }
     })
   }
+
+  console.log('✅ [Auth Me] User profile found, returning 200')
   res.json({
     success: true,
     data: {
@@ -439,6 +361,88 @@ app.get('/api/auth/me', (req, res) => {
   })
 })
 
+// Update user role endpoint
+app.patch('/api/auth/me/role', async (req, res) => {
+  try {
+    if (!req.currentUser) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'NOT_AUTHENTICATED', message: 'Not authenticated' }
+      })
+    }
+
+    const { role } = req.body;
+    
+    if (!role || !['TENANT', 'OWNER', 'ADMIN'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_ROLE', message: 'Invalid role specified' }
+      })
+    }
+
+    // Check if we should use mock authentication
+    const useMockAuth = process.env.MOCK_AUTH === 'true' ||
+                       !process.env.SUPABASE_URL ||
+                       !process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    let updatedUser;
+    
+    if (useMockAuth) {
+      // Update user in mock array
+      const userIndex = mockUsers.findIndex(u => u.id === req.currentUser!.id);
+      if (userIndex !== -1) {
+        mockUsers[userIndex].role = role as 'TENANT' | 'OWNER' | 'ADMIN';
+        updatedUser = mockUsers[userIndex];
+      } else {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'USER_NOT_FOUND', message: 'User not found' }
+        })
+      }
+    } else {
+      // Update user in Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .update({ role })
+        .eq('id', req.currentUser.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating user role:', error);
+        return res.status(500).json({
+          success: false,
+          error: { code: 'ROLE_UPDATE_FAILED', message: 'Failed to update user role' }
+        })
+      }
+
+      updatedUser = data;
+    }
+
+    console.log(`✅ User role updated: ${req.currentUser.email} -> ${role}`);
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          role: updatedUser.role,
+        }
+      },
+      message: `Role successfully updated to ${role}`
+    })
+
+  } catch (error: any) {
+    console.error('Error updating user role:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+    })
+  }
+})
+
 // Protected route example
 app.get('/api/protected', (req, res) => {
   if (!req.currentUser) {
@@ -449,7 +453,15 @@ app.get('/api/protected', (req, res) => {
 
 // Error handling middleware
 app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', error)
+  console.error('❌ [Server Error]:', {
+    error: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+    body: req.body,
+    params: req.params,
+    query: req.query
+  })
   res.status(error.status || 500).json({
     success: false,
     error: {
@@ -459,10 +471,23 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
   })
 })
 
+// 404 handler
+app.use((req, res) => {
+  console.log(`❌ [404] Route not found: ${req.method} ${req.url}`)
+  res.status(404).json({
+    success: false,
+    error: {
+      code: 'NOT_FOUND',
+      message: `Route ${req.method} ${req.url} not found`
+    }
+  })
+})
+
 server.listen(PORT, () => {
   console.log(`🚀 StayEasy API Server running on port ${PORT}`)
   console.log(`📱 Health check: http://localhost:${PORT}/api/health`)
   console.log(`💬 WebSocket chat service initialized`)
+  console.log(`🔧 CORS configured for origins: ${process.env.FRONTEND_URL || 'http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5176'}`)
 })
 
 // Handle EADDRINUSE error

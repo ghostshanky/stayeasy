@@ -19,9 +19,9 @@ export class MockPropertiesController {
       created_at: new Date('2024-01-15').toISOString(),
       updated_at: new Date('2024-01-15').toISOString(),
       owner: {
-        id: 'owner1',
-        name: 'John Doe',
-        email: 'john@example.com'
+        id: '9ded7505-6e98-4da6-9781-ae10f7be290f',
+        name: 'Owner Example',
+        email: 'owner@example.com'
       }
     },
     {
@@ -179,10 +179,10 @@ export class MockPropertiesController {
   // Create new property (owner only)
   static async createProperty(req: Request, res: Response) {
     try {
-      const { title, description, location, price_per_night, amenities, ownerId } = req.body;
+      const { title, description, location, price_per_night, capacity, amenities, ownerId } = req.body;
 
       // Validate required fields
-      if (!title || !location || !price_per_night || !ownerId) {
+      if (!title || !location || !price_per_night || !capacity || !ownerId) {
         return res.status(400).json({
           success: false,
           error: { code: 'VALIDATION_ERROR', message: 'Missing required fields.' }
@@ -196,6 +196,7 @@ export class MockPropertiesController {
         description,
         location,
         price_per_night: parseInt(price_per_night),
+        capacity: parseInt(capacity),
         rating: 0,
         images: [],
         amenities: amenities || [],

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create a test-specific API client instance
 const testApiClient = axios.create({
-  baseURL: process.env.TEST_API_URL || 'http://localhost:3002/api',
+  baseURL: process.env.TEST_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   }

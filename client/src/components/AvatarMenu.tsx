@@ -9,8 +9,9 @@ interface User {
   role: 'TENANT' | 'OWNER' | 'ADMIN';
   phone?: string;
   avatar_url?: string;
-  created_at: string;
-  updated_at: string;
+  image_id?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface AvatarMenuProps {
@@ -54,15 +55,30 @@ export default function AvatarMenu({ user }: AvatarMenuProps) {
   return (
     <div ref={menuRef} className="relative inline-block">
       <button type="button" onClick={onAvatarClick} aria-haspopup="true" aria-expanded={open}>
-        <img src={user?.avatar_url || "/default-avatar.png"} alt="avatar" className="w-10 h-10 rounded-full" />
+        <img
+          src={user?.image_id ? `https://ik.imagekit.io/Shanky/profiles/${user.image_id}.png` : "/default_profile_pic.jpg"}
+          alt="avatar"
+          className="w-10 h-10 rounded-full object-cover"
+        />
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-lg z-50">
-          <div className="p-2">
-            <button onClick={() => navigate("/profile")} className="w-full text-left py-2">Profile</button>
-            <button onClick={() => navigate("/messages")} className="w-full text-left py-2">Messages</button>
+          <div className="p-3">
+            <div className="flex items-center gap-3 mb-3 pb-3 border-b">
+              <img
+                src={user?.image_id ? `https://ik.imagekit.io/Shanky/profiles/${user.image_id}.png` : "/default_profile_pic.jpg"}
+                alt="profile"
+                className="w-12 h-12 rounded-full object-cover"
+              />
+              <div>
+                <p className="font-medium text-gray-900">{user?.name || 'User'}</p>
+                <p className="text-sm text-gray-500">{user?.email}</p>
+              </div>
+            </div>
+            <button onClick={() => navigate("/profile")} className="w-full text-left py-2 text-gray-700 hover:bg-gray-100 rounded">Profile</button>
+            <button onClick={() => navigate("/messages")} className="w-full text-left py-2 text-gray-700 hover:bg-gray-100 rounded">Messages</button>
             <hr className="my-1" />
-            <button onClick={onLogout} className="w-full text-left py-2 text-red-600">Logout</button>
+            <button onClick={onLogout} className="w-full text-left py-2 text-red-600 hover:bg-red-50 rounded">Logout</button>
           </div>
         </div>
       )}

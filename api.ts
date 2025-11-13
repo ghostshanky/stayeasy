@@ -2,8 +2,8 @@
 import axios from 'axios';
 import { Listing, StatCardData, ListingStatus, StatChangeDirection } from './types';
 
-// Use environment variable or default to localhost for development
-const API_BASE_URL = 'http://localhost:3002/api';
+// Use relative path for development (will be proxied by Vite)
+const API_BASE_URL = '/api';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -15,20 +15,37 @@ const apiClient = axios.create({
 // Interceptor to add the auth token to every request if it exists
 apiClient.interceptors.request.use(config => {
     const token = localStorage.getItem('authToken');
+    console.log('🔍 [Request] Checking for token:', !!token);
+    console.log('🔍 [Request] Request URL:', config.url);
+    console.log('🔍 [Request] Request headers:', config.headers);
+    
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log('✅ [Request] Token added to headers');
+    } else {
+        console.log('⚠️ [Request] No token found in localStorage');
     }
     return config;
 });
 
 // Response interceptor to handle unauthorized errors
 apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
+    (response) => {
+        console.log('✅ [Response] Success:', response.status, response.config.url);
+        return response;
+    },
+    (error: any) => {
+        console.log('❌ [Response] Error:', error.response?.status, error.config?.url);
+        
         if (error.response && error.response.status === 401) {
+            console.log('🔄 [Response] 401 Unauthorized - clearing token and redirecting');
             // Clear auth token and redirect to login
             localStorage.removeItem('authToken');
             window.location.href = '/login';
+        } else if (error.response) {
+            console.log('❌ [Response] Other error:', error.response.status, error.response.data);
+        } else {
+            console.log('❌ [Response] Network error:', error.message);
         }
         return Promise.reject(error);
     }
@@ -41,11 +58,26 @@ apiClient.interceptors.response.use(
 
 export const loginUser = async (email: string, password: string) => {
     try {
+        console.log('🔍 [Login] Attempting login for:', email);
+        console.log('🔍 [Login] API Base URL:', apiClient.defaults.baseURL);
+        
         const response = await apiClient.post('/auth/login', { email, password });
-        localStorage.setItem('authToken', response.data.token);
+        console.log('🔍 [Login] Response received:', response.data);
+        
+        if (response.data.accessToken) {
+            localStorage.setItem('authToken', response.data.accessToken);
+            console.log('✅ [Login] Token stored successfully');
+        } else {
+            console.error('❌ [Login] No accessToken in response');
+        }
+        
         return response.data.user;
-    } catch (error) {
-        console.error('Login failed:', error);
+    } catch (error: any) {
+        console.error('❌ [Login] Failed:', error);
+        if (error.response) {
+            console.error('❌ [Login] Error response:', error.response.data);
+            console.error('❌ [Login] Error status:', error.response.status);
+        }
         throw error;
     }
 };

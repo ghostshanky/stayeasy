@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const token = localStorage.getItem('accessToken');
         if (token) {
           // Set the token in the API client
-          apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          apiClient.getDefaults().headers.common['Authorization'] = `Bearer ${token}`;
           await refreshUser();
         } else {
           setIsAuthenticated(false);
@@ -66,34 +66,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const token = localStorage.getItem('accessToken');
       if (!token) {
+        console.log('❌ [Auth] No access token found in localStorage');
         throw new Error('No access token found');
       }
 
-      // Set the token in the API client
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('🔍 [Auth] Token found (first 20 chars):', token.substring(0, 20) + '...');
 
+      // Set the token in the API client
+      apiClient.getDefaults().headers.common['Authorization'] = `Bearer ${token}`;
+
+      console.log('🔍 [Auth] Making request to /auth/me');
+      
       // Get user profile from the server
       const response = await apiClient.get('/auth/me');
       
-      if (response.data.success) {
+      console.log('🔍 [Auth] /auth/me response:', {
+        success: response.success,
+        hasData: !!response.data,
+        hasUser: !!response.data?.user,
+        userKeys: response.data?.user ? Object.keys(response.data.user) : []
+      });
+
+      if (response.success && response.data?.user) {
         const userData: User = {
-          id: response.data.data.user.id,
-          email: response.data.data.user.email,
-          name: response.data.data.user.name,
-          role: response.data.data.user.role,
+          id: response.data.user.id,
+          email: response.data.user.email,
+          name: response.data.user.name,
+          role: response.data.user.role,
         };
+        console.log('✅ [Auth] User profile updated:', userData.email);
         setUser(userData);
         setIsAuthenticated(true);
       } else {
+        console.error('❌ [Auth] Failed to get user profile:', response);
         throw new Error('Failed to get user profile');
       }
     } catch (error) {
-      console.error('User refresh error:', error);
+      console.error('❌ [Auth] User refresh error:', error);
       setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
-      delete apiClient.defaults.headers.common['Authorization'];
+      delete apiClient.getDefaults().headers.common['Authorization'];
     }
   };
 
@@ -101,21 +115,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // DIAGNOSTIC: Log client-side environment
       console.log('🔍 [Client] Login Environment Check:');
-      console.log('   - API Base URL:', apiClient.defaults.baseURL);
+      console.log('   - API Base URL:', apiClient.getConfig().baseURL);
       
       console.log('🔍 [Client] Login attempt:', { email });
 
       const response = await apiClient.post('/auth/login', { email, password });
       
       console.log('🔍 [Client] Login response:', {
-        status: response.status,
         hasData: !!response.data,
-        success: response.data?.success,
-        hasError: !!response.data?.error
+        success: response.success,
+        hasError: !!response.error,
+        dataKeys: response.data ? Object.keys(response.data) : []
       });
 
-      if (response.data.success) {
-        const { accessToken, refreshToken, user } = response.data.data;
+      if (response.success) {
+        const { accessToken, refreshToken, user } = response.data;
         
         console.log('✅ [Client] Login successful, storing tokens');
         
@@ -124,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('refreshToken', refreshToken);
         
         // Set the token in the API client
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        apiClient.getDefaults().headers.common['Authorization'] = `Bearer ${accessToken}`;
 
         const userData: User = {
           id: user.id,
@@ -165,14 +179,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       console.log('🔍 [Client] Signup response:', {
-        status: response.status,
         hasData: !!response.data,
-        success: response.data?.success,
-        hasError: !!response.data?.error
+        success: response.success,
+        hasError: !!response.error,
+        dataKeys: response.data ? Object.keys(response.data) : []
       });
 
-      if (response.data.success) {
-        const { accessToken, refreshToken, user } = response.data.data;
+      if (response.success) {
+        const { accessToken, refreshToken, user } = response.data;
         
         console.log('✅ [Client] Signup successful, storing tokens');
         
@@ -181,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('refreshToken', refreshToken);
         
         // Set the token in the API client
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        apiClient.getDefaults().headers.common['Authorization'] = `Bearer ${accessToken}`;
 
         const userData: User = {
           id: user.id,
@@ -222,7 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear tokens
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
-      delete apiClient.defaults.headers.common['Authorization'];
+      delete apiClient.getDefaults().headers.common['Authorization'];
 
       setUser(null);
       setIsAuthenticated(false);

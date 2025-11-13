@@ -35,6 +35,25 @@ export interface Property {
   };
 }
 
+export interface Booking {
+  id: string;
+  tenant_id: string;
+  owner_id: string;
+  property_id: string;
+  check_in: string;
+  check_out: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  properties?: {
+    id: string;
+    title: string;
+    location: string;
+    images?: string[];
+    price?: number;
+  };
+}
+
 export enum StatChangeDirection {
     Increase = 'increase',
     Decrease = 'decrease',

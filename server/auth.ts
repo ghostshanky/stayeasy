@@ -72,6 +72,7 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       role: user.role,
+      iat: Math.floor(Date.now() / 1000),
     }
     return jwt.sign(payload, this.JWT_REFRESH_SECRET, { expiresIn: this.JWT_REFRESH_EXPIRES_IN })
   }
@@ -141,15 +142,19 @@ export class AuthService {
     const emailToken = this.generateEmailToken()
     console.log('✅ [AuthService.createUser] Password hashed, email token generated')
 
+    const now = new Date().toISOString()
     const { data: user, error } = await supabaseServer
       .from('users')
       .insert({
+        id: crypto.randomUUID(),
         email,
         password: hashedPassword,
         name,
         role,
-        emailToken: emailToken,
-        emailTokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        email_token: emailToken,
+        email_token_expiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        created_at: now,
+        updated_at: now,
       })
       .select()
       .single()
@@ -284,6 +289,7 @@ export class AuthService {
       const { error: sessionsError } = await supabaseServer
         .from('sessions')
         .insert({
+          id: crypto.randomUUID(),
           token: hashedRefreshToken,
           expires_at: expiresAt,
           user_id: user.id,
@@ -295,9 +301,10 @@ export class AuthService {
         const { error: refreshTokensError } = await supabaseServer
           .from('refresh_tokens')
           .insert({
+            id: crypto.randomUUID(),
             token: hashedRefreshToken,
-            expires_at: expiresAt,
-            user_id: user.id,
+            expiresAt: expiresAt,
+            userId: user.id,
             ip,
             device,
           })

@@ -193,7 +193,7 @@ const AboutUsPage = () => {
                             >
                                 <span className="material-symbols-outlined">code</span>
                                 <span className="font-medium">View on GitHub</span>
-                                <span className="material-symbols-outlined text-sm">external_link</span>
+                                <span className="material-symbols-outlined text-sm">link</span>
                             </a>
                             <a 
                                 href="https://stayeasy-alpha.vercel.app" 
@@ -203,7 +203,7 @@ const AboutUsPage = () => {
                             >
                                 <span className="material-symbols-outlined">language</span>
                                 <span className="font-medium">Live Demo</span>
-                                <span className="material-symbols-outlined text-sm">external_link</span>
+                                <span className="material-symbols-outlined text-sm">link</span>
                             </a>
                         </div>
                     </div>
