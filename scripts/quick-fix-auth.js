@@ -1,49 +1,57 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-// Initialize Supabase client with service role key
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Missing Supabase credentials in environment variables');
+// Check if Supabase credentials are available
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ Error: Missing Supabase credentials in .env file');
+  console.error('Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-async function quickFixRLS() {
-  console.log('🔧 [Quick Fix] Starting RLS permissions fix...');
+// Create Supabase client with service role key
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+console.log('🔧 Starting authentication schema fix...');
+
+// Read and execute the SQL fix
+const fs = require('fs');
+const path = require('path');
+
+try {
+  const sqlPath = path.join(__dirname, '../sql/fix-auth-schema.sql');
+  const sql = fs.readFileSync(sqlPath, 'utf8');
   
-  try {
-    // Disable RLS temporarily to allow service role access
-    console.log('🔧 [Quick Fix] Disabling RLS on users table...');
-    await supabase.from('users').select('count', { count: 'exact', head: true });
-    
-    console.log('🔧 [Quick Fix] Disabling RLS on sessions table...');
-    await supabase.from('sessions').select('count', { count: 'exact', head: true });
-    
-    console.log('🔧 [Quick Fix] Disabling RLS on audit_logs table...');
-    await supabase.from('audit_logs').select('count', { count: 'exact', head: true });
-    
-    console.log('✅ [Quick Fix] RLS disabled successfully!');
-    console.log('🎯 [Quick Fix] Try your authentication operations now.');
-    
-  } catch (error) {
-    console.error('❌ [Quick Fix] Error:', error.message);
-    console.log('💡 [Quick Fix] Alternative: Run the SQL script in Supabase dashboard');
-    console.log('📄 [Quick Fix] See: sql/fix-auth-rls.sql');
+  // Split SQL into individual statements
+  const statements = sql
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.startsWith('--') && !s.startsWith('SELECT'));
+  
+  console.log(`📝 Found ${statements.length} SQL statements to execute`);
+  
+  // Execute each statement
+  for (const statement of statements) {
+    try {
+      console.log(`🔄 Executing: ${statement.substring(0, 50)}...`);
+      const { error } = await supabase.rpc('exec_sql', { sql: statement + ';' });
+      
+      if (error) {
+        console.warn(`⚠️  Warning: ${error.message}`);
+      } else {
+        console.log(`✅ Executed successfully`);
+      }
+    } catch (err) {
+      console.warn(`⚠️  Statement failed: ${err.message}`);
+    }
   }
+  
+  console.log('✅ Authentication schema fix completed!');
+  console.log('🔐 Please try logging in again.');
+  
+} catch (error) {
+  console.error('❌ Error executing SQL fix:', error.message);
+  process.exit(1);
 }
-
-// Check if we should run the fix
-if (require.main === module) {
-  quickFixRLS();
-}
-
-module.exports = { quickFixRLS };

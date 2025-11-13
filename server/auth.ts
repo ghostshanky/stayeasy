@@ -63,7 +63,6 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       role: user.role,
-      iat: Math.floor(Date.now() / 1000),
     }
     return jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRES_IN })
   }
@@ -152,10 +151,10 @@ export class AuthService {
         password: hashedPassword,
         name,
         role,
-        emailToken: emailToken,
-        emailTokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
-        createdAt: now,
-        updatedAt: now,
+        email_token: emailToken,
+        email_token_expiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        created_at: now,
+        updated_at: now,
       })
       .select()
       .single()
@@ -176,12 +175,12 @@ export class AuthService {
       password: user.password,
       name: user.name,
       role: user.role,
-      emailVerified: user.emailVerified,
-      emailToken: user.emailToken,
-      emailTokenExpiry: user.emailTokenExpiry ? new Date(user.emailTokenExpiry) : null,
+      emailVerified: user.email_verified,
+      emailToken: user.email_token,
+      emailTokenExpiry: user.email_token_expiry ? new Date(user.email_token_expiry) : null,
       image_id: user.image_id,
-      createdAt: new Date(user.createdAt),
-      updatedAt: new Date(user.updatedAt),
+      createdAt: new Date(user.created_at),
+      updatedAt: new Date(user.updated_at),
     }
   }
 
@@ -292,8 +291,8 @@ export class AuthService {
         .insert({
           id: crypto.randomUUID(),
           token: hashedRefreshToken,
-          expiresAt: expiresAt,
-          userId: user.id,
+          expires_at: expiresAt,
+          user_id: user.id,
         })
 
       if (sessionsError) {

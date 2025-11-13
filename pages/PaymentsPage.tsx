@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
+import { useNavigate } from 'react-router-dom';
 import SideNavBar from '../components/SideNavBar';
 import { usePayments } from '../client/src/hooks/usePayments';
 import { supabase } from '../client/src/lib/supabase';
@@ -254,7 +255,8 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
   );
 };
 
-const PaymentsPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+const PaymentsPage = () => {
+    const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('history');
   const [userId, setUserId] = useState<string | null>(null);
   const [stats, setStats] = useState({

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, createContext, useContext } from 'react';
+import { useState, useCallback, useEffect, useRef, createContext, useContext, createElement } from 'react';
 
 export interface AsyncState<T> {
   data: T | null;
@@ -261,7 +261,7 @@ export function useOptimisticUpdate<T, P extends any[]>(
   const rollback = useCallback(() => {
     setOptimisticData(null);
     setIsOptimistic(false);
-    setData(null as T);
+    setData(null as any);
     setError(new Error('Operation cancelled'));
     setLoading(false);
   }, [setData, setError, setLoading]);
@@ -444,11 +444,7 @@ export function createGlobalState<T>(initialState: T) {
       setState(initialState);
     }, [initialState]);
 
-    return (
-      <Context.Provider value={{ state, setState, reset }}>
-        {children}
-      </Context.Provider>
-    );
+    return createElement(Context.Provider, { value: { state, setState, reset } }, children);
   };
 
   const useGlobalState = () => {
@@ -461,14 +457,3 @@ export function createGlobalState<T>(initialState: T) {
 
   return { Provider, useGlobalState };
 }
-
-// Export all hooks
-export {
-  useAsyncState,
-  usePaginatedData,
-  useOptimisticUpdate,
-  useDebouncedState,
-  useFormState,
-  useLocalStorageState,
-  createGlobalState,
-};

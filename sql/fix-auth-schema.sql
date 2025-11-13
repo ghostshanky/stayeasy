@@ -1,57 +1,91 @@
--- Fix authentication schema by adding missing tables and correcting column names
+-- Fix authentication schema by adding missing columns to users table
+-- This script ensures the database schema matches the Prisma schema
 
--- Add missing refresh_tokens table
-CREATE TABLE IF NOT EXISTS refresh_tokens (
-    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-    token VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    user_id VARCHAR(255) NOT NULL,
-    ip VARCHAR(45),
-    device VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- Add missing email verification columns to users table
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS email_token VARCHAR(255),
+ADD COLUMN IF NOT EXISTS email_token_expiry TIMESTAMP;
 
--- Create indexes for refresh_tokens
-CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
-CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
-CREATE INDEX IF NOT EXISTS idx_refresh_tokens_created_at ON refresh_tokens(created_at);
+-- Add missing columns to properties table (if they don't exist)
+ALTER TABLE properties 
+ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS rating DECIMAL(3,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS amenities TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS capacity INTEGER NOT NULL DEFAULT 1;
 
--- Fix column name inconsistencies by adding aliases for backward compatibility
--- The auth service expects snake_case column names
-ALTER TABLE users RENAME COLUMN emailVerified TO email_verified;
-ALTER TABLE users RENAME COLUMN emailToken TO email_token;
-ALTER TABLE users RENAME COLUMN emailTokenExpiry TO email_token_expiry;
-ALTER TABLE users RENAME COLUMN createdAt TO created_at;
-ALTER TABLE users RENAME COLUMN updatedAt TO updated_at;
+-- Add missing columns to bookings table (if they don't exist)
+ALTER TABLE bookings 
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING',
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
--- Add RLS policies for users table
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- Add missing columns to payments table (if they don't exist)
+ALTER TABLE payments 
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';
 
--- Allow public read access to users (for authentication)
-CREATE POLICY "Users are readable by authenticated users" ON users
-    FOR SELECT USING (auth.role() = 'authenticated');
+-- Add missing columns to messages table (if they don't exist)
+ALTER TABLE messages 
+ADD COLUMN IF NOT EXISTS sender_type VARCHAR(50) DEFAULT 'USER',
+ADD COLUMN IF NOT EXISTS read_at TIMESTAMP;
 
--- Allow users to insert their own data (signup)
-CREATE POLICY "Users can insert their own data" ON users
+-- Add missing columns to notifications table (if they don't exist)
+ALTER TABLE notifications 
+ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT false;
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_properties_owner_id ON properties(owner_id);
+CREATE INDEX IF NOT EXISTS idx_properties_created_at ON properties(created_at);
+CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_property_id ON bookings(property_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at);
+CREATE INDEX IF NOT EXISTS idx_payments_booking_id ON payments(booking_id);
+CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+
+-- Enable Row Level Security (RLS) on properties table if not already enabled
+ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for properties table
+-- Allow public read access to properties
+CREATE POLICY IF NOT EXISTS "Properties are viewable by everyone" ON properties
+    FOR SELECT USING (true);
+
+-- Allow authenticated users to insert properties (for owners)
+CREATE POLICY IF NOT EXISTS "Properties can be inserted by owners" ON properties
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
--- Allow users to update their own data
-CREATE POLICY "Users can update their own data" ON users
-    FOR UPDATE USING (auth.uid() = id);
+-- Allow owners to update their own properties
+CREATE POLICY IF NOT EXISTS "Owners can update their own properties" ON properties
+    FOR UPDATE USING (auth.uid() = owner_id);
 
--- Allow users to delete their own data
-CREATE POLICY "Users can delete their own data" ON users
-    FOR DELETE USING (auth.uid() = id);
+-- Allow owners to delete their own properties
+CREATE POLICY IF NOT EXISTS "Owners can delete their own properties" ON properties
+    FOR DELETE USING (auth.uid() = owner_id);
 
--- Add RLS policies for refresh_tokens table
-ALTER TABLE refresh_tokens ENABLE ROW LEVEL SECURITY;
+-- Grant necessary permissions to service role
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticator;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticator;
 
--- Allow users to manage their own refresh tokens
-CREATE POLICY "Users can manage their own refresh tokens" ON refresh_tokens
-    FOR ALL USING (auth.uid() = user_id);
+-- Grant usage on types to authenticator
+GRANT USAGE ON TYPE public.role TO authenticator;
+GRANT USAGE ON TYPE public.booking_status TO authenticator;
+GRANT USAGE ON TYPE public.payment_status TO authenticator;
 
--- Grant necessary permissions
-GRANT ALL ON users TO authenticated;
-GRANT ALL ON refresh_tokens TO authenticated;
-GRANT ALL ON refresh_tokens_id_seq TO authenticated;
+-- Verify the schema changes
+SELECT column_name, data_type, is_nullable, column_default 
+FROM information_schema.columns 
+WHERE table_name = 'users' 
+AND column_name IN ('email_verified', 'email_token', 'email_token_expiry')
+ORDER BY ordinal_position;
+
+-- Display success message
+SELECT '✅ Authentication schema fix completed successfully!' as status;

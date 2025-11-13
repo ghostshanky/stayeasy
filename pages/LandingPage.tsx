@@ -12,8 +12,7 @@ const LandingPage = () => {
     const [priceRange, setPriceRange] = useState('');
     const [showStayTypeDropdown, setShowStayTypeDropdown] = useState(false);
     const [showPriceRangeDropdown, setShowPriceRangeDropdown] = useState(false);
-    const { items: topProperties, loading } = useProperties(6, 1);
-    const [error, setError] = useState<string | null>(null);
+    const { items: topProperties, loading, error } = useProperties(6, 1);
 
     const stayTypeOptions = ['Hostel', 'PG', 'Co-living'];
     const priceRangeOptions = ['Under ₹5,000', '₹5,000 - ₹10,000', '₹10,000 - ₹15,000', 'Above ₹15,000'];
@@ -195,7 +194,7 @@ const LandingPage = () => {
                                     </div>
                                 </div>
                                 <p className="text-gray-700 dark:text-gray-300 mb-4 flex-grow">"Finding a good PG in Bangalore was a nightmare until I found StayEasy. The process was so simple and the property was exactly as advertised. Highly recommend!"</p>
-                                <div className="flex items-center gap-1 text-orange-accent">
+                                <div className="flex items-center gap-1 text-yellow-400">
                                     <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                     <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                     <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
@@ -212,7 +211,7 @@ const LandingPage = () => {
                                   </div>
                               </div>
                               <p className="text-gray-700 dark:text-gray-300 mb-4 flex-grow">"As a student, safety was my top priority. StayEasy's verified listings gave me and my parents peace of mind. The community events are a great bonus!"</p>
-                              <div className="flex items-center gap-1 text-orange-accent">
+                              <div className="flex items-center gap-1 text-yellow-400">
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                   <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>

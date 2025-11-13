@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
+import { useNavigate } from 'react-router-dom';
 import { usePendingPayments } from '../client/src/hooks/usePayments';
 import { supabase } from '../client/src/lib/supabase';
 import QRCodeGenerator from '../components/QRCodeGenerator';
 
-const PaymentVerificationPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+const PaymentVerificationPage = () => {
+    const navigate = useNavigate();
     const [ownerId, setOwnerId] = useState<string | null>(null);
     const [selectedPayment, setSelectedPayment] = useState<any>(null);
     const [showQRModal, setShowQRModal] = useState(false);

@@ -2,102 +2,267 @@ import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
-import OwnerMessagesList from '../components/owner/OwnerMessagesList';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '../client/src/lib/supabase';
 
-const OwnerMessagesPage = ({ navigate: pageNavigate }: { navigate: (page: Page) => void }) => {
-  const navigate = useNavigate();
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+interface Message {
+  id: string;
+  content: string;
+  sender: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  receiver: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  property?: {
+    id: string;
+    title: string;
+  };
+  created_at: string;
+  read: boolean;
+}
 
-  const handleConversationSelect = (conversationId: string) => {
-    setSelectedConversation(conversationId);
+interface MessageCardProps {
+  message: Message;
+  onMarkAsRead: (id: string) => void;
+}
+
+const MessageCard: React.FC<MessageCardProps> = ({ message, onMarkAsRead }) => {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  const handleSendMessage = async (conversationId: string, message: string) => {
-    try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/messages/${conversationId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message }),
-      });
+  const isFromTenant = message.sender.role === 'TENANT';
+  const isFromOwner = message.sender.role === 'OWNER';
 
-      if (response.ok) {
-        // Refresh messages
-        window.location.reload();
-      } else {
-        throw new Error('Failed to send message');
+  return (
+    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow ${!message.read ? 'border-l-4 border-primary' : ''}`}>
+      <div className="flex gap-4">
+        <div className="flex-shrink-0">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="material-symbols-outlined text-primary">
+              {isFromTenant ? 'person' : 'business'}
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex-1">
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-gray-800 dark:text-white">
+                  {message.sender.name}
+                </h3>
+                <span className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full">
+                  {message.sender.role}
+                </span>
+                {message.property && (
+                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full">
+                    {message.property.title}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {formatDate(message.created_at)}
+              </p>
+            </div>
+            {!message.read && (
+              <button
+                onClick={() => onMarkAsRead(message.id)}
+                className="px-3 py-1 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Mark as Read
+              </button>
+            )}
+          </div>
+          
+          <div className={`p-4 rounded-lg ${isFromTenant ? 'bg-gray-50 dark:bg-gray-700' : 'bg-primary/5 dark:bg-primary/10'}`}>
+            <p className="text-gray-700 dark:text-gray-300">{message.content}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const OwnerMessagesPage = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
+
+  useEffect(() => {
+    fetchMessages();
+  }, []);
+
+  const fetchMessages = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Get all properties owned by this user
+        const { data: properties, error: propertiesError } = await supabase
+          .from('properties')
+          .select('id')
+          .eq('owner_id', user.id);
+
+        if (propertiesError) {
+          throw propertiesError;
+        }
+
+        const propertyIds = properties?.map((p: any) => p.id) || [];
+
+        // Get all messages where this user is the receiver
+        const { data, error } = await supabase
+          .from('messages')
+          .select(`
+            *,
+            sender (
+              id,
+              name,
+              role
+            ),
+            receiver (
+              id,
+              name,
+              role
+            ),
+            properties (
+              id,
+              title
+            )
+          `)
+          .eq('receiver_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        setMessages(data || []);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      console.error('Error fetching messages:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const markAsRead = async (messageId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('messages')
+        .update({ read: true })
+        .eq('id', messageId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId ? { ...msg, read: true } : msg
+      ));
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+    }
+  };
+
+  const filterMessages = (messages: Message[], status?: string) => {
+    if (status === 'all') return messages;
+    if (status === 'unread') return messages.filter(msg => !msg.read);
+    if (status === 'read') return messages.filter(msg => msg.read);
+    return messages;
+  };
+
+  const getUnreadCount = () => {
+    return messages.filter(msg => !msg.read).length;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
+        <OwnerSideNavBar />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          <div className="mx-auto max-w-7xl">
+            <div className="text-center py-10">Loading Messages...</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
-      <OwnerSideNavBar onNavigate={pageNavigate} />
+      <OwnerSideNavBar />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
           <OwnerHeader userName="Alex" />
           
-          <div className="flex gap-6 h-[calc(100vh-200px)]">
-            {/* Conversations List */}
-            <div className="w-1/3 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Messages</h2>
-              <OwnerMessagesList 
-                onConversationSelect={handleConversationSelect}
-                selectedConversation={selectedConversation}
-              />
-            </div>
-
-            {/* Chat Area */}
-            <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              {selectedConversation ? (
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 overflow-y-auto">
-                    {/* Messages would be displayed here */}
-                    <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                      <p>Chat interface would be implemented here</p>
-                    </div>
-                  </div>
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Type a message..."
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                            handleSendMessage(selectedConversation, e.currentTarget.value);
-                            e.currentTarget.value = '';
-                          }
-                        }}
-                      />
-                      <button
-                        onClick={(e) => {
-                          const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                          if (input.value.trim()) {
-                            handleSendMessage(selectedConversation, input.value);
-                            input.value = '';
-                          }
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Send
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
-                  <p>Select a conversation to start messaging</p>
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">Messages</h1>
+                <p className="text-text-light-secondary dark:text-text-dark-secondary">Communicate with tenants</p>
+              </div>
+              {getUnreadCount() > 0 && (
+                <div className="px-3 py-1 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-full text-sm font-medium">
+                  {getUnreadCount()} unread
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`px-4 py-2 font-medium text-sm ${activeTab === 'all' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+            >
+              All Messages
+            </button>
+            <button
+              onClick={() => setActiveTab('unread')}
+              className={`px-4 py-2 font-medium text-sm ${activeTab === 'unread' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+            >
+              Unread ({getUnreadCount()})
+            </button>
+            <button
+              onClick={() => setActiveTab('read')}
+              className={`px-4 py-2 font-medium text-sm ${activeTab === 'read' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+            >
+              Read
+            </button>
+          </div>
+
+          {/* Messages List */}
+          <div className="space-y-4">
+            {filterMessages(messages, activeTab).length > 0 ? (
+              filterMessages(messages, activeTab).map(message => (
+                <MessageCard
+                  key={message.id}
+                  message={message}
+                  onMarkAsRead={markAsRead}
+                />
+              ))
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">chat</span>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {activeTab === 'all' ? 'No messages found' : 
+                   activeTab === 'unread' ? 'No unread messages' : 'No read messages'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </main>

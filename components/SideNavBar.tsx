@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Page } from '../types';
 import { BRAND } from '../client/src/config/brand';
 import { supabase } from '../client/src/lib/supabase';
@@ -29,10 +30,25 @@ interface SideNavBarProps {
   onNavigate?: (page: Page) => void;
 }
 
-const SideNavBar: React.FC<SideNavBarProps> = ({ onNavigate }) => {
+const SideNavBar: React.FC<SideNavBarProps> = () => {
+  const navigate = useNavigate();
+  
   const handleNavigation = (page: Page) => {
-    if (onNavigate) {
-      onNavigate(page);
+    switch (page) {
+      case 'tenantDashboard':
+        navigate('/dashboard/tenant');
+        break;
+      case 'bookings':
+        navigate('/bookings');
+        break;
+      case 'payments':
+        navigate('/payments');
+        break;
+      case 'messages':
+        navigate('/messages');
+        break;
+      default:
+        navigate('/');
     }
   };
 
@@ -97,7 +113,10 @@ const SideNavBar: React.FC<SideNavBarProps> = ({ onNavigate }) => {
           <NavLink icon="calendar_month" label="Bookings" onClick={() => handleNavigation('bookings')} />
           <NavLink icon="credit_card" label="Payments" onClick={() => handleNavigation('payments')} />
           <NavLink icon="chat" label="Messages" onClick={() => handleNavigation('messages')} />
-          <NavLink icon="settings" label="Settings" onClick={() => handleNavigation('tenantDashboard')} />
+          {/* Only show settings for admin users */}
+          {user?.role === 'ADMIN' && (
+            <NavLink icon="settings" label="Settings" onClick={() => handleNavigation('tenantDashboard')} />
+          )}
         </nav>
       </div>
       <div className="flex flex-col gap-2">

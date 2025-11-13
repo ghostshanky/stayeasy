@@ -17,8 +17,10 @@ import adminRoutes from './routes/admin.js'
 import imagekitRoutes from './routes/imagekit.js'
 import imageController from './controllers/imageController.js'
 import userRoutes from './routes/users.js'
+import messagesRoutes from './routes/messages.js'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseServer } from './lib/supabaseServer.js'
+import { PropertiesController } from './controllers/propertiesController.js'
 
 // Client-side Supabase client (for public operations)
 // const supabaseUrl = process.env.SUPABASE_URL || 'https://test.supabase.co'
@@ -136,121 +138,10 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/imagekit', imagekitRoutes)
 app.use('/api/images', imageController)
 app.use('/api/users', userRoutes)
+app.use('/api/messages', messagesRoutes)
 
-// Public properties endpoint (no auth required)
-app.get('/api/properties', async (req, res) => {
-  try {
-    // Try to fetch from Supabase first
-    const { data, error } = await supabase
-      .from('properties')
-      .select('*')
-      .limit(20);
-
-    if (error || !data) {
-      console.error('Error fetching properties from Supabase:', error);
-      // Fallback to mock data if database access fails
-      const mockProperties = [
-        {
-          id: '1',
-          name: 'Cozy Shared Room near University',
-          location: 'Koramangala, Bangalore',
-          price: '₹8,500',
-          priceValue: 8500,
-          rating: 4.8,
-          imageUrl: 'https://via.placeholder.com/400x300?text=Property+1',
-          status: 'Listed',
-          details: 'Shared room with high-speed internet, 24/7 security, and access to common areas. Perfect for students and young professionals.',
-          owner: { name: 'John Doe', email: 'john@example.com' }
-        },
-        {
-          id: '2',
-          name: 'Modern PG for Professionals',
-          location: 'Hiranandani, Mumbai',
-          price: '₹15,000',
-          priceValue: 15000,
-          rating: 4.5,
-          imageUrl: 'https://via.placeholder.com/400x300?text=Property+2',
-          status: 'Listed',
-          details: 'Private room in a modern PG with gym, swimming pool, and cafeteria. Ideal for working professionals.',
-          owner: { name: 'Jane Smith', email: 'jane@example.com' }
-        },
-        {
-          id: '3',
-          name: 'Student Hub Downtown',
-          location: 'FC Road, Pune',
-          price: '₹7,200',
-          priceValue: 7200,
-          rating: 4.6,
-          imageUrl: 'https://via.placeholder.com/400x300?text=Property+3',
-          status: 'Listed',
-          details: 'Student-friendly accommodation with study areas, laundry facilities, and mess service.',
-          owner: { name: 'Raj Patel', email: 'raj@example.com' }
-        },
-        {
-          id: '4',
-          name: 'The Executive Stay',
-          location: 'Cyber City, Gurgaon',
-          price: '₹22,500',
-          priceValue: 22500,
-          rating: 4.9,
-          imageUrl: 'https://via.placeholder.com/400x300?text=Property+4',
-          status: 'Listed',
-          details: 'Luxury private room with premium amenities, concierge service, and access to business center.',
-          owner: { name: 'Sarah Johnson', email: 'sarah@example.com' }
-        }
-      ];
-      
-      return res.json(mockProperties);
-    }
-
-    // If database query succeeds, process the data
-    const properties = data.map((property: any) => ({
-      id: property.id,
-      name: property.name,
-      location: property.address,
-      price: `₹${property.price?.toLocaleString() || '0'}`,
-      priceValue: property.price || 0,
-      rating: 0, // Skip reviews for now
-      imageUrl: 'https://via.placeholder.com/400x300?text=No+Image',
-      status: 'Listed',
-      details: property.description || 'No description available',
-      owner: property.owner
-    }));
-
-    res.json(properties);
-  } catch (error) {
-    console.error('Failed to fetch properties:', error);
-    // Return mock data as fallback
-    const fallbackProperties = [
-      {
-        id: '1',
-        name: 'Cozy Shared Room near University',
-        location: 'Koramangala, Bangalore',
-        price: '₹8,500',
-        priceValue: 8500,
-        rating: 4.8,
-        imageUrl: 'https://via.placeholder.com/400x300?text=Property+1',
-        status: 'Listed',
-        details: 'Shared room with high-speed internet, 24/7 security, and access to common areas. Perfect for students and young professionals.',
-        owner: { name: 'John Doe', email: 'john@example.com' }
-      },
-      {
-        id: '2',
-        name: 'Modern PG for Professionals',
-        location: 'Hiranandani, Mumbai',
-        price: '₹15,000',
-        priceValue: 15000,
-        rating: 4.5,
-        imageUrl: 'https://via.placeholder.com/400x300?text=Property+2',
-        status: 'Listed',
-        details: 'Private room in a modern PG with gym, swimming pool, and cafeteria. Ideal for working professionals.',
-        owner: { name: 'Jane Smith', email: 'jane@example.com' }
-      }
-    ];
-    
-    res.json(fallbackProperties);
-  }
-});
+// Public properties endpoint (no auth required) - uses PropertiesController for proper filtering
+app.get('/api/properties', PropertiesController.getProperties);
 
 // Auth routes with fallback to mock authentication
 app.post('/api/auth/signup', async (req, res) => {
@@ -261,7 +152,9 @@ app.post('/api/auth/signup', async (req, res) => {
     // Use MOCK_AUTH=true in .env to force mock mode
     const useMockAuth = process.env.MOCK_AUTH === 'true' ||
                        !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY
+                       !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+                       process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
+                       process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
     
     // DIAGNOSTIC: Log environment status
     console.log('🔍 [Server] Environment Status Check:')

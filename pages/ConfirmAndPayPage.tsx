@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../client/src/lib/supabase';
 import QRCodeGenerator from '../components/QRCodeGenerator';
 
@@ -27,7 +28,8 @@ interface Booking {
   };
 }
 
-const ConfirmAndPayPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+const ConfirmAndPayPage = () => {
+    const navigate = useNavigate();
     const [booking, setBooking] = useState<Booking | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

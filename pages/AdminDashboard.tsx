@@ -259,7 +259,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statCards.map((stat) => (
-            <AdminStatCard key={stat.title} {...stat} />
+            <AdminStatCard key={stat.title} title={stat.title} value={stat.value} change={stat.change} changeDirection={stat.changeDirection as any} changeColorClass={stat.changeColorClass} icon={stat.icon} />
           ))}
         </div>
 
@@ -428,7 +428,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
 
   return (
     <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
-      <AdminSideNavBar onNavigate={navigate} />
+      <AdminSideNavBar />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
           <div className="mb-6">

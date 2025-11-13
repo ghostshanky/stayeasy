@@ -8,11 +8,8 @@ import { AuditLogger } from './audit-logger';
 // Enum values from Prisma schema
 enum PaymentStatus {
   PENDING = 'PENDING',
-  AWAITING_PAYMENT = 'AWAITING_PAYMENT',
-  AWAITING_OWNER_VERIFICATION = 'AWAITING_OWNER_VERIFICATION',
-  VERIFIED = 'VERIFIED',
-  REJECTED = 'REJECTED',
-  CANCELLED = 'CANCELLED'
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED'
 }
 
 enum BookingStatus {
@@ -130,7 +127,7 @@ export const PaymentController = {
       const booking = await prisma.booking.findFirst({
         where: {
           id: bookingId,
-          userId,
+          user_id: userId,
           status: BookingStatus.PENDING, // Only allow payment for pending bookings
         },
         include: {
@@ -150,7 +147,7 @@ export const PaymentController = {
 
       // Check if payment already exists
       const existingPayment = await prisma.payment.findFirst({
-        where: { bookingId }
+        where: { booking_id: bookingId }
       });
 
       if (existingPayment) {
@@ -177,13 +174,9 @@ export const PaymentController = {
 
       // Create payment record
       const paymentData: any = {
-        bookingId,
-        userId: userId,
-        ownerId: booking.property.ownerId,
+        booking_id: bookingId,
         amount: finalAmount,
-        currency: 'INR',
-        upiUri,
-        status: PaymentStatus.AWAITING_PAYMENT
+        status: PaymentStatus.PENDING // Using the correct enum value
       };
       
       const payment = await prisma.payment.create({
@@ -196,13 +189,11 @@ export const PaymentController = {
       res.status(201).json({
         success: true,
         data: {
-          paymentId: payment.id,
-          bookingId,
+          id: payment.id,
+          booking_id: payment.booking_id,
           amount: payment.amount,
-          currency: (payment as any).currency,
-          upiUri: (payment as any).upiUri,
           status: payment.status,
-          createdAt: payment.createdAt
+          created_at: payment.created_at
         }
       });
 
@@ -465,9 +456,7 @@ export const PaymentController = {
               user: true
             }
           },
-          user: true,
-          owner: true,
-          invoice: true
+          invoices: true
         }
       });
 

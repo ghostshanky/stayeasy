@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
 
 interface AddPropertyFormProps {
   onPropertyAdded: () => void;
@@ -18,12 +19,15 @@ const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ onPropertyAdded, onCa
     location: '',
     price_per_night: '',
     capacity: '',
-    amenities: [] as Amenity[]
+    amenities: [] as Amenity[],
+    tags: [] as string[]
   });
   
   const [files, setFiles] = useState<File[]>([]);
+  const [imageLinks, setImageLinks] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [newTag, setNewTag] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -50,8 +54,8 @@ const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ onPropertyAdded, onCa
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      if (files.length + selectedFiles.length > 10) {
-        toast.error('Maximum 10 images allowed');
+      if (files.length + selectedFiles.length > 5) {
+        toast.error('Maximum 5 images allowed');
         return;
       }
       setFiles(prev => [...prev, ...selectedFiles]);
@@ -62,41 +66,50 @@ const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ onPropertyAdded, onCa
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleFileUpload = async () => {
-    if (files.length === 0) return;
+  const handleImageLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImageLinks([e.target.value]);
+  };
 
-    setUploading(true);
-    try {
-      const base64Files = await Promise.all(
-        files.map(file => fileToBase64(file))
-      );
-
-      const response = await fetch('/api/images/upload-property', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
-        body: JSON.stringify({
-          files: base64Files,
-          propertyId: 'temp', // Will be updated after property creation
-          userId: localStorage.getItem('userId') // Get from auth context
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        return result.uploadedFiles;
-      } else {
-        throw new Error(result.error || 'Failed to upload images');
-      }
-    } catch (error) {
-      throw new Error('Image upload failed');
-    } finally {
-      setUploading(false);
+  const addImageLink = () => {
+    if (imageLinks.length > 0 && imageLinks[0].trim()) {
+      toast.success('Image link added successfully');
     }
   };
+
+  const handleTagChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewTag(e.target.value);
+  };
+
+  const addTag = () => {
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, newTag.trim()]
+      }));
+      setNewTag('');
+    }
+  };
+
+  const removeTag = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTag();
+    }
+  };
+
+  // File upload is disabled for now since we don't have a storage bucket
+  // const handleFileUpload = async (propertyId: string) => {
+  //   if (files.length === 0) return [];
+  //   // Implementation would go here when storage bucket is available
+  //   return [];
+  // };
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -109,29 +122,39 @@ const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ onPropertyAdded, onCa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.title || !formData.location || !formData.price_per_night) {
+
+    if (!formData.title || !formData.location || !formData.price_per_night || !formData.capacity) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     setSubmitting(true);
     try {
-      // Create property first
-      const propertyResponse = await fetch('/api/properties', {
+      // Handle images - only image links for now
+      let imageUrls: string[] = [];
+
+      // Add image links if provided
+      if (imageLinks.length > 0 && imageLinks[0].trim()) {
+        imageUrls.push(imageLinks[0].trim());
+      }
+
+      // Create property
+      const propertyResponse = await fetch('/api/owner/properties', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,
-          location: formData.location,
+          address: formData.location,
           price_per_night: parseFloat(formData.price_per_night),
-          capacity: parseInt(formData.capacity) || 1,
-          amenities: formData.amenities.filter(a => a.name && a.value),
-          ownerId: localStorage.getItem('userId')
+          capacity: parseInt(formData.capacity),
+          images: imageUrls,
+          amenities: formData.amenities.filter(a => a.name && a.value).map(a => `${a.name}: ${a.value}`),
+          tags: formData.tags || [],
+          ownerId: localStorage.getItem('userId') || 'test-owner-id'
         }),
       });
 
@@ -139,11 +162,6 @@ const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ onPropertyAdded, onCa
 
       if (!propertyResult.success) {
         throw new Error(propertyResult.error?.message || 'Failed to create property');
-      }
-
-      // Upload images if any
-      if (files.length > 0) {
-        await handleFileUpload();
       }
 
       toast.success('Property added successfully!');
@@ -217,36 +235,36 @@ const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ onPropertyAdded, onCa
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Price per Night (₹) *
-              </label>
-              <input
-                type="number"
-                name="price_per_night"
-                value={formData.price_per_night}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                placeholder="0"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Price per Night (₹) *
+            </label>
+            <input
+              type="number"
+              name="price_per_night"
+              value={formData.price_per_night}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="0"
+              required
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Capacity
-              </label>
-              <input
-                type="number"
-                name="capacity"
-                value={formData.capacity}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                placeholder="1"
-                min="1"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Capacity (Number of Guests) *
+            </label>
+            <input
+              type="number"
+              name="capacity"
+              value={formData.capacity}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="1"
+              min="1"
+              max="20"
+              required
+            />
           </div>
         </div>
 
@@ -300,42 +318,97 @@ const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ onPropertyAdded, onCa
           ))}
         </div>
 
+        {/* Tags */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Tags</h2>
+          </div>
+
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              placeholder="Add a tag"
+              value={newTag}
+              onChange={handleTagChange}
+              onKeyPress={handleKeyPress}
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {formData.tags.map((tag, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(index)}
+                  className="ml-2 text-blue-600 hover:text-blue-800"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* Images */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Property Images</h2>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Upload Images (Max 10)
-            </label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileChange}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            />
-            {files.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {files.map((file, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Property ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <span className="material-symbols-outlined text-xs">close</span>
-                    </button>
-                  </div>
-                ))}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Add Image Link</h3>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                value={imageLinks[0] || ''}
+                onChange={handleImageLinkChange}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+              <button
+                type="button"
+                onClick={addImageLink}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Add Link
+              </button>
+            </div>
+            {imageLinks.length > 0 && imageLinks[0].trim() && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Image Preview:</p>
+                <div className="relative group">
+                  <img
+                    src={imageLinks[0].trim()}
+                    alt="Property from link"
+                    className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://via.placeholder.com/400x200?text=Invalid+Image+URL';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setImageLinks([])}
+                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <span className="material-symbols-outlined text-xs">close</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
+          
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Note: File upload is temporarily disabled. Please use image links above.
+          </p>
         </div>
 
         {/* Submit Buttons */}

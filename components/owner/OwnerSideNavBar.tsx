@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Page } from '../../types';
 import { BRAND } from '../../client/src/config/brand';
 import AvatarMenu from '../../client/src/components/AvatarMenu';
@@ -29,10 +30,31 @@ interface OwnerSideNavBarProps {
   onNavigate?: (page: Page) => void;
 }
 
-const OwnerSideNavBar: React.FC<OwnerSideNavBarProps> = ({ onNavigate }) => {
+const OwnerSideNavBar: React.FC<OwnerSideNavBarProps> = () => {
+  const navigate = useNavigate();
+  
   const handleNavigation = (page: Page) => {
-    if (onNavigate) {
-      onNavigate(page);
+    switch (page) {
+      case 'ownerDashboard':
+        navigate('/dashboard/owner');
+        break;
+      case 'myListings':
+        navigate('/my-listings');
+        break;
+      case 'bookings':
+        navigate('/dashboard/owner/bookings');
+        break;
+      case 'payments':
+        navigate('/dashboard/owner/payments');
+        break;
+      case 'messages':
+        navigate('/dashboard/owner/messages');
+        break;
+      case 'settings':
+        navigate('/dashboard/owner/settings');
+        break;
+      default:
+        navigate('/dashboard/owner');
     }
   };
 
@@ -63,7 +85,7 @@ const OwnerSideNavBar: React.FC<OwnerSideNavBarProps> = ({ onNavigate }) => {
         </nav>
       </div>
       <div className="flex flex-col gap-2">
-        <NavLink icon="settings" label="Settings" onClick={() => handleNavigation('ownerDashboard')} />
+        <NavLink icon="settings" label="Settings" onClick={() => navigate('/dashboard/owner/settings')} />
         <div className="flex gap-3 p-2 border-t border-border-light dark:border-border-dark pt-4">
           <AvatarMenu user={user} />
         </div>

@@ -7,13 +7,16 @@ import OwnerListingsTable from '../components/owner/OwnerListingsTable';
 import { useOwnerProperties } from '../client/src/hooks/useOwnerProperties';
 import { supabase } from '../client/src/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../client/src/hooks/useAuth';
 
-const OwnerDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) => void }) => {
+const OwnerDashboard = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [stats, setStats] = useState<StatCardData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('listings'); // 'listings' or 'payments'
+    const [payments, setPayments] = useState<any[]>([]);
     const { items: properties, loading: listingsLoading } = useOwnerProperties();
 
     // Transform properties to listings format
@@ -32,38 +35,97 @@ const OwnerDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) => 
         const fetchStats = async () => {
             try {
                 setLoading(true);
-                // In a real app, this would fetch actual stats from the backend
-                const mockStats: StatCardData[] = [
+                
+                if (!user) {
+                    setError('User not authenticated');
+                    return;
+                }
+
+                // Fetch real stats from Supabase
+                const { data: propertiesData, error: propertiesError } = await supabase
+                    .from('properties')
+                    .select('*')
+                    .eq('owner_id', user.id);
+
+                if (propertiesError) throw propertiesError;
+
+                // Fetch bookings for the owner's properties
+                const propertyIds = propertiesData.map((p: any) => p.id);
+                const { data: bookingsData, error: bookingsError } = await supabase
+                    .from('bookings')
+                    .select('*')
+                    .in('property_id', propertyIds);
+
+                if (bookingsError) throw bookingsError;
+
+                // Fetch payments for the owner's properties
+                const { data: paymentsData, error: paymentsError } = await supabase
+                    .from('payments')
+                    .select('*')
+                    .in('property_id', propertyIds);
+
+                if (paymentsError) throw paymentsError;
+
+                // Calculate stats
+                const totalProperties = propertiesData.length;
+                const activeBookings = bookingsData.filter((b: any) => b.status === 'confirmed').length;
+                
+                // Calculate monthly revenue (current month)
+                const currentMonth = new Date().getMonth();
+                const currentYear = new Date().getFullYear();
+                const monthlyRevenue = paymentsData
+                    .filter(p => {
+                        const paymentDate = new Date((p as any).created_at);
+                        return paymentDate.getMonth() === currentMonth &&
+                               paymentDate.getFullYear() === currentYear;
+                    })
+                    .reduce((sum, p) => sum + (p as any).amount, 0);
+
+                // Calculate average rating (if reviews exist)
+                const { data: reviewsData, error: reviewsError } = await supabase
+                    .from('reviews')
+                    .select('rating')
+                    .in('property_id', propertyIds);
+
+                let averageRating = 0;
+                if (!reviewsError && reviewsData && reviewsData.length > 0) {
+                    const totalRating = reviewsData.reduce((sum, r) => sum + ((r as any).rating || 0), 0);
+                    averageRating = totalRating / reviewsData.length;
+                }
+
+                const statsData: StatCardData[] = [
                     {
                         title: 'Total Properties',
-                        value: '5',
-                        change: '+2',
+                        value: totalProperties.toString(),
+                        change: '+0', // TODO: Calculate change from previous period
                         changeDirection: StatChangeDirection.Increase,
                         changeColorClass: 'text-green-600'
                     },
                     {
                         title: 'Active Bookings',
-                        value: '12',
-                        change: '+3',
+                        value: activeBookings.toString(),
+                        change: '+0', // TODO: Calculate change from previous period
                         changeDirection: StatChangeDirection.Increase,
                         changeColorClass: 'text-green-600'
                     },
                     {
                         title: 'Monthly Revenue',
-                        value: '₹45,000',
-                        change: '+15%',
+                        value: `₹${monthlyRevenue.toLocaleString()}`,
+                        change: '+0', // TODO: Calculate change from previous period
                         changeDirection: StatChangeDirection.Increase,
                         changeColorClass: 'text-green-600'
                     },
                     {
                         title: 'Average Rating',
-                        value: '4.7',
-                        change: '+0.2',
+                        value: averageRating.toFixed(1),
+                        change: '+0', // TODO: Calculate change from previous period
                         changeDirection: StatChangeDirection.Increase,
                         changeColorClass: 'text-green-600'
                     }
                 ];
-                setStats(mockStats);
+
+                setStats(statsData);
+                setPayments(paymentsData || []);
                 setError(null);
             } catch (err) {
                 console.error("Failed to fetch owner stats:", err);
@@ -74,7 +136,7 @@ const OwnerDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) => 
         };
 
         fetchStats();
-    }, []);
+    }, [user]);
 
     const handleEdit = (id: string | number) => {
         navigate(`/owner/edit-property/${id}`);
@@ -134,12 +196,46 @@ const OwnerDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) => 
         }
     };
 
+    const handleVerifyPayment = async (paymentId: string) => {
+        try {
+            const { error } = await (supabase as any)
+                .from('payments')
+                .update({ status: 'verified' })
+                .eq('id', paymentId);
+
+            if (error) throw error;
+
+            // Refresh the payments list
+            window.location.reload();
+        } catch (err) {
+            console.error('Error verifying payment:', err);
+            alert('Failed to verify payment. Please try again.');
+        }
+    };
+
+    const handleRejectPayment = async (paymentId: string) => {
+        try {
+            const { error } = await (supabase as any)
+                .from('payments')
+                .update({ status: 'rejected' })
+                .eq('id', paymentId);
+
+            if (error) throw error;
+
+            // Refresh the payments list
+            window.location.reload();
+        } catch (err) {
+            console.error('Error rejecting payment:', err);
+            alert('Failed to reject payment. Please try again.');
+        }
+    };
+
     return (
         <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
-            <OwnerSideNavBar onNavigate={pageNavigate} />
+            <OwnerSideNavBar />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
                 <div className="mx-auto max-w-7xl">
-                    <OwnerHeader userName="Alex" />
+                    <OwnerHeader userName={user?.name || 'User'} />
                     
                     {/* Tab Navigation */}
                     <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
@@ -183,7 +279,7 @@ const OwnerDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) => 
                                     <div className="flex justify-between items-center mb-6">
                                         <h2 className="text-xl font-bold text-text-light-primary dark:text-text-dark-primary">Pending Payment Verifications</h2>
                                         <button 
-                                            onClick={() => pageNavigate('paymentVerification')}
+                                            onClick={() => navigate('/verify-payment')}
                                             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
                                         >
                                             View All Payments

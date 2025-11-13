@@ -13,8 +13,8 @@ interface StatCardData {
   color: string;
 }
 
-const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) => void }) => {
-  const navigate = useNavigate();
+const TenantDashboard = () => {
+    const navigate = useNavigate();
   const [userName, setUserName] = useState('User');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +90,7 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
 
   const handlePayment = async (bookingId: string) => {
     try {
-      pageNavigate('confirmAndPay');
+      navigate('/confirm');
     } catch (error) {
       console.error('Error navigating to payment:', error);
       alert('Failed to process payment. Please try again.');
@@ -99,7 +99,7 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
 
   const handleChat = async (propertyId: string, ownerId: string) => {
     try {
-      pageNavigate('messages');
+      navigate('/messages');
     } catch (error) {
       console.error('Error opening chat:', error);
       alert('Failed to open chat. Please try again.');
@@ -149,25 +149,25 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
       title: 'Search Properties',
       description: 'Find your perfect stay',
       icon: 'search',
-      action: () => pageNavigate('searchResults')
+      action: () => navigate('/search')
     },
     {
       title: 'View Bookings',
       description: 'Manage your reservations',
       icon: 'calendar_month',
-      action: () => pageNavigate('bookings')
+      action: () => navigate('/bookings')
     },
     {
       title: 'Make Payment',
       description: 'Pay for upcoming stays',
       icon: 'payments',
-      action: () => pageNavigate('payments')
+      action: () => navigate('/payments')
     },
     {
       title: 'Send Message',
       description: 'Chat with property owners',
       icon: 'chat',
-      action: () => pageNavigate('messages')
+      action: () => navigate('/messages')
     }
   ];
 
@@ -203,7 +203,7 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
       <div className="flex gap-4">
         <div className="flex-shrink-0">
           <img
-            src={booking.properties?.images?.[0] || 'https://via.placeholder.com/100x100?text=No+Image'}
+            src={booking.properties?.images?.[0] || '/default_profile_pic.jpg'}
             alt={booking.properties?.title}
             className="w-24 h-24 rounded-lg object-cover"
           />
@@ -258,7 +258,7 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
 
   return (
     <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
-      <SideNavBar onNavigate={pageNavigate} />
+      <SideNavBar />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
           {/* Header */}
@@ -319,7 +319,7 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Upcoming Stays</h2>
                 <button 
-                  onClick={() => pageNavigate('bookings')}
+                  onClick={() => navigate('/bookings')}
                   className="text-primary hover:text-primary/80 text-sm font-medium"
                 >
                   View All →
@@ -343,7 +343,7 @@ const TenantDashboard = ({ navigate: pageNavigate }: { navigate: (page: Page) =>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Current Stay</h2>
                 {getCurrentBookings().length > 0 && (
                   <button 
-                    onClick={() => pageNavigate('bookings')}
+                    onClick={() => navigate('/bookings')}
                     className="text-primary hover:text-primary/80 text-sm font-medium"
                   >
                     View All →

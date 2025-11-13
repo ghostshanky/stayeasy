@@ -1,36 +1,41 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Page, Listing, Property } from '../types';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../client/apiClient';
 
-interface ListingCardProps {
-    listing: Property;
-    navigate: (page: Page) => void;
-}
-
-const ListingCard: React.FC<ListingCardProps> = ({ listing, navigate }) => (
-    <div className="flex flex-col gap-3 pb-3 group cursor-pointer" onClick={() => navigate('propertyDetails')}>
-        <div className="relative w-full overflow-hidden">
-            <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-xl transition-transform duration-300 group-hover:scale-105" style={{ backgroundImage: `url("${listing.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}")` }}></div>
-            <button className="absolute top-3 right-3 text-white">
-                <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}> favorite </span>
-            </button>
-        </div>
-        <div>
-            <div className="flex justify-between items-start">
-                <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">{listing.name}</p>
-                <div className="flex items-center gap-1 text-[#111518] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-lg text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}> star </span>
-                    <span className="text-sm font-medium">{listing.rating || 'New'}</span>
-                </div>
+const ListingCard: React.FC<{ listing: Property }> = ({ listing }) => {
+    const navigate = useNavigate();
+    
+    const handlePropertyClick = () => {
+        navigate(`/property/${listing.id}`);
+    };
+    
+    return (
+        <div className="flex flex-col gap-3 pb-3 group cursor-pointer" onClick={handlePropertyClick}>
+            <div className="relative w-full overflow-hidden">
+                <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-xl transition-transform duration-300 group-hover:scale-105" style={{ backgroundImage: `url("${listing.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}")` }}></div>
+                <button className="absolute top-3 right-3 text-white">
+                    <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}> favorite </span>
+                </button>
             </div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm font-normal leading-normal">{listing.location}</p>
-            <p className="text-[#111518] dark:text-white text-sm font-semibold leading-normal mt-1">{listing.price} <span className="font-normal text-gray-600 dark:text-gray-400">/ night</span></p>
+            <div>
+                <div className="flex justify-between items-start">
+                    <p className="text-[#111518] dark:text-white text-base font-bold leading-normal">{listing.name}</p>
+                    <div className="flex items-center gap-1 text-[#111518] dark:text-gray-300">
+                        <span className="material-symbols-outlined text-lg text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}> star </span>
+                        <span className="text-sm font-medium">{listing.rating || 'New'}</span>
+                    </div>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm font-normal leading-normal">{listing.location}</p>
+                <p className="text-[#111518] dark:text-white text-sm font-semibold leading-normal mt-1">{listing.price} <span className="font-normal text-gray-600 dark:text-gray-400">/ night</span></p>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
-const SearchResultsPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+const SearchResultsPage = () => {
+    const navigate = useNavigate();
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalProperties, setTotalProperties] = useState(0);
@@ -166,7 +171,7 @@ const SearchResultsPage = ({ navigate }: { navigate: (page: Page) => void }) => 
                     
                     {!loading && !error && (
                         <div className="grid grid-cols-1 @md:grid-cols-2 @4xl:grid-cols-3 gap-6">
-                            {properties.map(property => <ListingCard key={property.id} listing={property} navigate={navigate} />)}
+                            {properties.map(property => <ListingCard key={property.id} listing={property} />)}
                         </div>
                     )}
 
@@ -211,6 +216,6 @@ const SearchResultsPage = ({ navigate }: { navigate: (page: Page) => void }) => 
             </div>
         </main>
     );
-};
+    };
 
 export default SearchResultsPage;

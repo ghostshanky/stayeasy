@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Page, Listing, ListingStatus } from '../types';
+import { useNavigate } from 'react-router-dom';
 import { useOwnerProperties } from '../client/src/hooks/useOwnerProperties';
 
 const convertToListing = (property: any): Listing => ({
@@ -17,7 +18,8 @@ import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
 import OwnerListingsTable from '../components/owner/OwnerListingsTable';
 
-const MyListingsPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+const MyListingsPage = () => {
+    const navigate = useNavigate();
     const { items: properties, loading, error } = useOwnerProperties();
     const [listings, setListings] = useState<Listing[]>([]);
 

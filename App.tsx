@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { DarkModeProvider } from './client/src/contexts/DarkModeContext';
 import { AuthProvider } from './client/src/hooks/useAuth';
@@ -25,6 +25,13 @@ import NotFoundPage from './components/NotFoundPage';
 import UnauthorizedPage from './components/UnauthorizedPage';
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
+
+// Owner-specific pages
+import OwnerSettingsPage from './pages/OwnerSettingsPage';
+import OwnerBookingsPage from './pages/OwnerBookingsPage';
+import OwnerPaymentsPage from './pages/OwnerPaymentsPage';
+import OwnerMessagesPage from './pages/OwnerMessagesPage';
+import AddPropertyForm from './components/owner/AddPropertyForm';
 
 export const StayEasyLogo = () => (
     <div className="size-7 text-primary">
@@ -68,9 +75,9 @@ function App() {
                             <Route path="/" element={<LandingPage />} />
                             <Route path="/about" element={<AboutUsPage />} />
                             <Route path="/help" element={<HelpPage />} />
-                            <Route path="/search" element={<SearchResultsPage navigate={() => {}} />} />
-                            <Route path="/property/:id" element={<PropertyDetailsPage navigate={() => {}} />} />
-                            <Route path="/confirm" element={<ConfirmAndPayPage navigate={() => {}} />} />
+                            <Route path="/search" element={<SearchResultsPage />} />
+                            <Route path="/property/:id" element={<PropertyDetailsPage />} />
+                            <Route path="/confirm" element={<ConfirmAndPayPage />} />
                             <Route path="/auth" element={<AuthPage />} />
                             
                             {/* Unauthorized Page */}
@@ -84,41 +91,41 @@ function App() {
                             } />
                             <Route path="/bookings" element={
                                 <ProtectedRoute>
-                                    <BookingsPage navigate={() => {}} />
+                                    <BookingsPage />
                                 </ProtectedRoute>
                             } />
                             <Route path="/payments" element={
                                 <ProtectedRoute>
-                                    <PaymentsPage navigate={() => {}} />
+                                    <PaymentsPage />
                                 </ProtectedRoute>
                             } />
                             <Route path="/messages" element={
                                 <ProtectedRoute>
-                                    <MessagesPage navigate={() => {}} />
+                                    <MessagesPage />
                                 </ProtectedRoute>
                             } />
                             <Route path="/verify-payment" element={
                                 <ProtectedRoute>
-                                    <PaymentVerificationPage navigate={() => {}} />
+                                    <PaymentVerificationPage />
                                 </ProtectedRoute>
                             } />
                             
                             {/* Owner Routes (require OWNER role) */}
                             <Route path="/dashboard/owner" element={
                                 <ProtectedRoute requiredRoles={['OWNER']}>
-                                    <OwnerDashboard navigate={() => {}} />
+                                    <OwnerDashboard />
                                 </ProtectedRoute>
                             } />
                             <Route path="/my-listings" element={
                                 <ProtectedRoute requiredRoles={['OWNER']}>
-                                    <MyListingsPage navigate={() => {}} />
+                                    <MyListingsPage />
                                 </ProtectedRoute>
                             } />
                             
                             {/* Tenant Routes (require TENANT or OWNER role) */}
                             <Route path="/dashboard/tenant" element={
                                 <ProtectedRoute requiredRoles={['TENANT', 'OWNER']}>
-                                    <TenantDashboard navigate={() => {}} />
+                                    <TenantDashboard />
                                 </ProtectedRoute>
                             } />
                             
@@ -131,6 +138,33 @@ function App() {
                             <Route path="/admin-dashboard/*" element={
                                 <ProtectedRoute requiredRoles={['ADMIN']}>
                                     <Navigate to="/admin-dashboard" replace />
+                                </ProtectedRoute>
+                            } />
+
+                            {/* Owner Routes */}
+                            <Route path="/dashboard/owner/settings" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <OwnerSettingsPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/dashboard/owner/bookings" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <OwnerBookingsPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/dashboard/owner/payments" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <OwnerPaymentsPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/dashboard/owner/messages" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <OwnerMessagesPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/owner/add-property" element={
+                                <ProtectedRoute requiredRoles={['OWNER']}>
+                                    <AddPropertyWrapper />
                                 </ProtectedRoute>
                             } />
                             
@@ -162,6 +196,26 @@ function App() {
                 </IKContext>
             </AuthProvider>
         </DarkModeProvider>
+    );
+}
+
+// Wrapper component for AddPropertyForm with proper props
+const AddPropertyWrapper: React.FC = () => {
+    const navigate = useNavigate();
+    
+    const handlePropertyAdded = () => {
+        navigate('/dashboard/owner');
+    };
+    
+    const handleCancel = () => {
+        navigate('/dashboard/owner');
+    };
+    
+    return (
+        <AddPropertyForm
+            onPropertyAdded={handlePropertyAdded}
+            onCancel={handleCancel}
+        />
     );
 }
 

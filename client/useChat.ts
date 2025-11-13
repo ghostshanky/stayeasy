@@ -13,7 +13,7 @@ export interface ChatMessage {
   // ... other fields
 }
 
-const SERVER_URL = '/api';
+const SERVER_URL = 'http://localhost:3002/api';
 
 export function useChat(chatId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);

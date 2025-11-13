@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Page } from '../../types';
 import { supabase } from '../../client/src/lib/supabase';
 
@@ -28,10 +29,16 @@ interface AdminSideNavBarProps {
   onNavigate?: (page: Page) => void;
 }
 
-const AdminSideNavBar: React.FC<AdminSideNavBarProps> = ({ onNavigate }) => {
+const AdminSideNavBar: React.FC<AdminSideNavBarProps> = () => {
+  const navigate = useNavigate();
+  
   const handleNavigation = (page: Page) => {
-    if (onNavigate) {
-      onNavigate(page);
+    switch (page) {
+      case 'adminDashboard':
+        navigate('/admin-dashboard');
+        break;
+      default:
+        navigate('/admin-dashboard');
     }
   };
 

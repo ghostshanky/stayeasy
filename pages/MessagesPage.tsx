@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
+import { useNavigate } from 'react-router-dom';
 import SideNavBar from '../components/SideNavBar';
 import { supabase } from '../client/src/lib/supabase';
+import { useAuth } from '../client/src/hooks/useAuth';
 
 interface Message {
   id: string;
@@ -25,7 +27,9 @@ interface Conversation {
   };
 }
 
-const MessagesPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+const MessagesPage = () => {
+    const navigate = useNavigate();
+    const { user } = useAuth();
     const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
     const [messageInput, setMessageInput] = useState('');
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -33,63 +37,107 @@ const MessagesPage = ({ navigate }: { navigate: (page: Page) => void }) => {
     const [showNewChatModal, setShowNewChatModal] = useState(false);
     const [newChatEmail, setNewChatEmail] = useState('');
     const [creatingChat, setCreatingChat] = useState(false);
-    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        fetchUserData();
         fetchConversations();
     }, []);
-
-    const fetchUserData = async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-        } catch (error) {
-            console.error('Error fetching user data:', error);
-        }
-    };
 
     const fetchConversations = async () => {
         try {
             setLoading(true);
-            // This would typically fetch from your API
-            // For now, we'll use mock data
-            const mockConversations: Conversation[] = [
-                {
-                    id: '1',
-                    name: 'Modern Downtown Hostel',
-                    lastMessage: 'Your booking has been confirmed!',
-                    time: '2 hours ago',
-                    unread: true,
-                    messages: [
-                        { id: '1', text: 'Hi! Your booking for Modern Downtown Hostel has been confirmed.', sender: 'host', time: '2 hours ago' },
-                        { id: '2', text: 'Thank you! Looking forward to my stay.', sender: 'user', time: '1 hour ago' },
-                        { id: '3', text: 'Great! Check-in is at 2 PM. See you soon!', sender: 'host', time: '30 min ago' }
-                    ],
-                    other_user: {
-                        name: 'Host User',
-                        email: 'host@example.com',
-                        avatar_url: '/default_profile_pic.jpg'
-                    }
-                },
-                {
-                    id: '2',
-                    name: 'Cozy PG in Koramangala',
-                    lastMessage: 'Payment received successfully',
-                    time: '1 day ago',
-                    unread: false,
-                    messages: [
-                        { id: '1', text: 'Your payment has been processed successfully.', sender: 'host', time: '1 day ago' },
-                        { id: '2', text: 'Perfect! Thank you for the confirmation.', sender: 'user', time: '1 day ago' }
-                    ],
-                    other_user: {
-                        name: 'Property Manager',
-                        email: 'manager@example.com',
-                        avatar_url: '/default_profile_pic.jpg'
-                    }
+            
+            if (!user) {
+                console.log('User not authenticated');
+                return;
+            }
+
+            // Fetch user's chats from Supabase
+            const { data: chats, error: chatsError } = await supabase
+                .from('chats')
+                .select(`
+                    *,
+                    messages (
+                        id,
+                        text,
+                        created_at,
+                        sender_id
+                    )
+                `)
+                .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+                .order('updated_at', { ascending: false });
+
+            if (chatsError) {
+                console.error('Error fetching chats:', chatsError);
+                return;
+            }
+
+            // Fetch user details for each chat participant
+            const conversations: Conversation[] = [];
+            
+            for (const chat of chats || []) {
+                // Get the other user ID
+                const otherUserId = (chat as any).user1_id === user.id ? (chat as any).user2_id : (chat as any).user1_id;
+                
+                // Fetch the other user's details
+                const { data: otherUser, error: userError } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email, image_id')
+                    .eq('id', otherUserId)
+                    .single();
+
+                if (userError) {
+                    console.error('Error fetching user details:', userError);
+                    continue;
                 }
-            ];
-            setConversations(mockConversations);
+
+                // Get the last message
+                const lastMessage = (chat as any).messages && (chat as any).messages.length > 0
+                    ? (chat as any).messages[(chat as any).messages.length - 1]
+                    : null;
+
+                // Get the user's avatar URL
+                let avatarUrl = '/default_profile_pic.jpg';
+                if ((otherUser as any)?.image_id) {
+                    const { data: fileData } = await supabase
+                        .from('files')
+                        .select('url')
+                        .eq('id', (otherUser as any).image_id)
+                        .single();
+                    avatarUrl = (fileData as any)?.url || '/default_profile_pic.jpg';
+                }
+
+                // Format messages
+                const messages: Message[] = ((chat as any).messages || []).map((msg: any) => ({
+                    id: msg.id,
+                    text: msg.text,
+                    sender: msg.sender_id === user.id ? 'user' : 'host',
+                    time: new Date(msg.created_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                }));
+
+                const conversation: Conversation = {
+                    id: (chat as any).id,
+                    name: (otherUser as any)?.full_name || (otherUser as any)?.email || 'Unknown User',
+                    lastMessage: lastMessage?.text || 'No messages yet',
+                    time: lastMessage
+                        ? new Date(lastMessage.created_at).toLocaleDateString()
+                        : 'Just now',
+                    unread: false, // TODO: Implement unread count logic
+                    messages,
+                    other_user: {
+                        name: (otherUser as any)?.full_name || (otherUser as any)?.email || 'Unknown User',
+                        email: (otherUser as any)?.email || '',
+                        avatar_url: avatarUrl,
+                        id: (otherUser as any)?.id
+                    }
+                };
+
+                conversations.push(conversation);
+            }
+
+            setConversations(conversations);
         } catch (error) {
             console.error('Error fetching conversations:', error);
         } finally {
@@ -98,11 +146,21 @@ const MessagesPage = ({ navigate }: { navigate: (page: Page) => void }) => {
     };
 
     const handleSendMessage = async () => {
-        if (messageInput.trim() && selectedConversation) {
+        if (messageInput.trim() && selectedConversation && user) {
             try {
-                // In a real app, this would send the message to the backend
-                console.log('Sending message:', messageInput);
-                
+                // Send message to Supabase
+                const { error } = await (supabase as any)
+                    .from('messages')
+                    .insert({
+                        chat_id: selectedConversation,
+                        text: messageInput,
+                        sender_id: user.id
+                    });
+
+                if (error) {
+                    throw error;
+                }
+
                 // Add message to local state for immediate feedback
                 const updatedConversations = conversations.map(conv => {
                     if (conv.id === selectedConversation) {
@@ -124,8 +182,12 @@ const MessagesPage = ({ navigate }: { navigate: (page: Page) => void }) => {
                 
                 setConversations(updatedConversations);
                 setMessageInput('');
+                
+                // Refresh conversations to get the latest messages
+                await fetchConversations();
             } catch (error) {
                 console.error('Error sending message:', error);
+                alert('Failed to send message. Please try again.');
             }
         }
     };
@@ -140,8 +202,8 @@ const MessagesPage = ({ navigate }: { navigate: (page: Page) => void }) => {
         try {
             // Check if user exists in database
             const { data, error } = await supabase
-                .from('users')
-                .select('id, name, email')
+                .from('profiles')
+                .select('id, full_name, email, image_id')
                 .eq('email', newChatEmail)
                 .single();
 
@@ -154,17 +216,43 @@ const MessagesPage = ({ navigate }: { navigate: (page: Page) => void }) => {
                 return;
             }
 
+            // Get user's avatar URL
+            let avatarUrl = '/default_profile_pic.jpg';
+            if ((data as any)?.image_id) {
+                const { data: fileData } = await supabase
+                    .from('files')
+                    .select('url')
+                    .eq('id', (data as any).image_id)
+                    .single();
+                avatarUrl = (fileData as any)?.url || '/default_profile_pic.jpg';
+            }
+
+            // Create new chat
+            const { data: newChat, error: chatError } = await (supabase as any)
+                .from('chats')
+                .insert({
+                    user1_id: user?.id,
+                    user2_id: (data as any).id
+                })
+                .select()
+                .single();
+
+            if (chatError) {
+                throw chatError;
+            }
+
             // Create new conversation
             const newConversation: Conversation = {
-                id: Date.now().toString(),
-                name: (data as any).name || newChatEmail,
+                id: (newChat as any).id,
+                name: (data as any).full_name || (data as any).email,
                 lastMessage: 'Conversation started',
                 time: 'Just now',
                 unread: false,
                 messages: [],
                 other_user: {
-                    name: (data as any).name || newChatEmail,
+                    name: (data as any).full_name || (data as any).email,
                     email: (data as any).email,
+                    avatar_url: avatarUrl,
                     id: (data as any).id
                 }
             };

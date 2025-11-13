@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Page, Booking } from '../types';
+import { useNavigate } from 'react-router-dom';
 import SideNavBar from '../components/SideNavBar';
 import { supabase } from '../client/src/lib/supabase';
 
@@ -188,7 +189,8 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, navigate }) => {
   );
 };
 
-const BookingsPage = ({ navigate }: { navigate: (page: Page) => void }) => {
+const BookingsPage = () => {
+    const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('upcoming');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
