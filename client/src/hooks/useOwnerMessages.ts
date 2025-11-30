@@ -3,18 +3,22 @@ import { apiClient } from "../api/apiClient";
 
 interface OwnerMessage {
   id: string;
-  sender_id: string;
-  receiver_id: string;
-  property_id?: string;
+  chatId?: string;
+  senderId: string;
+  recipientId: string;
   content: string;
-  read: boolean;
-  created_at: string;
+  propertyId?: string;
+  readAt?: string;
+  createdAt: string;
   sender: {
+    id: string;
     name: string;
     email: string;
+    role: string;
   };
   property?: {
-    name: string;
+    id: string;
+    title: string;
   };
 }
 
@@ -30,13 +34,7 @@ export function useOwnerMessages(limit = 10, page = 1) {
 
     const fetchMessages = async () => {
       try {
-        // Get the current user ID from localStorage (where the auth token is stored)
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-          throw new Error("No authenticated user");
-        }
-
-        const response = await apiClient.get(`/messages?userId=${token}&page=${page}&limit=${limit}`);
+        const response = await apiClient.get(`/messages?page=${page}&limit=${limit}`);
 
         if (!mounted) return;
 

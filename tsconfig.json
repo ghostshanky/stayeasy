@@ -22,7 +22,7 @@
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["client/**/*", "server/**/*", "tests/**/*"],
+  "include": ["env.d.ts", "client/**/*", "server/**/*", "tests/**/*", "pages/**/*"],
   "exclude": ["vite.config.ts", "node_modules"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

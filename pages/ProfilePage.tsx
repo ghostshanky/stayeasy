@@ -3,9 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../client/src/hooks/useAuth";
-
-
-const IMAGEKIT_URL_ENDPOINT = import.meta.env.VITE_IMAGEKIT_URL_ENDPOINT || "https://ik.imagekit.io/Shanky";
+import { getCloudinaryUrl } from "../components/CloudinaryImage";
 
 export default function ProfilePage() {
   const { user: authUser, isAuthenticated } = useAuth();
@@ -21,10 +19,13 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(true);
-
+  const initialized = useRef(false);
 
   // Fetch current user from server API
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     async function init() {
       if (!isAuthenticated || !authUser) {
         toast.error("Please log in to access your profile");
@@ -63,7 +64,7 @@ export default function ProfilePage() {
       }
     }
     init();
-  }, [authUser, isAuthenticated]);
+  }, []);
 
   // Local preview helper
   const handleLocalPreview = (file: File) => {
@@ -111,7 +112,7 @@ export default function ProfilePage() {
       }
 
       const data = await response.json();
-      setImageId(data.imageId);
+      setImageId(data.imageUrl || data.imageId);
       toast.success("Profile image uploaded successfully");
 
       // Clean up local preview
@@ -152,7 +153,7 @@ export default function ProfilePage() {
         name: profileName,
         bio,
         mobile,
-        image_id: imageId,
+        image_id: imageId.startsWith('http') ? imageId : imageId,
         updated_at: new Date().toISOString(),
       };
       const res = await fetch(`/api/users/${authUser.id}`, {
@@ -198,7 +199,7 @@ export default function ProfilePage() {
   const displayImage = localPreview
     ? localPreview
     : imageId
-    ? `${IMAGEKIT_URL_ENDPOINT}/assets/${imageId}`
+    ? (imageId.startsWith('http') ? imageId : getCloudinaryUrl(imageId, 200, 200))
     : "/default-avatar.svg";
 
   if (loading) {

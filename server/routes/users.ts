@@ -19,8 +19,8 @@ router.get('/:id', async (req, res) => {
 
     // Check if we should use mock authentication
     const useMockAuth = process.env.MOCK_AUTH === 'true' ||
-                       !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY
+      !process.env.SUPABASE_URL ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
 
     const user = useMockAuth
       ? await MockAuthService.validateSession(token)
@@ -53,7 +53,7 @@ router.get('/:id', async (req, res) => {
 
     const { data, error } = await supabaseServer
       .from('users')
-      .select('id, name, email, role, bio, mobile, image_id, createdAt, updatedAt')
+      .select('id, name, email, role, bio, mobile, image_id, created_at, updated_at')
       .eq('id', id)
       .single();
 
@@ -87,8 +87,8 @@ router.put('/:id', async (req, res) => {
 
     // Check if we should use mock authentication
     const useMockAuth = process.env.MOCK_AUTH === 'true' ||
-                       !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY
+      !process.env.SUPABASE_URL ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
 
     const user = useMockAuth
       ? await MockAuthService.validateSession(token)
@@ -127,7 +127,7 @@ router.put('/:id', async (req, res) => {
     if (bio !== undefined) updates.bio = bio;
     if (mobile !== undefined) updates.mobile = mobile;
     if (image_id !== undefined) updates.image_id = image_id;
-    if (updated_at !== undefined) updates.updatedAt = updated_at;
+    if (updated_at !== undefined) updates.updated_at = updated_at;
 
     console.log('Updating user with data:', updates);
 
@@ -135,12 +135,13 @@ router.put('/:id', async (req, res) => {
       .from('users')
       .update(updates)
       .eq('id', id)
-      .select('id, name, email, role, bio, mobile, image_id')
+      .select('id, name, email, role, bio, mobile, image_id, created_at, updated_at')
       .single();
 
     if (error) {
       console.error('Error updating user:', error);
-      return res.status(500).json({ error: 'Failed to update user data', details: error.message });
+      console.error('Update payload:', updates);
+      return res.status(500).json({ error: 'Failed to update user data', details: error.message, code: error.code });
     }
 
     console.log('User updated successfully:', data);

@@ -22,10 +22,10 @@ export class PropertiesController {
 
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 12;
-      const minPrice = req.query.minPrice as string;
-      const maxPrice = req.query.maxPrice as string;
-      const city = req.query.city as string;
-      const amenities = req.query.amenities as string;
+      const minPrice = (req.query.minPrice as string) || undefined;
+      const maxPrice = (req.query.maxPrice as string) || undefined;
+      const city = (req.query.city as string) || undefined;
+      const amenities = (req.query.amenities as string) || undefined;
 
       const offset = (page - 1) * limit;
 
@@ -33,30 +33,37 @@ export class PropertiesController {
         console.log('🔍 [PropertiesController] Attempting to fetch from Supabase...');
         console.log('🔍 [PropertiesController] SUPABASE_URL:', process.env.SUPABASE_URL ? 'Set' : 'Not set');
         console.log('🔍 [PropertiesController] SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Not set');
-        
-        // Build the query
-        let query = supabaseServer
-          .from('properties')
-          .select(`*`, { count: 'exact' });
 
-        // Apply filters
-        if (minPrice || maxPrice) {
-          query = query.or(`price_per_night.gte.${minPrice},price_per_night.lte.${maxPrice}`);
-        }
+        // Helper to apply filters to a query
+        const applyFilters = (qb: any) => {
+          let q = qb;
+          if (minPrice) {
+            const min = parseFloat(minPrice);
+            if (!Number.isNaN(min)) q = q.gte('price_per_night', min);
+          }
+          if (maxPrice) {
+            const max = parseFloat(maxPrice);
+            if (!Number.isNaN(max)) q = q.lte('price_per_night', max);
+          }
+          if (city) {
+            q = q.ilike('location', `%${city}%`);
+          }
+          if (amenities) {
+            // Supabase supports Postgres array operations: use contains for text[]
+            const amenityList = amenities.split(',').map(a => a.trim()).filter(Boolean);
+            if (amenityList.length > 0) {
+              q = q.contains('amenities', amenityList);
+            }
+          }
+          return q;
+        };
 
-        if (city) {
-          query = query.ilike('location', `%${city}%`);
-        }
+        // Count query (use same filters)
+        const countQuery = applyFilters(
+          supabaseServer.from('properties').select('*', { head: true, count: 'exact' })
+        );
 
-        if (amenities) {
-          // This requires a more complex query with joins
-          // For now, we'll filter on the frontend
-        }
-
-        // Get total count for pagination
-        const { count, error: countError } = await supabaseServer
-          .from('properties')
-          .select('*', { count: 'exact', head: true });
+        const { count, error: countError } = await countQuery;
 
         if (countError) {
           console.error('❌ [PropertiesController] Count query error:', countError);
@@ -66,26 +73,29 @@ export class PropertiesController {
             details: countError.details,
             hint: countError.hint
           });
-          return MockPropertiesController.getProperties(req, res);
+          // Return empty result instead of falling back to mock to avoid surprising UI behavior
+          return res.json({ success: true, data: [], pagination: { currentPage: page, totalPages: 0, total: 0, limit } });
         }
 
         console.log('🔍 [PropertiesController] Total properties found:', count);
 
-        // Get paginated results
-        const { data: properties, error } = await query
+        // Data query with same filters
+        let dataQuery = applyFilters(supabaseServer.from('properties').select('*'));
+
+        const { data: properties, error } = await dataQuery
           .order('created_at', { ascending: false })
           .range(offset, offset + limit - 1);
 
         if (error) {
-          console.warn('Database query failed, falling back to mock data:', error.message);
-          console.error('❌ [PropertiesController] Supabase error:', error);
-          return MockPropertiesController.getProperties(req, res);
+          console.error('❌ [PropertiesController] Supabase data query error:', error);
+          // Return empty result instead of mock fallback
+          return res.status(500).json({ success: false, error: { code: 'DB_ERROR', message: error.message } });
         }
 
         console.log('🔍 [PropertiesController] Fetched properties:', properties?.length || 0);
 
         // Transform data for frontend
-        const transformedProperties = properties.map((property: any) => ({
+        const transformedProperties = (properties || []).map((property: any) => ({
           id: property.id,
           title: property.title,
           description: property.description,
@@ -102,7 +112,7 @@ export class PropertiesController {
 
         console.log('✅ [PropertiesController] Transformed properties:', transformedProperties.length);
 
-        const totalPages = Math.ceil(count! / limit);
+        const totalPages = Math.ceil((count || 0) / limit);
 
         res.json({
           success: true,
@@ -110,20 +120,18 @@ export class PropertiesController {
           pagination: {
             currentPage: page,
             totalPages,
-            total: count!,
+            total: count || 0,
             limit
           }
         });
       } catch (dbError: any) {
-        console.warn('Database connection failed, falling back to mock data:', dbError.message);
-        return MockPropertiesController.getProperties(req, res);
+        console.warn('Database connection failed, returning empty properties list:', dbError.message);
+        return res.status(500).json({ success: false, error: { code: 'DB_CONNECTION_FAILED', message: dbError.message } });
       }
 
     } catch (error: any) {
       console.error('Get properties error:', error);
-      // As a last resort, use mock data
-      console.log('🔄 Falling back to mock properties due to error');
-      return MockPropertiesController.getProperties(req, res);
+      return res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
     }
   }
 

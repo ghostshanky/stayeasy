@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { sendMessage } from '../client/src/lib/messages';
+import { useAuth } from '../client/src/hooks/useAuth';
+import { apiClient } from '../client/src/api/apiClient';
 
 interface MessageHostModalProps {
   isOpen: boolean;
   onClose: () => void;
   hostName: string;
+  hostId: string;
   propertyId?: string;
 }
 
-const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, hostName, propertyId }) => {
+const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, hostName, hostId, propertyId }) => {
+  const { user } = useAuth();
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  if (!isOpen) {
+  if (!isOpen || !user) {
     return null;
   }
 
@@ -21,21 +24,22 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
     setIsSending(true);
     
     try {
-      // In a real implementation, we would get the actual sender and receiver IDs
-      // For now, we'll use placeholder values
-      await sendMessage({
-        from_id: 'sender-id-placeholder',
-        to_id: 'receiver-id-placeholder',
-        property_id: propertyId,
-        content: message
+      const response = await apiClient.post('/messages', {
+        recipientId: hostId,
+        content: message.trim(),
+        propertyId: propertyId,
       });
-      
-      // Close the modal and show success message
-      onClose();
-      alert('Message sent successfully!');
-    } catch (error) {
+
+      if (response.success) {
+        // Close the modal and show success message
+        onClose();
+        alert('Message sent successfully!');
+      } else {
+        throw new Error(response.error?.message || 'Failed to send message');
+      }
+    } catch (error: any) {
       alert('Failed to send message. Please try again.');
-      console.error(error);
+      console.error('Error sending message:', error);
     } finally {
       setIsSending(false);
       setMessage('');

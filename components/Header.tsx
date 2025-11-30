@@ -6,15 +6,16 @@ import { BRAND } from '../client/src/config/brand';
 import { useDarkMode } from '../client/src/contexts/DarkModeContext';
 import { useAuth } from '../client/src/hooks/useAuth';
 import MobileMenu from './MobileMenu';
+import { getCloudinaryUrl } from './CloudinaryImage';
 
 export default function Header() {
     const navigate = useNavigate();
     const { user, logout, loading } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { isDarkMode, toggleDarkMode } = useDarkMode();
-    
+
     const imageUrl = user?.user_metadata?.image_id
-        ? `https://ik.imagekit.io/Shanky/${user.user_metadata.image_id}.png`
+        ? getCloudinaryUrl(user.user_metadata.image_id, 200, 200)
         : "/default_profile_pic.jpg";
 
     return (
@@ -64,7 +65,7 @@ export default function Header() {
                                     <Link to="/dashboard/tenant" className="hidden sm:block px-4 py-2 text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary hover:text-primary dark:hover:text-primary">
                                         My Bookings
                                     </Link>
-                                    
+
                                     {/* Profile */}
                                     <img
                                         src={imageUrl}
@@ -72,7 +73,7 @@ export default function Header() {
                                         className="w-10 h-10 rounded-full cursor-pointer border border-gray-300 hover:scale-105 transition"
                                         alt="Profile"
                                     />
-                                    
+
                                     {/* Logout */}
                                     <button onClick={logout} title="Logout" className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                                         <span className="material-symbols-outlined">logout</span>

@@ -3,18 +3,21 @@ import { apiClient } from '../api/apiClient';
 
 export interface Message {
   id: string;
-  sender_id: string;
-  recipient_id: string;
+  chatId?: string;
+  senderId: string;
+  recipientId: string;
   content: string;
-  property_id?: string;
-  read_at?: string;
-  created_at: string;
-  sender?: { name: string };
-  recipient?: { name: string };
+  propertyId?: string;
+  readAt?: string;
+  createdAt: string;
+  sender?: { id: string; name: string; email: string; role: string };
+  recipient?: { id: string; name: string; email: string; role: string };
   files?: Array<{
+    id: string;
     url: string;
-    file_name: string;
-    file_type: string;
+    fileName: string;
+    fileType: string;
+    createdAt: string;
   }>;
 }
 
@@ -58,10 +61,10 @@ export function useMessages(userId: string) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get(`/messages/conversation?userId1=${userId}&userId2=${otherUserId}`);
+      const response = await apiClient.get(`/messages/conversation/${otherUserId}`);
       
       if (response.data.success) {
-        setMessages(response.data.data);
+        setMessages(response.data.data.messages || []);
       } else {
         throw new Error(response.data.error?.message || 'Failed to fetch messages');
       }
@@ -76,10 +79,9 @@ export function useMessages(userId: string) {
   const sendMessage = async (recipientId: string, content: string, propertyId?: string) => {
     try {
       const response = await apiClient.post('/messages', {
-        sender_id: userId,
-        recipient_id: recipientId,
+        recipientId,
         content,
-        property_id: propertyId,
+        propertyId,
       });
 
       if (response.data.success) {
@@ -99,14 +101,13 @@ export function useMessages(userId: string) {
     try {
       const response = await apiClient.put('/messages/read', {
         messageIds,
-        userId,
       });
 
       if (response.data.success) {
         // Update local state
         setMessages(prev => prev.map(msg =>
           messageIds.includes(msg.id)
-            ? { ...msg, read_at: new Date().toISOString() }
+            ? { ...msg, readAt: new Date().toISOString() }
             : msg
         ));
         return true;
@@ -124,7 +125,7 @@ export function useMessages(userId: string) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get(`/messages?userId=${userId}&page=${page}&limit=${limit}`);
+      const response = await apiClient.get(`/messages?page=${page}&limit=${limit}`);
       
       if (response.data.success) {
         setMessages(response.data.data);

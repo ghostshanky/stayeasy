@@ -59,7 +59,7 @@ export class ChatClient {
   }> = []
 
   constructor(
-    private serverUrl: string = 'http://localhost:3002/api',
+    private serverUrl: string = '/api',
     private authToken: string
   ) {}
 

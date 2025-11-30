@@ -56,7 +56,7 @@ export default function AvatarMenu({ user }: AvatarMenuProps) {
     <div ref={menuRef} className="relative inline-block">
       <button type="button" onClick={onAvatarClick} aria-haspopup="true" aria-expanded={open}>
         <img
-          src={user?.image_id ? `https://ik.imagekit.io/Shanky/profiles/${user.image_id}.png` : "/default_profile_pic.jpg"}
+          src={user?.image_id ? getCloudinaryUrl(user.image_id, 200, 200) : "/default_profile_pic.jpg"}
           alt="avatar"
           className="w-10 h-10 rounded-full object-cover"
         />
@@ -66,7 +66,7 @@ export default function AvatarMenu({ user }: AvatarMenuProps) {
           <div className="p-3">
             <div className="flex items-center gap-3 mb-3 pb-3 border-b">
               <img
-                src={user?.image_id ? `https://ik.imagekit.io/Shanky/profiles/${user.image_id}.png` : "/default_profile_pic.jpg"}
+                src={user?.image_id ? getCloudinaryUrl(user.image_id, 200, 200) : "/default_profile_pic.jpg"}
                 alt="profile"
                 className="w-12 h-12 rounded-full object-cover"
               />

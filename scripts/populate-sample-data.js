@@ -23,86 +23,86 @@ async function populateSampleData() {
     // Insert test users
     console.log('Creating test users...');
     const { data: users, error: usersError } = await supabase
-      .from('profiles')
+      .from('users')
       .insert([
         {
           id: 'owner-1',
           email: 'alex.chen@example.com',
-          full_name: 'Alex Chen',
+          name: 'Alex Chen',
           role: 'OWNER',
-          avatar_url: 'https://via.placeholder.com/150/FF6B6B/FFFFFF?text=AC',
+          image_id: 'https://via.placeholder.com/150/FF6B6B/FFFFFF?text=AC',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'owner-2',
           email: 'sarah.johnson@example.com',
-          full_name: 'Sarah Johnson',
+          name: 'Sarah Johnson',
           role: 'OWNER',
-          avatar_url: 'https://via.placeholder.com/150/4ECDC4/FFFFFF?text=SJ',
+          image_id: 'https://via.placeholder.com/150/4ECDC4/FFFFFF?text=SJ',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'owner-3',
           email: 'mike.davis@example.com',
-          full_name: 'Mike Davis',
+          name: 'Mike Davis',
           role: 'OWNER',
-          avatar_url: 'https://via.placeholder.com/150/45B7D1/FFFFFF?text=MD',
+          image_id: 'https://via.placeholder.com/150/45B7D1/FFFFFF?text=MD',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'owner-4',
           email: 'emma.wilson@example.com',
-          full_name: 'Emma Wilson',
+          name: 'Emma Wilson',
           role: 'OWNER',
-          avatar_url: 'https://via.placeholder.com/150/F7DC6F/000000?text=EW',
+          image_id: 'https://via.placeholder.com/150/F7DC6F/000000?text=EW',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'tenant-1',
           email: 'john.smith@example.com',
-          full_name: 'John Smith',
+          name: 'John Smith',
           role: 'TENANT',
-          avatar_url: 'https://via.placeholder.com/150/85C1E9/FFFFFF?text=JS',
+          image_id: 'https://via.placeholder.com/150/85C1E9/FFFFFF?text=JS',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'tenant-2',
           email: 'lisa.brown@example.com',
-          full_name: 'Lisa Brown',
+          name: 'Lisa Brown',
           role: 'TENANT',
-          avatar_url: 'https://via.placeholder.com/150/F8C471/000000?text=LB',
+          image_id: 'https://via.placeholder.com/150/F8C471/000000?text=LB',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'tenant-3',
           email: 'david.lee@example.com',
-          full_name: 'David Lee',
+          name: 'David Lee',
           role: 'TENANT',
-          avatar_url: 'https://via.placeholder.com/150/82E0AA/FFFFFF?text=DL',
+          image_id: 'https://via.placeholder.com/150/82E0AA/FFFFFF?text=DL',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'tenant-4',
           email: 'anna.garcia@example.com',
-          full_name: 'Anna Garcia',
+          name: 'Anna Garcia',
           role: 'TENANT',
-          avatar_url: 'https://via.placeholder.com/150/D7BDE2/000000?text=AG',
+          image_id: 'https://via.placeholder.com/150/D7BDE2/000000?text=AG',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'admin-1',
           email: 'admin@stayeasy.com',
-          full_name: 'System Admin',
+          name: 'System Admin',
           role: 'ADMIN',
-          avatar_url: 'https://via.placeholder.com/150/A9DFBF/000000?text=AD',
+          image_id: 'https://via.placeholder.com/150/A9DFBF/000000?text=AD',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }

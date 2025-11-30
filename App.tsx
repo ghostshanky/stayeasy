@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { DarkModeProvider } from './client/src/contexts/DarkModeContext';
 import { AuthProvider } from './client/src/hooks/useAuth';
-import { IKContext } from 'imagekitio-react';
 
 // Page Components
 import AboutUsPage from './pages/AboutUsPage';
@@ -52,24 +51,9 @@ function App() {
     return (
         <DarkModeProvider>
             <AuthProvider>
-                <IKContext
-                    publicKey="public_ZU8QLVtBgQjYo0RCbhQml7bZ3+A="
-                    urlEndpoint="https://ik.imagekit.io/Shanky"
-                    transformationPosition="path"
-                    authenticator={async () => {
-                        try {
-                            const response = await fetch('/api/imagekit/auth');
-                            const data = await response.json();
-                            return data;
-                        } catch (error) {
-                            console.error('ImageKit auth error:', error);
-                            return {};
-                        }
-                    }}
-                >
-                    <div className="flex flex-col min-h-screen">
-                        <Header />
-                        <main className="flex-grow">
+                <div className="flex flex-col min-h-screen">
+                    <Header />
+                    <main className="flex-grow">
                         <Routes>
                             {/* Public Routes */}
                             <Route path="/" element={<LandingPage />} />
@@ -193,7 +177,6 @@ function App() {
                         }}
                     />
                     </div>
-                </IKContext>
             </AuthProvider>
         </DarkModeProvider>
     );

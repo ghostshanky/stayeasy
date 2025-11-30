@@ -256,9 +256,6 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // Update conversation timestamps
-    // Update conversation timestamps (simplified approach)
-    // In a real implementation, you'd have a conversations table
-    // For now, we'll just log this action
     console.log(`Conversation updated between ${senderId} and ${recipientId}`);
 
     res.status(201).json({

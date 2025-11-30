@@ -1,4 +1,11 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import path from 'path'
+// Ensure we load the project's root .env reliably even when the server is started from a subfolder
+dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+// Quick diagnostics to verify .env loaded
+console.log('🔍 [dotenv] CWD:', process.cwd())
+console.log('🔍 [dotenv] SUPABASE_URL present:', !!process.env.SUPABASE_URL)
+console.log('🔍 [dotenv] SUPABASE_SERVICE_ROLE_KEY present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
 import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
@@ -14,7 +21,6 @@ import bookingsRoutes from './routes/bookings.js'
 import reviewsRoutes from './routes/reviews.js'
 import invoicesRoutes from './routes/invoices.js'
 import adminRoutes from './routes/admin.js'
-import imagekitRoutes from './routes/imagekit.js'
 import imageController from './controllers/imageController.js'
 import userRoutes from './routes/users.js'
 import messagesRoutes from './routes/messages.js'
@@ -42,16 +48,16 @@ const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // Get allowed origins from environment variable or use defaults
     const frontendUrls = process.env.FRONTEND_URL
       ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
       : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5176'];
-    
+
     // Debug: Log CORS request
     console.log(`🔍 [CORS] Request from origin: ${origin}`);
     console.log(`🔍 [CORS] Allowed origins: ${frontendUrls.join(', ')}`);
-    
+
     // Check if the origin is in our allowed list
     if (frontendUrls.indexOf(origin) !== -1) {
       console.log(`✅ [CORS] Allowing request from: ${origin}`);
@@ -85,14 +91,14 @@ const authMiddleware = async (req: express.Request, res: express.Response, next:
   }
 
   const token = authHeader.substring(7)
-  console.log('🔍 [Auth Middleware] Token received (first 20 chars):', token.substring(0, 20) + '...')
+  // console.log('🔍 [Auth Middleware] Token received (first 20 chars):', token.substring(0, 20) + '...')
 
   // Check if we should use mock authentication
   const useMockAuth = process.env.MOCK_AUTH === 'true' ||
-                     !process.env.SUPABASE_URL ||
-                     !process.env.SUPABASE_SERVICE_ROLE_KEY
+    !process.env.SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  console.log('🔍 [Auth Middleware] Using mock auth:', useMockAuth)
+  // console.log('🔍 [Auth Middleware] Using mock auth:', useMockAuth)
 
   try {
     const user = useMockAuth
@@ -100,7 +106,7 @@ const authMiddleware = async (req: express.Request, res: express.Response, next:
       : await AuthService.validateSession(token)
 
     if (user) {
-      console.log('✅ [Auth Middleware] User authenticated:', user.email)
+      // console.log('✅ [Auth Middleware] User authenticated:', user.email)
       req.currentUser = user
     } else {
       console.log('❌ [Auth Middleware] Token validation failed')
@@ -135,7 +141,7 @@ app.use('/api', bookingsRoutes)
 app.use('/api', reviewsRoutes)
 app.use('/api', invoicesRoutes)
 app.use('/api/admin', adminRoutes)
-app.use('/api/imagekit', imagekitRoutes)
+
 app.use('/api/images', imageController)
 app.use('/api/users', userRoutes)
 app.use('/api/messages', messagesRoutes)
@@ -147,24 +153,25 @@ app.get('/api/properties', PropertiesController.getProperties);
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password, name, role } = req.body
-    
+
     // Check if we should use mock authentication
     // Use MOCK_AUTH=true in .env to force mock mode
     const useMockAuth = process.env.MOCK_AUTH === 'true' ||
-                       !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY ||
-                       process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
-                       process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
-    
-    // DIAGNOSTIC: Log environment status
+      !process.env.SUPABASE_URL ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
+
+    // DIAGNOSTIC: Log environment status (mask keys for safety)
     console.log('🔍 [Server] Environment Status Check:')
+    console.log('   - CWD:', process.cwd())
     console.log('   - SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing')
-    console.log('   - SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Set' : '❌ Missing')
+    console.log('   - SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Set (masked)' : '❌ Missing')
     console.log('   - MOCK_AUTH:', process.env.MOCK_AUTH)
     console.log('   - Will use mock auth:', useMockAuth)
-    
+
     console.log('🔍 Signup request received:', { email, name, role, useMockAuth })
-    
+
     let user
     if (useMockAuth) {
       console.log('🔄 Using mock authentication for signup')
@@ -176,11 +183,11 @@ app.post('/api/auth/signup', async (req, res) => {
       console.log('🔐 Using real authentication for signup')
       user = await AuthService.createUser(email, password, name, role)
     }
-    
+
     const { accessToken, refreshToken } = useMockAuth
       ? await MockAuthService.createSession(user)
       : await AuthService.createSession(user)
-    
+
     res.status(201).json({
       success: true,
       data: {
@@ -207,21 +214,21 @@ app.post('/api/auth/signup', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body
-    
+
     // Check if we should use mock authentication
     // Use MOCK_AUTH=true in .env to force mock mode
     const useMockAuth = process.env.MOCK_AUTH === 'true' ||
-                       !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY
-    
+      !process.env.SUPABASE_URL ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
+
     console.log('🔍 [Server] Login Environment Status Check:')
     console.log('   - SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing')
     console.log('   - SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Set' : '❌ Missing')
     console.log('   - MOCK_AUTH:', process.env.MOCK_AUTH)
     console.log('   - Will use mock auth:', useMockAuth)
-    
+
     console.log('🔍 Login request received:', { email, useMockAuth })
-    
+
     let user
     if (useMockAuth) {
       console.log('🔄 Using mock authentication for login')
@@ -231,7 +238,7 @@ app.post('/api/auth/login', async (req, res) => {
       console.log('🔐 Using real authentication for login')
       user = await AuthService.authenticateUser(email, password)
     }
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -242,7 +249,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { accessToken, refreshToken } = useMockAuth
       ? await MockAuthService.createSession(user)
       : await AuthService.createSession(user)
-    
+
     res.json({
       success: true,
       data: {
@@ -269,10 +276,10 @@ app.post('/api/auth/logout', async (req, res) => {
   try {
     const { refreshToken } = req.body
     const useMockAuth = !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY ||
-                       process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
-                       process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
-    
+      !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
+
     if (refreshToken && !useMockAuth) {
       await AuthService.logout(refreshToken)
     }
@@ -286,17 +293,17 @@ app.post('/api/auth/refresh', async (req, res) => {
   try {
     const { refreshToken } = req.body
     const useMockAuth = !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY ||
-                       process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
-                       process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
-    
+      !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
+
     let newTokens
     if (useMockAuth) {
       newTokens = await MockAuthService.refreshToken(refreshToken)
     } else {
       newTokens = await AuthService.refreshToken(refreshToken)
     }
-    
+
     if (!newTokens) {
       return res.status(401).json({ error: 'Invalid refresh token' })
     }
@@ -311,15 +318,15 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
   try {
     const { token } = req.params
     const useMockAuth = !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY ||
-                       process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
-                       process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
-    
+      !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_URL === 'https://your-project.supabase.co' ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY === 'your-service-role-key'
+
     if (useMockAuth) {
       // Mock authentication doesn't support email verification
       return res.status(400).json({ error: 'Email verification not available in mock mode' })
     }
-    
+
     const success = await AuthService.verifyEmailToken(token)
     if (success) {
       res.json({ message: 'Email verified successfully' })
@@ -332,12 +339,12 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
 })
 
 app.get('/api/auth/me', (req, res) => {
-  console.log('🔍 [Auth Me] Current user check:', {
-    hasCurrentUser: !!req.currentUser,
-    userEmail: req.currentUser?.email,
-    userId: req.currentUser?.id,
-    userRole: req.currentUser?.role
-  })
+  // console.log('🔍 [Auth Me] Current user check:', {
+  //   hasCurrentUser: !!req.currentUser,
+  //   userEmail: req.currentUser?.email,
+  //   userId: req.currentUser?.id,
+  //   userRole: req.currentUser?.role
+  // })
 
   if (!req.currentUser) {
     console.log('❌ [Auth Me] No current user found, returning 401')
@@ -347,7 +354,7 @@ app.get('/api/auth/me', (req, res) => {
     })
   }
 
-  console.log('✅ [Auth Me] User profile found, returning 200')
+  // console.log('✅ [Auth Me] User profile found, returning 200')
   res.json({
     success: true,
     data: {
@@ -372,7 +379,7 @@ app.patch('/api/auth/me/role', async (req, res) => {
     }
 
     const { role } = req.body;
-    
+
     if (!role || !['TENANT', 'OWNER', 'ADMIN'].includes(role)) {
       return res.status(400).json({
         success: false,
@@ -382,11 +389,11 @@ app.patch('/api/auth/me/role', async (req, res) => {
 
     // Check if we should use mock authentication
     const useMockAuth = process.env.MOCK_AUTH === 'true' ||
-                       !process.env.SUPABASE_URL ||
-                       !process.env.SUPABASE_SERVICE_ROLE_KEY
+      !process.env.SUPABASE_URL ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
 
     let updatedUser;
-    
+
     if (useMockAuth) {
       // Update user in mock array
       const userIndex = mockUsers.findIndex(u => u.id === req.currentUser!.id);
@@ -511,6 +518,17 @@ process.on('SIGTERM', () => {
   server.close(() => {
     process.exit(0)
   })
+})
+
+// Unhandled promise rejection
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ [Unhandled Rejection]', reason)
+})
+
+// Uncaught exception
+process.on('uncaughtException', (error) => {
+  console.error('❌ [Uncaught Exception]', error)
+  process.exit(1)
 })
 
 export default app

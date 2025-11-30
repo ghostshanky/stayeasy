@@ -18,12 +18,12 @@ model User {
   role              Role     @default(TENANT)
   bio               String?
   mobile            String?
-  image_id          String?
-  email_verified    Boolean  @default(false)
-  email_token       String?
-  email_token_expiry DateTime?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  imageId           String?  @map("image_id")
+  emailVerified     Boolean  @default(false) @map("email_verified")
+  emailToken        String?  @map("email_token")
+  emailTokenExpiry  DateTime? @map("email_token_expiry")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   // Relations
   bookings          Booking[]
@@ -31,7 +31,7 @@ model User {
   chats             Chat[]
   messages          Message[]
   sessions          Session[]
-  audit_logs        AuditLog[]
+  auditLogs         AuditLog[]
   notifications     Notification[]
   properties        Property[]
 
@@ -43,8 +43,8 @@ model Owner {
   email      String   @unique
   password   String
   name       String
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   // Relations
   properties Property[]
@@ -54,55 +54,55 @@ model Owner {
 }
 
 model Property {
-  id             String   @id @default(cuid())
-  owner_id       String
-  title          String
-  location       String
-  description    String?
-  price_per_night Float
-  images         String[] @default([])
-  rating         Float    @default(0)
-  amenities      String[] @default([])
-  tags           String[] @default([])
-  capacity       Int
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id                String   @id @default(cuid())
+  ownerId           String   @map("owner_id")
+  title             String
+  location          String
+  description       String?
+  pricePerNight     Float    @map("price_per_night")
+  images            String[] @default([])
+  rating            Float    @default(0)
+  amenities         String[] @default([])
+  tags              String[] @default([])
+  capacity          Int
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   // Relations
-  owner          Owner    @relation(fields: [owner_id], references: [id])
-  user           User     @relation(fields: [owner_id], references: [id], map: "properties_user_id_fkey")
-  property_details PropertyDetail[]
-  bookings       Booking[]
-  reviews        Review[]
+  owner             Owner    @relation(fields: [ownerId], references: [id])
+  user              User     @relation(fields: [ownerId], references: [id], map: "properties_user_id_fkey")
+  propertyDetails   PropertyDetail[]
+  bookings          Booking[]
+  reviews           Review[]
 
   @@map("properties")
 }
 
 model PropertyDetail {
   id          String @id @default(cuid())
-  property_id String
+  propertyId  String @map("property_id")
   amenity     String
   value       String
 
   // Relations
-  property    Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("property_details")
 }
 
 model Booking {
   id          String         @id @default(cuid())
-  user_id     String
-  property_id String
-  check_in    DateTime
-  check_out   DateTime
+  userId      String         @map("user_id")
+  propertyId  String         @map("property_id")
+  checkIn     DateTime       @map("check_in")
+  checkOut    DateTime       @map("check_out")
   status      BookingStatus  @default(PENDING)
-  created_at  DateTime       @default(now())
-  updated_at  DateTime       @updatedAt
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
 
   // Relations
-  user        User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  property    Property       @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   payments    Payment[]
 
   @@map("bookings")
@@ -110,54 +110,54 @@ model Booking {
 
 model Review {
   id          String   @id @default(cuid())
-  user_id     String
-  property_id String
+  userId      String   @map("user_id")
+  propertyId  String   @map("property_id")
   rating      Int
   comment     String?
-  created_at  DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
-  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  property    Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("reviews")
 }
 
 model Payment {
   id         String         @id @default(cuid())
-  booking_id String
+  bookingId  String         @map("booking_id")
   amount     Float
   status     PaymentStatus  @default(PENDING)
-  created_at DateTime       @default(now())
+  createdAt  DateTime       @default(now()) @map("created_at")
 
   // Relations
-  booking    Booking        @relation(fields: [booking_id], references: [id], onDelete: Cascade)
-  invoices  Invoice[]
+  booking    Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  invoices   Invoice[]
 
   @@map("payments")
 }
 
 model Invoice {
   id          String   @id @default(cuid())
-  payment_id  String
+  paymentId   String   @map("payment_id")
   details     String
-  created_at  DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
-  payment     Payment  @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   @@map("invoices")
 }
 
 model Chat {
   id         String    @id @default(cuid())
-  user_id    String
-  owner_id   String
-  created_at DateTime  @default(now())
+  userId     String    @map("user_id")
+  ownerId    String    @map("owner_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   // Relations
-  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  owner      Owner     @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  owner      Owner     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   messages   Message[]
 
   @@map("chats")
@@ -165,17 +165,17 @@ model Chat {
 
 model Message {
   id            String   @id @default(cuid())
-  chat_id       String
-  sender_id     String
-  recipient_id  String
+  chatId        String   @map("chat_id")
+  senderId      String   @map("sender_id")
+  recipientId   String   @map("recipient_id")
   content       String
-  sender_type   String   @default("USER")
-  read_at       DateTime?
-  created_at    DateTime @default(now())
+  senderType    String   @default("USER") @map("sender_type")
+  readAt        DateTime? @map("read_at")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   // Relations
-  chat          Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
-  sender        User     @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+  chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender        User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
   files         File[]
 
   @@map("messages")
@@ -183,52 +183,52 @@ model Message {
 
 model File {
   id          String   @id @default(cuid())
-  message_id  String
+  messageId   String   @map("message_id")
   url         String
   type        String
-  created_at  DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
-  message     Message  @relation(fields: [message_id], references: [id], onDelete: Cascade)
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@map("files")
 }
 
 model Session {
   id         String   @id @default(cuid())
-  user_id    String
+  userId     String   @map("user_id")
   token      String   @unique
-  expires_at DateTime
-  created_at DateTime @default(now())
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   // Relations
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
-  user_id   String?
+  userId    String?  @map("user_id")
   action    String
   details   String?
-  created_at DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  user      User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
 }
 
 model Notification {
   id         String   @id @default(cuid())
-  user_id    String
+  userId     String   @map("user_id")
   message    String
   read       Boolean  @default(false)
-  created_at DateTime @default(now())
+  createdAt  DateTime @default(now()) @map("created_at")
 
   // Relations
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
