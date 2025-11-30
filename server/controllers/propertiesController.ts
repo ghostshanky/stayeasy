@@ -1,154 +1,182 @@
 import { Request, Response } from 'express';
 import { supabaseServer } from '../lib/supabaseServer.js';
+import { prisma } from '../lib/prisma.js';
 import { AuditLogger } from '../audit-logger.js';
+import { MockPropertiesController } from './mockPropertiesController.js';
 
 export class PropertiesController {
   // Get all properties with filtering and pagination
   static async getProperties(req: Request, res: Response) {
     try {
+      // Check if we should use mock data
+      const useMockData = process.env.MOCK_AUTH === 'true' ||
+                         !process.env.SUPABASE_URL ||
+                         !process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (useMockData) {
+        console.log('🔄 Using mock properties controller for getProperties');
+        return MockPropertiesController.getProperties(req, res);
+      }
+
+      console.log('🔍 [PropertiesController] Using real Supabase data for getProperties');
+
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 12;
-      const minPrice = req.query.minPrice as string;
-      const maxPrice = req.query.maxPrice as string;
-      const city = req.query.city as string;
-      const amenities = req.query.amenities as string;
+      const minPrice = (req.query.minPrice as string) || undefined;
+      const maxPrice = (req.query.maxPrice as string) || undefined;
+      const city = (req.query.city as string) || undefined;
+      const amenities = (req.query.amenities as string) || undefined;
 
       const offset = (page - 1) * limit;
 
-      // Build the query
-      let query = supabaseServer
-        .from('properties')
-        .select(`
-          *,
-          property_amenities (
-            amenities (
-              name
-            )
-          ),
-          files (
-            url,
-            file_name
-          )
-        `, { count: 'exact' });
+      try {
+        console.log('🔍 [PropertiesController] Attempting to fetch from Supabase...');
+        console.log('🔍 [PropertiesController] SUPABASE_URL:', process.env.SUPABASE_URL ? 'Set' : 'Not set');
+        console.log('🔍 [PropertiesController] SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Not set');
 
-      // Apply filters
-      if (minPrice || maxPrice) {
-        query = query.or(`price_per_night.gte.${minPrice},price_per_night.lte.${maxPrice}`);
-      }
+        // Helper to apply filters to a query
+        const applyFilters = (qb: any) => {
+          let q = qb;
+          if (minPrice) {
+            const min = parseFloat(minPrice);
+            if (!Number.isNaN(min)) q = q.gte('price_per_night', min);
+          }
+          if (maxPrice) {
+            const max = parseFloat(maxPrice);
+            if (!Number.isNaN(max)) q = q.lte('price_per_night', max);
+          }
+          if (city) {
+            q = q.ilike('location', `%${city}%`);
+          }
+          if (amenities) {
+            // Supabase supports Postgres array operations: use contains for text[]
+            const amenityList = amenities.split(',').map(a => a.trim()).filter(Boolean);
+            if (amenityList.length > 0) {
+              q = q.contains('amenities', amenityList);
+            }
+          }
+          return q;
+        };
 
-      if (city) {
-        query = query.ilike('location', `%${city}%`);
-      }
+        // Count query (use same filters)
+        const countQuery = applyFilters(
+          supabaseServer.from('properties').select('*', { head: true, count: 'exact' })
+        );
 
-      if (amenities) {
-        // This requires a more complex query with joins
-        // For now, we'll filter on the frontend
-      }
+        const { count, error: countError } = await countQuery;
 
-      // Get total count for pagination
-      const { count, error: countError } = await supabaseServer
-        .from('properties')
-        .select('*', { count: 'exact', head: true });
-
-      if (countError) {
-        throw new Error(`Failed to count properties: ${countError.message}`);
-      }
-
-      // Get paginated results
-      const { data: properties, error } = await query
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
-
-      if (error) {
-        throw new Error(`Failed to fetch properties: ${error.message}`);
-      }
-
-      // Transform data for frontend
-      const transformedProperties = properties.map((property: any) => ({
-        id: property.id,
-        title: property.title,
-        description: property.description,
-        location: property.location,
-        price_per_night: property.price_per_night,
-        rating: property.rating || 0,
-        images: property.files?.map((file: any) => file.url) || [],
-        amenities: property.property_amenities?.map((pa: any) => pa.amenities?.name) || [],
-        created_at: property.created_at,
-        updated_at: property.updated_at
-      }));
-
-      const totalPages = Math.ceil(count! / limit);
-
-      res.json({
-        success: true,
-        data: transformedProperties,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          total: count!,
-          limit
+        if (countError) {
+          console.error('❌ [PropertiesController] Count query error:', countError);
+          console.error('❌ [PropertiesController] Count error details:', {
+            message: countError.message,
+            code: countError.code,
+            details: countError.details,
+            hint: countError.hint
+          });
+          // Return empty result instead of falling back to mock to avoid surprising UI behavior
+          return res.json({ success: true, data: [], pagination: { currentPage: page, totalPages: 0, total: 0, limit } });
         }
-      });
+
+        console.log('🔍 [PropertiesController] Total properties found:', count);
+
+        // Data query with same filters
+        let dataQuery = applyFilters(supabaseServer.from('properties').select('*'));
+
+        const { data: properties, error } = await dataQuery
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        if (error) {
+          console.error('❌ [PropertiesController] Supabase data query error:', error);
+          // Return empty result instead of mock fallback
+          return res.status(500).json({ success: false, error: { code: 'DB_ERROR', message: error.message } });
+        }
+
+        console.log('🔍 [PropertiesController] Fetched properties:', properties?.length || 0);
+
+        // Transform data for frontend
+        const transformedProperties = (properties || []).map((property: any) => ({
+          id: property.id,
+          title: property.title,
+          description: property.description,
+          location: property.location,
+          price_per_night: property.price_per_night,
+          rating: property.rating || 0,
+          images: property.images || [],
+          amenities: property.amenities || [],
+          tags: property.tags || [],
+          capacity: property.capacity,
+          created_at: property.created_at,
+          updated_at: property.updated_at
+        }));
+
+        console.log('✅ [PropertiesController] Transformed properties:', transformedProperties.length);
+
+        const totalPages = Math.ceil((count || 0) / limit);
+
+        res.json({
+          success: true,
+          data: transformedProperties,
+          pagination: {
+            currentPage: page,
+            totalPages,
+            total: count || 0,
+            limit
+          }
+        });
+      } catch (dbError: any) {
+        console.warn('Database connection failed, returning empty properties list:', dbError.message);
+        return res.status(500).json({ success: false, error: { code: 'DB_CONNECTION_FAILED', message: dbError.message } });
+      }
 
     } catch (error: any) {
       console.error('Get properties error:', error);
-      res.status(500).json({
-        success: false,
-        error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch properties.' }
-      });
+      return res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
     }
   }
 
   // Create new property (owner only)
   static async createProperty(req: Request, res: Response) {
     try {
-      const { title, description, location, price_per_night, amenities, ownerId } = req.body;
+      const { title, description, location, price_per_night, capacity, amenities, images, tags, owner_id } = req.body;
 
       // Validate required fields
-      if (!title || !location || !price_per_night || !ownerId) {
+      if (!title || !location || !price_per_night || !capacity || !owner_id) {
         return res.status(400).json({
           success: false,
           error: { code: 'VALIDATION_ERROR', message: 'Missing required fields.' }
         });
       }
 
-      // Insert property
-      const { data: property, error: propertyError } = await supabaseServer
-        .from('properties')
-        .insert({
+      // Check if we should use mock data
+      const useMockData = process.env.MOCK_AUTH === 'true' ||
+                         !process.env.SUPABASE_URL ||
+                         !process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (useMockData) {
+        console.log('🔄 Using mock properties controller for createProperty');
+        return MockPropertiesController.createProperty(req, res);
+      }
+
+      console.log('🔍 [PropertiesController] Using real Supabase data for createProperty');
+
+      // Use Prisma to create property
+      const property = await prisma.property.create({
+        data: {
           title,
-          description,
           location,
-          price_per_night: parseInt(price_per_night),
-          owner_id: ownerId,
-          status: 'AVAILABLE'
-        })
-        .select()
-        .single();
-
-      if (propertyError) {
-        throw new Error(`Failed to create property: ${propertyError.message}`);
-      }
-
-      // Insert amenities if provided
-      if (amenities && amenities.length > 0) {
-        const amenityInserts = amenities.map((amenityName: string) => ({
-          property_id: property.id,
-          amenity_name: amenityName
-        }));
-
-        const { error: amenityError } = await supabaseServer
-          .from('property_amenities')
-          .insert(amenityInserts);
-
-        if (amenityError) {
-          console.error('Failed to insert amenities:', amenityError);
-          // Don't throw here - property was created successfully
-        }
-      }
+          description,
+          price_per_night: parseFloat(price_per_night),
+          capacity: parseInt(capacity),
+          owner_id,
+          images: images || [],
+          amenities: amenities || [],
+          tags: tags || [],
+        },
+      });
 
       // Log audit event
-      await AuditLogger.logPropertyUpdate(ownerId, property.id, { propertyCreated: true });
+      await AuditLogger.logPropertyUpdate(owner_id, property.id, { propertyCreated: true });
 
       res.status(201).json({
         success: true,
@@ -270,6 +298,18 @@ export class PropertiesController {
         });
       }
 
+      // Check if we should use mock data
+      const useMockData = process.env.MOCK_AUTH === 'true' ||
+                         !process.env.SUPABASE_URL ||
+                         !process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (useMockData) {
+        console.log('🔄 Using mock properties controller for getOwnerProperties');
+        return MockPropertiesController.getOwnerProperties(req, res);
+      }
+
+      console.log('🔍 [PropertiesController] Using real Supabase data for getOwnerProperties');
+
       const offset = (page - 1) * limit;
 
       // Get owner's properties
@@ -375,5 +415,11 @@ export class PropertiesController {
         error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch property details.' }
       });
     }
+  }
+
+  // Get welcome message for properties API
+  static async getWelcome(req: Request, res: Response) {
+    console.log(`Request received: ${req.method} ${req.path}`);
+    res.json({ message: 'Welcome to the Properties API!' });
   }
 }

@@ -3,24 +3,37 @@ import { supabase } from '../../client/src/lib/supabase';
 
 interface Message {
   id: string;
-  conversation_id: string;
-  sender_id: string;
-  receiver_id: string;
-  message: string;
-  created_at: string;
-  read: boolean;
+  chatId?: string;
+  senderId: string;
+  recipientId: string;
+  content: string;
+  propertyId?: string;
+  readAt?: string;
+  createdAt: string;
 }
 
 interface Conversation {
   id: string;
-  property_id: string;
-  property_name: string;
-  tenant_id: string;
-  tenant_name: string;
-  tenant_avatar?: string;
-  last_message: string;
-  last_message_time: string;
-  unread_count: number;
+  otherUser: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string;
+  };
+  property?: {
+    id: string;
+    title: string;
+    image?: string;
+  };
+  lastMessage: {
+    id: string;
+    content: string;
+    senderId: string;
+    createdAt: string;
+    readAt?: string;
+  };
+  unreadCount: number;
+  createdAt: string;
 }
 
 interface OwnerMessagesListProps {
@@ -42,12 +55,9 @@ const OwnerMessagesList: React.FC<OwnerMessagesListProps> = ({
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const userId = localStorage.getItem('userId');
-
-      const response = await fetch(`/api/messages/conversations?userId=${userId}`, {
+      const response = await fetch('/api/messages/conversations', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -107,31 +117,31 @@ const OwnerMessagesList: React.FC<OwnerMessagesListProps> = ({
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                  {conversation.tenant_name.charAt(0)}
+                  {conversation.otherUser.name.charAt(0)}
                 </div>
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                    {conversation.tenant_name}
+                    {conversation.otherUser.name}
                   </h3>
                   <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 ml-2">
-                    {formatTime(conversation.last_message_time)}
+                    {formatTime(conversation.lastMessage.createdAt)}
                   </span>
                 </div>
                 
                 <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-1">
-                  {conversation.property_name}
+                  {conversation.property?.title || 'No property'}
                 </p>
                 
                 <div className="flex items-center justify-between mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                    {conversation.last_message}
+                    {conversation.lastMessage.content}
                   </p>
-                  {conversation.unread_count > 0 && (
+                  {conversation.unreadCount > 0 && (
                     <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                      {conversation.unread_count}
+                      {conversation.unreadCount}
                     </span>
                   )}
                 </div>

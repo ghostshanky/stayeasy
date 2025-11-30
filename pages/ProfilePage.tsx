@@ -1,11 +1,12 @@
 // src/pages/profile.tsx   (or src/pages/ProfilePage.tsx)
 // Requires: react-hot-toast, tailwindcss
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
-
-const IMAGEKIT_URL_ENDPOINT = import.meta.env.VITE_IMAGEKIT_URL_ENDPOINT || "https://ik.imagekit.io/Shanky";
+import { useAuth } from "../client/src/hooks/useAuth";
+import { getCloudinaryUrl } from "../components/CloudinaryImage";
 
 export default function ProfilePage() {
+  const { user: authUser, isAuthenticated } = useAuth();
   const [user, setUser] = useState<any>(null);
   const [profileName, setProfileName] = useState("");
   const [bio, setBio] = useState("");
@@ -16,43 +17,44 @@ export default function ProfilePage() {
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(true);
+  const initialized = useRef(false);
 
   // Fetch current user from server API
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     async function init() {
+      if (!isAuthenticated || !authUser) {
+        toast.error("Please log in to access your profile");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-          toast.error("Please log in to access your profile");
-          setLoading(false);
-          return;
-        }
-        // /api/auth/me must accept Authorization Bearer token and return { user }
-        const res = await fetch("/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Auth fetch failed");
-        const { user: currentUser } = await res.json();
-        setUser(currentUser);
-        setEmail(currentUser.email || "");
+        setUser(authUser);
+        setEmail(authUser.email || "");
+
         // fetch DB user details
-        const ures = await fetch(`/api/users/${currentUser.id}`, {
+        const token = localStorage.getItem("accessToken");
+        const ures = await fetch(`/api/users/${authUser.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (ures.ok) {
           const dbUser = await ures.json();
-          setProfileName(dbUser.name || currentUser.user_metadata?.name || "");
-          setBio(dbUser.bio || currentUser.user_metadata?.bio || "");
-          setMobile(dbUser.mobile || currentUser.user_metadata?.mobile || "");
-          setRole(dbUser.role || currentUser.user_metadata?.role || "TENANT");
-          setImageId(dbUser.image_id || currentUser.user_metadata?.image_id || "");
+          setProfileName(dbUser.name || authUser.name || "");
+          setBio(dbUser.bio || "");
+          setMobile(dbUser.mobile || "");
+          setRole(dbUser.role || authUser.role || "TENANT");
+          setImageId(dbUser.image_id || "");
         } else {
           // fallback to auth data
-          setProfileName(currentUser.user_metadata?.name || "");
-          setBio(currentUser.user_metadata?.bio || "");
-          setMobile(currentUser.user_metadata?.mobile || "");
-          setRole(currentUser.user_metadata?.role || "TENANT");
+          setProfileName(authUser.name || "");
+          setBio("");
+          setMobile("");
+          setRole(authUser.role || "TENANT");
         }
       } catch (err) {
         console.error(err);
@@ -70,9 +72,9 @@ export default function ProfilePage() {
     setLocalPreview(url);
   };
 
-  // Upload file to server API which uploads to ImageKit and updates DB
+  // Upload file directly to ImageKit and update DB
   const handleFileUpload = async (file: File) => {
-    if (!user) {
+    if (!isAuthenticated || !authUser) {
       toast.error("Not authenticated");
       return;
     }
@@ -82,47 +84,54 @@ export default function ProfilePage() {
     }
 
     setUploading(true);
+    setUploadProgress(0);
     handleLocalPreview(file);
 
     try {
-      // Convert file to base64 data URL
+      // Convert file to base64
       const base64 = await fileToBase64(file);
 
-      const token = localStorage.getItem("authToken");
-      const res = await fetch("/api/images/upload-profile", {
-        method: "POST",
+      // Upload to server API
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch('/api/images/upload-profile', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           fileBase64: base64,
-          userId: user.id,
-          fileName: `${user.id}.png`,
+          userId: authUser.id,
+          fileName: file.name,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        console.error("upload error", data);
-        toast.error(data.error || "Upload failed");
-      } else {
-        // server returns imageId (file name without extension)
-        setImageId(data.imageId);
-        toast.success("Profile image uploaded");
-        // remove local preview (we'll show remote image)
-        if (localPreview) {
-          URL.revokeObjectURL(localPreview);
-          setLocalPreview(null);
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Upload failed');
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Image upload failed");
-    } finally {
+
+      const data = await response.json();
+      setImageId(data.imageUrl || data.imageId);
+      toast.success("Profile image uploaded successfully");
+
+      // Clean up local preview
+      if (localPreview) {
+        URL.revokeObjectURL(localPreview);
+        setLocalPreview(null);
+      }
+
       setUploading(false);
+      setUploadProgress(0);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Upload failed: " + (err.message || ""));
+      setUploading(false);
+      setUploadProgress(0);
     }
   };
+
+
 
   const fileToBase64 = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -133,21 +142,21 @@ export default function ProfilePage() {
     });
 
   const handleSave = async () => {
-    if (!user) {
+    if (!isAuthenticated || !authUser) {
       toast.error("Not authenticated");
       return;
     }
     setSaving(true);
     try {
-      const token = localStorage.getItem("authToken");
+      const token = localStorage.getItem("accessToken");
       const updates = {
         name: profileName,
         bio,
         mobile,
-        image_id: imageId,
+        image_id: imageId.startsWith('http') ? imageId : imageId,
         updated_at: new Date().toISOString(),
       };
-      const res = await fetch(`/api/users/${user.id}`, {
+      const res = await fetch(`/api/users/${authUser.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -156,10 +165,29 @@ export default function ProfilePage() {
         body: JSON.stringify(updates),
       });
       if (!res.ok) {
-        const err = await res.json();
+        const text = await res.text();
+        console.error('Response status:', res.status, 'Response text:', text);
+        let err;
+        try {
+          err = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Server error (${res.status}): ${text}`);
+        }
         throw new Error(err.error || "Failed to save");
       }
       toast.success("Profile updated");
+
+      // Refetch user data to reflect changes
+      const ures = await fetch(`/api/users/${authUser.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (ures.ok) {
+        const dbUser = await ures.json();
+        setProfileName(dbUser.name || authUser.name || "");
+        setBio(dbUser.bio || "");
+        setMobile(dbUser.mobile || "");
+        setImageId(dbUser.image_id || "");
+      }
     } catch (err: any) {
       console.error(err);
       toast.error("Save failed: " + (err.message || ""));
@@ -171,7 +199,7 @@ export default function ProfilePage() {
   const displayImage = localPreview
     ? localPreview
     : imageId
-    ? `${IMAGEKIT_URL_ENDPOINT}/profiles/${imageId}.png`
+    ? (imageId.startsWith('http') ? imageId : getCloudinaryUrl(imageId, 200, 200))
     : "/default-avatar.svg";
 
   if (loading) {
@@ -203,11 +231,14 @@ export default function ProfilePage() {
             <p className="text-white text-sm">Change Photo</p>
           </div>
           {uploading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-full">
-              <p className="text-sm text-gray-700">Uploading...</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 rounded-full">
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+              <p className="text-sm text-gray-700">{Math.round(uploadProgress)}%</p>
             </div>
           )}
         </div>
+
+
 
         <label
           htmlFor="file-input"

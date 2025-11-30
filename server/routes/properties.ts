@@ -61,4 +61,10 @@ propertiesRoutes.get(
   PropertiesController.getPropertyDetails
 )
 
+// Welcome endpoint for properties API
+propertiesRoutes.get(
+  '/properties/welcome',
+  PropertiesController.getWelcome
+)
+
 export default propertiesRoutes
