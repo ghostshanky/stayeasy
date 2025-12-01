@@ -86,6 +86,46 @@ const SearchResultsPage = () => {
                 page: currentPage.toString(),
                 limit: '12'
             });
+
+            if (filters.minPrice) params.append('minPrice', filters.minPrice);
+            if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+            if (filters.city) params.append('city', filters.city);
+            if (filters.amenities) params.append('amenities', filters.amenities);
+
+            const response = await apiClient.get(`/properties?${params}`);
+
+            console.log('🔍 [SearchResults] API Response:', {
+                success: response.success,
+                dataLength: response.data?.length,
+                hasPagination: !!response.pagination
+            });
+
+            if (response.success && response.data) {
+                // Transform the data to match the expected Property interface
+                const transformedProperties = response.data.map((prop: any) => ({
+                    id: prop.id,
+                    name: prop.title || prop.name || 'Unnamed Property',
+                    location: prop.location || prop.address || 'Unknown Location',
+                    price: prop.price_per_night ? `₹${prop.price_per_night}` : 'Price not available',
+                    priceValue: prop.price_per_night || 0,
+                    images: prop.images || [],
+                    imageUrl: prop.images?.[0] || 'https://via.placeholder.com/400x300?text=No+Image',
+                    rating: prop.rating || 0
+                }));
+
+                setProperties(transformedProperties);
+                setTotalPages(response.pagination?.totalPages || 1);
+                setTotalProperties(response.pagination?.total || transformedProperties.length);
+                console.log('✅ [SearchResults] Properties loaded:', transformedProperties.length);
+            } else {
+                console.error('❌ [SearchResults] Failed to fetch:', response.error);
+                throw new Error(response.error?.message || 'Failed to fetch properties');
+            }
+        } catch (err: any) {
+            setError(err.message || 'An error occurred while fetching properties');
+            setProperties([]);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -207,8 +247,8 @@ const SearchResultsPage = () => {
                                         key={page}
                                         onClick={() => handlePageChange(page)}
                                         className={`px-3 py-1 rounded-lg transition-colors ${currentPage === page
-                                                ? 'bg-blue-500 text-white'
-                                                : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                            ? 'bg-blue-500 text-white'
+                                            : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
                                             }`}
                                     >
                                         {page}
