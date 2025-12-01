@@ -4,6 +4,7 @@ import SideNavBar from '../components/SideNavBar';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { DashboardCardSkeleton } from '../components/common';
+import toast from 'react-hot-toast';
 
 interface StatCardData {
   title: string;
@@ -15,7 +16,7 @@ interface StatCardData {
 }
 
 const TenantDashboard = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
   const [userName, setUserName] = useState('User');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,7 @@ const TenantDashboard = () => {
           .select('full_name')
           .eq('id', user.id)
           .single();
-        
+
         if (profileError) {
           console.error('Error fetching user profile:', profileError);
           // Fallback to email-based name if profile not found
@@ -59,7 +60,7 @@ const TenantDashboard = () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user) {
         const { data, error } = await supabase
           .from('bookings')
@@ -159,7 +160,7 @@ const TenantDashboard = () => {
       navigate('/confirm');
     } catch (error) {
       console.error('Error navigating to payment:', error);
-      alert('Failed to process payment. Please try again.');
+      toast.error('Failed to process payment. Please try again.');
     }
   };
 
@@ -168,7 +169,7 @@ const TenantDashboard = () => {
       navigate('/messages');
     } catch (error) {
       console.error('Error opening chat:', error);
-      alert('Failed to open chat. Please try again.');
+      toast.error('Failed to open chat. Please try again.');
     }
   };
 
@@ -274,7 +275,7 @@ const TenantDashboard = () => {
             className="w-24 h-24 rounded-lg object-cover"
           />
         </div>
-        
+
         <div className="flex-1">
           <h3 className="font-semibold text-gray-800 dark:text-white">
             {booking.properties?.title}
@@ -282,7 +283,7 @@ const TenantDashboard = () => {
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {booking.properties?.location}
           </p>
-          
+
           <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
             <span>
               Check-in: {new Date(booking.check_in).toLocaleDateString()}
@@ -291,12 +292,12 @@ const TenantDashboard = () => {
               Check-out: {new Date(booking.check_out).toLocaleDateString()}
             </span>
           </div>
-          
+
           <div className="flex items-center justify-between mt-4">
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
               {booking.status}
             </span>
-            
+
             <div className="flex gap-2">
               {booking.status === 'CONFIRMED' && (
                 <button
@@ -306,7 +307,7 @@ const TenantDashboard = () => {
                   Chat Owner
                 </button>
               )}
-              
+
               {booking.status === 'PENDING' && (
                 <button
                   onClick={() => handlePayment(booking.id)}
@@ -391,7 +392,7 @@ const TenantDashboard = () => {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Upcoming Stays</h2>
-                <button 
+                <button
                   onClick={() => navigate('/bookings')}
                   className="text-primary hover:text-primary/80 text-sm font-medium"
                 >

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { apiClient } from '../api/apiClient';
+import toast from 'react-hot-toast';
 
 interface MessageHostModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
   const handleSendClick = async () => {
     if (!message.trim()) return;
     setIsSending(true);
-    
+
     try {
       const response = await apiClient.post('/messages', {
         recipientId: hostId,
@@ -33,12 +34,12 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
       if (response.success) {
         // Close the modal and show success message
         onClose();
-        alert('Message sent successfully!');
+        toast.success('Message sent successfully!');
       } else {
         throw new Error(response.error?.message || 'Failed to send message');
       }
     } catch (error: any) {
-      alert('Failed to send message. Please try again.');
+      toast.error('Failed to send message. Please try again.');
       console.error('Error sending message:', error);
     } finally {
       setIsSending(false);
@@ -47,15 +48,15 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-surface-light dark:bg-surface-dark rounded-xl shadow-lg w-full max-w-md m-4 p-6 flex flex-col gap-4 relative"
         onClick={e => e.stopPropagation()}
       >
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary"
         >
@@ -63,7 +64,7 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
         </button>
 
         <h2 className="text-xl font-bold text-text-light-primary dark:text-text-dark-primary">Message {hostName}</h2>
-        
+
         <textarea
           value={message}
           onChange={e => setMessage(e.target.value)}
@@ -72,7 +73,7 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
           rows={5}
         />
 
-        <button 
+        <button
           onClick={handleSendClick}
           disabled={isSending || !message.trim()}
           className="w-full flex items-center justify-center rounded-lg h-11 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
