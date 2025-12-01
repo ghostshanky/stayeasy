@@ -1,3 +1,17 @@
+import dotenv from 'dotenv'
+import path from 'path'
+import express from 'express'
+import cors from 'cors'
+import { createServer } from 'http'
+import { AuthService } from './auth.js'
+import { ChatService } from './chat.js'
+import chatApi from './chat-api.js'
+import { PropertiesController } from './controllers/propertiesController.js'
+import { BookingsController } from './controllers/bookingsController.js'
+import { ReviewsController } from './controllers/reviewsController.js'
+import { PaymentsController } from './controllers/paymentsController.js'
+import messagesRouter from './controllers/messagesController.js'
+import { AdminController } from './controllers/adminController.js'
 
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
