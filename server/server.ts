@@ -21,30 +21,6 @@ const app = express()
 const server = createServer(app)
 const PORT = parseInt(process.env.PORT || '3002')
 
-// Initialize Socket.IO chat service
-new ChatService(server)
-
-// CORS configuration
-const corsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    if (!origin) return callback(null, true)
-
-    const frontendUrls = process.env.FRONTEND_URL
-      ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-      : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174']
-
-    if (frontendUrls.includes(origin)) {
-      callback(null, true)
-    } else {
-      callback(new Error('Not allowed by CORS'))
-    }
-  },
-  credentials: true
-}
-
-app.use(cors(corsOptions))
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true }))
 
 // Global request logging
 app.use((req, _res, next) => {
