@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import SideNavBar from '../components/SideNavBar';
 import { usePayments } from '../hooks/usePayments';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 interface PaymentCardProps {
   payment: any;
@@ -13,35 +14,35 @@ interface PaymentCardProps {
 const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      'VERIFIED': { 
-        className: 'bg-green-100 text-green-800', 
+      'VERIFIED': {
+        className: 'bg-green-100 text-green-800',
         text: 'Paid',
         icon: 'check_circle'
       },
-      'AWAITING_PAYMENT': { 
-        className: 'bg-yellow-100 text-yellow-800', 
+      'AWAITING_PAYMENT': {
+        className: 'bg-yellow-100 text-yellow-800',
         text: 'Pending',
         icon: 'schedule'
       },
-      'AWAITING_OWNER_VERIFICATION': { 
-        className: 'bg-blue-100 text-blue-800', 
+      'AWAITING_OWNER_VERIFICATION': {
+        className: 'bg-blue-100 text-blue-800',
         text: 'Under Verification',
         icon: 'hourglass_top'
       },
-      'REJECTED': { 
-        className: 'bg-red-100 text-red-800', 
+      'REJECTED': {
+        className: 'bg-red-100 text-red-800',
         text: 'Rejected',
         icon: 'cancel'
       },
-      'REFUNDED': { 
-        className: 'bg-gray-100 text-gray-800', 
+      'REFUNDED': {
+        className: 'bg-gray-100 text-gray-800',
         text: 'Refunded',
         icon: 'money_off'
       }
     };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || { 
-      className: 'bg-gray-100 text-gray-800', 
+
+    const config = statusConfig[status as keyof typeof statusConfig] || {
+      className: 'bg-gray-100 text-gray-800',
       text: status,
       icon: 'help'
     };
@@ -92,7 +93,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
       }
     } catch (error) {
       console.error('Error downloading receipt:', error);
-      alert('Failed to download receipt');
+      toast.error('Failed to download receipt');
     }
   };
 
@@ -203,7 +204,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
             </button>
           </>
         )}
-        
+
         {payment.status === 'AWAITING_PAYMENT' && (
           <button
             onClick={handlePayNow}
@@ -213,7 +214,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
             Pay Now
           </button>
         )}
-        
+
         {payment.status === 'AWAITING_OWNER_VERIFICATION' && (
           <button
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -222,7 +223,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
             Payment Confirmed
           </button>
         )}
-        
+
         {payment.status === 'REJECTED' && (
           <button
             onClick={handlePayNow}
@@ -232,7 +233,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
             Retry Payment
           </button>
         )}
-        
+
         {payment.status === 'REFUNDED' && (
           <button
             onClick={downloadReceipt}
@@ -242,7 +243,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
             Download Refund Receipt
           </button>
         )}
-        
+
         <button
           onClick={() => navigate('bookings')}
           className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
@@ -256,7 +257,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
 };
 
 const PaymentsPage = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('history');
   const [userId, setUserId] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -265,7 +266,7 @@ const PaymentsPage = () => {
     totalBookings: 0,
     upcomingPayments: 0
   });
-    
+
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -281,15 +282,15 @@ const PaymentsPage = () => {
       const totalPaid = payments
         .filter(p => p.status === 'VERIFIED')
         .reduce((sum, p) => sum + p.amount, 0);
-      
+
       const pendingAmount = payments
         .filter(p => p.status === 'AWAITING_PAYMENT')
         .reduce((sum, p) => sum + p.amount, 0);
-      
+
       const totalBookings = new Set(payments.map(p => p.booking_id)).size;
-      
-      const upcomingPayments = payments.filter(p => 
-        p.status === 'AWAITING_PAYMENT' && 
+
+      const upcomingPayments = payments.filter(p =>
+        p.status === 'AWAITING_PAYMENT' &&
         p.booking?.check_in > new Date().toISOString()
       ).length;
 
@@ -400,7 +401,7 @@ const PaymentsPage = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -414,7 +415,7 @@ const PaymentsPage = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -428,7 +429,7 @@ const PaymentsPage = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
