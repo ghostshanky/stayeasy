@@ -1,18 +1,3 @@
-import dotenv from 'dotenv'
-import path from 'path'
-import express from 'express'
-import cors from 'cors'
-import { createServer } from 'http'
-import { AuthService } from './auth.js'
-import { ChatService } from './chat.js'
-import chatApi from './chat-api.js'
-import { PropertiesController } from './controllers/propertiesController.js'
-import { MockPropertiesController } from './controllers/mockPropertiesController.js'
-import { BookingsController } from './controllers/bookingsController.js'
-import { ReviewsController } from './controllers/reviewsController.js'
-import { PaymentsController } from './controllers/paymentsController.js'
-import messagesRouter from './controllers/messagesController.js'
-import { AdminController } from './controllers/adminController.js'
 
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -43,7 +28,7 @@ new ChatService(server)
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     if (!origin) return callback(null, true)
-    
+
     const frontendUrls = process.env.FRONTEND_URL
       ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
       : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174']
@@ -88,7 +73,7 @@ const authMiddleware = async (req: express.Request, res: express.Response, next:
 
     const token = authHeader.substring(7)
     const user = await AuthService.validateSession(token)
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -124,7 +109,7 @@ app.get('/api/properties/:id', PropertiesController.getPropertyDetails)
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password, name, role } = req.body
-    
+
     if (!email || !password || !name) {
       return res.status(400).json({
         success: false,
@@ -161,7 +146,7 @@ app.post('/api/auth/signup', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body
-    
+
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -345,7 +330,7 @@ app.use((error: any, _req: express.Request, res: express.Response, _next: expres
     method: (_req as any).method,
     userId: (_req as any).currentUser?.id
   })
-  
+
   res.status(error.status || 500).json({
     success: false,
     error: {
