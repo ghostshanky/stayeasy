@@ -3,29 +3,30 @@ import { Page } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import QRCodeGenerator from '../components/QRCodeGenerator';
+import toast from 'react-hot-toast';
 
 interface Booking {
-  id: string;
-  user_id: string;
-  property_id: string;
-  check_in: string;
-  check_out: string;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  total_amount: number;
-  created_at: string;
-  updated_at: string;
-  property: {
     id: string;
-    title: string;
-    location: string;
-    price_per_night: number;
-    images: string[];
-    owner: {
-      id: string;
-      name: string;
-      email: string;
+    user_id: string;
+    property_id: string;
+    check_in: string;
+    check_out: string;
+    status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+    total_amount: number;
+    created_at: string;
+    updated_at: string;
+    property: {
+        id: string;
+        title: string;
+        location: string;
+        price_per_night: number;
+        images: string[];
+        owner: {
+            id: string;
+            name: string;
+            email: string;
+        };
     };
-  };
 }
 
 const ConfirmAndPayPage = () => {
@@ -38,12 +39,12 @@ const ConfirmAndPayPage = () => {
     const [paymentId, setPaymentId] = useState<string | null>(null);
     const [upiId, setUpiId] = useState('kunalsable24@okaxis');
     const [merchantName, setMerchantName] = useState('StayEasy');
-    
+
     useEffect(() => {
         const getBooking = async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const bookingId = urlParams.get('bookingId');
-            
+
             if (!bookingId) {
                 setError('Booking ID is required');
                 setLoading(false);
@@ -122,11 +123,11 @@ const ConfirmAndPayPage = () => {
                 setShowQRModal(true);
             } else {
                 const errorData = await response.json();
-                alert('Failed to create payment: ' + errorData.error?.message);
+                toast.error('Failed to create payment: ' + errorData.error?.message);
             }
         } catch (error) {
             console.error('Error creating payment:', error);
-            alert('Failed to create payment');
+            toast.error('Failed to create payment');
         } finally {
             setProcessingPayment(false);
         }
@@ -151,20 +152,20 @@ const ConfirmAndPayPage = () => {
                     <div className="animate-pulse">
                         <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-6"></div>
                         <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-64 mb-8"></div>
-                        
+
                         <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800">
                             <div className="space-y-4">
                                 <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
                                 <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
                                 <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-40"></div>
-                                
+
                                 <div className="grid grid-cols-2 gap-4 mt-6">
                                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded"></div>
                                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded"></div>
                                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded"></div>
                                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded"></div>
                                 </div>
-                                
+
                                 <div className="h-12 bg-gray-300 dark:bg-gray-700 rounded mt-8"></div>
                             </div>
                         </div>
@@ -250,7 +251,7 @@ const ConfirmAndPayPage = () => {
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                             Property Details
                         </h2>
-                        
+
                         <div className="space-y-4">
                             <div>
                                 <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -379,7 +380,7 @@ const ConfirmAndPayPage = () => {
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
                             </div>
-                            
+
                             <div className="text-center mb-6">
                                 <QRCodeGenerator
                                     upiId={upiId}
