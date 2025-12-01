@@ -5,23 +5,23 @@ import { apiClient } from '../api/apiClient';
 import { PropertyCardSkeleton } from '../components/common';
 
 interface Property {
-  id: string;
-  name: string;
-  location: string;
-  price: string;
-  priceValue: number;
-  images?: string[];
-  imageUrl?: string;
-  rating?: number;
+    id: string;
+    name: string;
+    location: string;
+    price: string;
+    priceValue: number;
+    images?: string[];
+    imageUrl?: string;
+    rating?: number;
 }
 
 const ListingCard: React.FC<{ listing: Property }> = ({ listing }) => {
     const navigate = useNavigate();
-    
+
     const handlePropertyClick = () => {
         navigate(`/property/${listing.id}`);
     };
-    
+
     return (
         <div className="flex flex-col gap-3 pb-3 group cursor-pointer" onClick={handlePropertyClick}>
             <div className="relative w-full overflow-hidden">
@@ -80,45 +80,12 @@ const SearchResultsPage = () => {
     const fetchProperties = async () => {
         setLoading(true);
         setError(null);
-        
+
         try {
             const params = new URLSearchParams({
                 page: currentPage.toString(),
                 limit: '12'
             });
-
-            if (filters.minPrice) params.append('minPrice', filters.minPrice);
-            if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
-            if (filters.city) params.append('city', filters.city);
-            if (filters.amenities) params.append('amenities', filters.amenities);
-
-            const response = await apiClient.get(`/properties?${params}`);
-            const data = response.data;
-
-            if (data.success) {
-                // Transform the data to match the expected Property interface
-                const transformedProperties = data.data.map((prop: any) => ({
-                    id: prop.id,
-                    name: prop.title || prop.name || 'Unnamed Property',
-                    location: prop.location || prop.address || 'Unknown Location',
-                    price: prop.price_per_night ? `₹${prop.price_per_night}` : 'Price not available',
-                    priceValue: prop.price_per_night || 0,
-                    images: prop.images || [],
-                    imageUrl: prop.images?.[0] || 'https://via.placeholder.com/400x300?text=No+Image',
-                    rating: prop.rating || 0
-                }));
-                
-                setProperties(transformedProperties);
-                setTotalPages(data.pagination?.totalPages || 1);
-                setTotalProperties(data.pagination?.total || 0);
-            } else {
-                throw new Error(data.error?.message || 'Failed to fetch properties');
-            }
-        } catch (err: any) {
-            setError(err.message || 'An error occurred while fetching properties');
-            setProperties([]);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -152,7 +119,7 @@ const SearchResultsPage = () => {
                                     className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm"
                                 />
                             </div>
-                            
+
                             <div>
                                 <h4 className="font-bold mb-3 text-[#111518] dark:text-gray-200">Price Range</h4>
                                 <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
@@ -168,7 +135,7 @@ const SearchResultsPage = () => {
                                         className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm text-center"
                                     />
                                     <span className="text-gray-500">-</span>
-                                     <input
+                                    <input
                                         type="number"
                                         placeholder="Max"
                                         value={filters.maxPrice}
@@ -200,11 +167,11 @@ const SearchResultsPage = () => {
                 </aside>
                 <div className="lg:col-span-8 xl:col-span-9">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-                         <p className="text-[#111518] dark:text-white text-2xl sm:text-3xl font-black leading-tight tracking-[-0.033em] min-w-72">
+                        <p className="text-[#111518] dark:text-white text-2xl sm:text-3xl font-black leading-tight tracking-[-0.033em] min-w-72">
                             {loading ? 'Searching for stays...' : `${totalProperties}+ stays found`}
                         </p>
                     </div>
-                    
+
                     {error && <div className="text-center py-10 text-error">{error}</div>}
 
                     <div className="grid grid-cols-1 @md:grid-cols-2 @4xl:grid-cols-3 gap-6">
@@ -232,24 +199,23 @@ const SearchResultsPage = () => {
                             >
                                 Previous
                             </button>
-                            
+
                             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                                 const page = i + 1;
                                 return (
                                     <button
                                         key={page}
                                         onClick={() => handlePageChange(page)}
-                                        className={`px-3 py-1 rounded-lg transition-colors ${
-                                            currentPage === page
+                                        className={`px-3 py-1 rounded-lg transition-colors ${currentPage === page
                                                 ? 'bg-blue-500 text-white'
                                                 : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
-                                        }`}
+                                            }`}
                                     >
                                         {page}
                                     </button>
                                 );
                             })}
-                            
+
                             <button
                                 onClick={() => handlePageChange(currentPage + 1)}
                                 disabled={currentPage === totalPages}
@@ -263,6 +229,6 @@ const SearchResultsPage = () => {
             </div>
         </main>
     );
-    };
+};
 
 export default SearchResultsPage;
