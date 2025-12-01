@@ -1,7 +1,6 @@
 import express from 'express';
 import { supabaseServer } from '../lib/supabaseServer.js';
 import { AuthService } from '../auth.js';
-import { MockAuthService } from '../mockAuth.js';
 
 const router = express.Router();
 
@@ -17,14 +16,7 @@ router.get('/:id', async (req, res) => {
 
     const token = authHeader.substring(7);
 
-    // Check if we should use mock authentication
-    const useMockAuth = process.env.MOCK_AUTH === 'true' ||
-      !process.env.SUPABASE_URL ||
-      !process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    const user = useMockAuth
-      ? await MockAuthService.validateSession(token)
-      : await AuthService.validateSession(token);
+    const user = await AuthService.validateSession(token);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid token' });
@@ -35,21 +27,6 @@ router.get('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    if (useMockAuth) {
-      // Return mock user data
-      const mockUser = {
-        id: id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        bio: null,
-        mobile: null,
-        image_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      return res.json(mockUser);
-    }
 
     const { data, error } = await supabaseServer
       .from('users')
@@ -85,14 +62,7 @@ router.put('/:id', async (req, res) => {
 
     const token = authHeader.substring(7);
 
-    // Check if we should use mock authentication
-    const useMockAuth = process.env.MOCK_AUTH === 'true' ||
-      !process.env.SUPABASE_URL ||
-      !process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    const user = useMockAuth
-      ? await MockAuthService.validateSession(token)
-      : await AuthService.validateSession(token);
+    const user = await AuthService.validateSession(token);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid token' });

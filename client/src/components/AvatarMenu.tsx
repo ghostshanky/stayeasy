@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+// Simple Cloudinary URL helper
+const getCloudinaryUrl = (publicId: string, width = 200, height = 200): string => {
+  if (!publicId) return "/default_profile_pic.jpg";
+  return `https://res.cloudinary.com/degncsmrz/image/upload/w_${width},h_${height},c_fill,f_auto,q_auto/${publicId}`;
+};
 
 interface User {
   id: string;

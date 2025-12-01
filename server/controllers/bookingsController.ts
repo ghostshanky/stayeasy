@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { z } from 'zod'
 import { AuditLogger } from '../audit-logger.js'
 import { supabaseServer } from '../lib/supabaseServer.js'
+import { prisma } from '../lib/prisma.js'
 
 // --- Input Validation Schemas ---
 const createBookingSchema = z.object({
@@ -347,7 +348,6 @@ export class BookingsController {
           property: {
             include: {
               owner: { select: { name: true, email: true } },
-              details: true,
               reviews: {
                 include: {
                   user: { select: { name: true } }
@@ -358,11 +358,10 @@ export class BookingsController {
           },
           payments: {
             include: {
-              invoice: true
+              invoices: true
             },
             orderBy: { createdAt: 'desc' }
           },
-          invoices: true
         }
       })
 
@@ -383,7 +382,6 @@ export class BookingsController {
         data: {
           ...booking,
           property: {
-            ...booking.property,
             averageRating
           }
         }
@@ -426,7 +424,7 @@ export class BookingsController {
           where,
           include: {
             property: {
-              select: { id: true, name: true, address: true }
+              select: { id: true, title: true, location: true }
             },
             user: {
               select: { id: true, name: true, email: true }
@@ -518,7 +516,7 @@ export class BookingsController {
         data: { status: status as any },
         include: {
           property: {
-            select: { id: true, name: true, address: true }
+            select: { id: true, title: true, location: true }
           },
           user: {
             select: { id: true, name: true, email: true }

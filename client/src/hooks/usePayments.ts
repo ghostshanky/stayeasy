@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 import { apiClient } from "../api/apiClient";
 
 interface Payment {
@@ -49,26 +50,29 @@ export function usePayments(userId: string, limit = 10, page = 1, status?: strin
       try {
         const params = new URLSearchParams({
           limit: limit.toString(),
-          offset: ((page - 1) * limit).toString(),
+          page: page.toString(),
         });
-        
+
         if (status) {
           params.append('status', status);
         }
 
-        const response = await apiClient.get(`/payments/tenant/${userId}?${params}`);
+        const response = await apiClient.get(`/payments?${params.toString()}`);
 
         if (!mounted) return;
 
-        if (response.data.success) {
-          setItems(response.data.data || []);
+        if (response.success && response.data) {
+          setItems(response.data);
         } else {
-          setError(response.data.error?.message || 'Failed to fetch payments');
+          console.error('❌ [usePayments] Failed to fetch payments:', response.error);
+          setError(response.error?.message || 'Failed to fetch payments');
+          setItems([]);
         }
-      } catch (err) {
+      } catch (err: any) {
         if (mounted) {
           console.error("Error fetching payments:", err);
           setError("Failed to fetch payments");
+          setItems([]);
         }
       } finally {
         if (mounted) {
@@ -99,28 +103,24 @@ export function useOwnerPayments(ownerId: string, limit = 10, page = 1, status?:
 
     const fetchPayments = async () => {
       try {
-        const params = new URLSearchParams({
-          limit: limit.toString(),
-          offset: ((page - 1) * limit).toString(),
+        const response = await apiClient.get('/api/payments/owner', {
+          params: { limit, page, status }
         });
-        
-        if (status) {
-          params.append('status', status);
-        }
-
-        const response = await apiClient.get(`/payments/owner/${ownerId}?${params}`);
 
         if (!mounted) return;
 
-        if (response.data.success) {
-          setItems(response.data.data || []);
+        if (response.success && response.data) {
+          setItems(response.data);
         } else {
-          setError(response.data.error?.message || 'Failed to fetch payments');
+          console.error('❌ [useOwnerPayments] Failed to fetch payments:', response.error);
+          setError(response.error?.message || 'Failed to fetch payments');
+          setItems([]);
         }
       } catch (err) {
         if (mounted) {
           console.error("Error fetching owner payments:", err);
           setError("Failed to fetch payments");
+          setItems([]);
         }
       } finally {
         if (mounted) {
@@ -151,21 +151,24 @@ export function usePendingPayments(ownerId: string) {
 
     const fetchPendingPayments = async () => {
       try {
-        const response = await apiClient.get('/payments/pending');
+        const response = await apiClient.get('/api/payments/owner', {
+          params: { status: 'AWAITING_PAYMENT' }
+        });
 
         if (!mounted) return;
 
-        if (response.data.success) {
-          // Filter payments for this specific owner
-          const ownerPayments = response.data.data?.filter((payment: any) => payment.owner_id === ownerId) || [];
-          setItems(ownerPayments);
+        if (response.success && response.data) {
+          setItems(response.data);
         } else {
-          setError(response.data.error?.message || 'Failed to fetch pending payments');
+          console.error('❌ [usePendingPayments] Failed to fetch pending payments:', response.error);
+          setError(response.error?.message || 'Failed to fetch pending payments');
+          setItems([]);
         }
       } catch (err) {
         if (mounted) {
           console.error("Error fetching pending payments:", err);
           setError("Failed to fetch pending payments");
+          setItems([]);
         }
       } finally {
         if (mounted) {

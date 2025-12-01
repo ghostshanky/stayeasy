@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../client/src/lib/supabase';
+import { supabase } from '../lib/supabase';
 import { StayEasyLogo } from '../App';
-import { BRAND } from '../client/src/config/brand';
-import { useDarkMode } from '../client/src/contexts/DarkModeContext';
-import { useAuth } from '../client/src/hooks/useAuth';
+import { BRAND } from '../config/brand';
+import { useDarkMode } from '../contexts/DarkModeContext';
+import { useAuth } from '../hooks/useAuth';
 import MobileMenu from './MobileMenu';
 // Simple Cloudinary URL helper
 const getCloudinaryUrl = (publicId: string, width = 200, height = 200): string => {

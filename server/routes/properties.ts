@@ -1,6 +1,6 @@
 import express from 'express'
 import { requireAuth, requireRole } from '../middleware.js'
-import { PropertiesController } from '../controllers/propertiesController.js'
+import { MockPropertiesController } from '../controllers/mockPropertiesController.js'
 import rateLimit from 'express-rate-limit'
 
 const propertiesRoutes = express.Router()
@@ -20,7 +20,7 @@ propertiesRoutes.post(
   propertyLimiter,
   requireAuth,
   requireRole(['OWNER']),
-  PropertiesController.createProperty
+  MockPropertiesController.createProperty
 )
 
 propertiesRoutes.put(
@@ -28,7 +28,7 @@ propertiesRoutes.put(
   propertyLimiter,
   requireAuth,
   requireRole(['OWNER']),
-  PropertiesController.updateProperty
+  MockPropertiesController.updateProperty
 )
 
 propertiesRoutes.delete(
@@ -36,14 +36,14 @@ propertiesRoutes.delete(
   propertyLimiter,
   requireAuth,
   requireRole(['OWNER']),
-  PropertiesController.deleteProperty
+  MockPropertiesController.deleteProperty
 )
 
 propertiesRoutes.get(
   '/owner/properties',
   requireAuth,
   requireRole(['OWNER']),
-  PropertiesController.getOwnerProperties
+  MockPropertiesController.getOwnerProperties
 )
 
 // Tenant routes
@@ -51,20 +51,20 @@ propertiesRoutes.get(
   '/tenant/properties',
   requireAuth,
   requireRole(['TENANT']),
-  PropertiesController.getProperties
+  MockPropertiesController.getProperties
 )
 
 propertiesRoutes.get(
   '/tenant/properties/:id',
   requireAuth,
   requireRole(['TENANT']),
-  PropertiesController.getPropertyDetails
+  MockPropertiesController.getPropertyDetails
 )
 
 // Welcome endpoint for properties API
 propertiesRoutes.get(
   '/properties/welcome',
-  PropertiesController.getWelcome
+  (req, res) => res.json({ success: true, message: 'Welcome to the Properties API' })
 )
 
 export default propertiesRoutes

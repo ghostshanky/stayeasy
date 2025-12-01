@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 import { apiClient } from "../api/apiClient";
 
 interface OwnerProperty {
@@ -31,25 +32,24 @@ export function useOwnerProperties(limit = 10, page = 1) {
 
     const fetchProperties = async () => {
       try {
-        const params = new URLSearchParams({
-          limit: limit.toString(),
-          offset: ((page - 1) * limit).toString(),
+        const response = await apiClient.get('/properties/owner', {
+          params: { limit, page }
         });
-
-        const response = await apiClient.get(`/owner/properties?${params}`);
 
         if (!mounted) return;
 
-        if (response.data.success) {
-          setItems(response.data.data || []);
+        if (response.success && response.data) {
+          setItems(response.data);
         } else {
-          console.error("Error fetching owner properties:", response.data.error);
-          setError(response.data.error?.message || "Failed to fetch properties");
+          console.error('❌ [useOwnerProperties] Failed to fetch properties:', response.error);
+          setError(response.error?.message || 'Failed to fetch properties');
+          setItems([]);
         }
       } catch (err) {
         if (mounted) {
           console.error("Error fetching owner properties:", err);
           setError("Failed to fetch properties");
+          setItems([]);
         }
       } finally {
         if (mounted) {
