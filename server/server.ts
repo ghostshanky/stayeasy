@@ -248,24 +248,6 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
   })
 })
 
-// Protected routes with auth middleware
-app.use('/api', authMiddleware)
-
-// Mount API routes
-app.use('/api/chats', chatApi)
-app.use('/api/messages', messagesRouter)
-// Create express routers for controllers
-const bookingsRouter = express.Router()
-bookingsRouter.post('/', BookingsController.createBooking)
-bookingsRouter.get('/', BookingsController.getTenantBookings)
-bookingsRouter.get('/owner', BookingsController.getOwnerBookings)
-bookingsRouter.put('/:id', BookingsController.updateBooking)
-bookingsRouter.delete('/:id', BookingsController.cancelBooking)
-bookingsRouter.get('/:id', BookingsController.getBookingDetails)
-bookingsRouter.put('/:id/status', BookingsController.updateBookingStatus)
-
-const reviewsRouter = express.Router()
-reviewsRouter.post('/', ReviewsController.createReview)
 reviewsRouter.get('/', ReviewsController.getReviews)
 reviewsRouter.get('/:id', ReviewsController.getReviewDetails)
 reviewsRouter.put('/:id', ReviewsController.updateReview)
