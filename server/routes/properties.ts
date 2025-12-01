@@ -1,6 +1,6 @@
 import express from 'express'
 import { requireAuth, requireRole } from '../middleware.js'
-import { MockPropertiesController } from '../controllers/mockPropertiesController.js'
+import { PropertiesController } from '../controllers/propertiesController.js'
 import rateLimit from 'express-rate-limit'
 
 const propertiesRoutes = express.Router()
@@ -14,13 +14,13 @@ const propertyLimiter = rateLimit({
   message: { success: false, error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later.' } }
 })
 
-// Owner routes
+// Owner routes - using real PropertiesController with Supabase data
 propertiesRoutes.post(
   '/owner/properties',
   propertyLimiter,
   requireAuth,
   requireRole(['OWNER']),
-  MockPropertiesController.createProperty
+  PropertiesController.createProperty
 )
 
 propertiesRoutes.put(
@@ -28,7 +28,7 @@ propertiesRoutes.put(
   propertyLimiter,
   requireAuth,
   requireRole(['OWNER']),
-  MockPropertiesController.updateProperty
+  PropertiesController.updateProperty
 )
 
 propertiesRoutes.delete(
@@ -36,29 +36,29 @@ propertiesRoutes.delete(
   propertyLimiter,
   requireAuth,
   requireRole(['OWNER']),
-  MockPropertiesController.deleteProperty
+  PropertiesController.deleteProperty
 )
 
 propertiesRoutes.get(
   '/owner/properties',
   requireAuth,
   requireRole(['OWNER']),
-  MockPropertiesController.getOwnerProperties
+  PropertiesController.getOwnerProperties
 )
 
-// Tenant routes
+// Tenant routes - using real PropertiesController
 propertiesRoutes.get(
   '/tenant/properties',
   requireAuth,
   requireRole(['TENANT']),
-  MockPropertiesController.getProperties
+  PropertiesController.getProperties
 )
 
 propertiesRoutes.get(
   '/tenant/properties/:id',
   requireAuth,
   requireRole(['TENANT']),
-  MockPropertiesController.getPropertyDetails
+  PropertiesController.getPropertyDetails
 )
 
 // Welcome endpoint for properties API
