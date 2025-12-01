@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePendingPayments } from '../hooks/usePayments';
 import { supabase } from '../lib/supabase';
 import QRCodeGenerator from '../components/QRCodeGenerator';
+import toast from 'react-hot-toast';
 
 const PaymentVerificationPage = () => {
     const navigate = useNavigate();
@@ -15,7 +16,7 @@ const PaymentVerificationPage = () => {
     const [verifyingPayment, setVerifyingPayment] = useState(false);
     const [rejectingPayment, setRejectingPayment] = useState(false);
     const [rejectionNote, setRejectionNote] = useState('');
-    
+
     useEffect(() => {
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -49,11 +50,11 @@ const PaymentVerificationPage = () => {
                 window.location.reload();
             } else {
                 const errorData = await response.json();
-                alert('Failed to verify payment: ' + errorData.error?.message);
+                toast.error('Failed to verify payment: ' + errorData.error?.message);
             }
         } catch (error) {
             console.error('Error verifying payment:', error);
-            alert('Failed to verify payment');
+            toast.error('Failed to verify payment');
         } finally {
             setVerifyingPayment(false);
         }
@@ -61,7 +62,7 @@ const PaymentVerificationPage = () => {
 
     const handleRejectPayment = async (paymentId: string) => {
         if (!rejectionNote.trim()) {
-            alert('Please provide a reason for rejection');
+            toast.error('Please provide a reason for rejection');
             return;
         }
 
@@ -85,11 +86,11 @@ const PaymentVerificationPage = () => {
                 window.location.reload();
             } else {
                 const errorData = await response.json();
-                alert('Failed to reject payment: ' + errorData.error?.message);
+                toast.error('Failed to reject payment: ' + errorData.error?.message);
             }
         } catch (error) {
             console.error('Error rejecting payment:', error);
-            alert('Failed to reject payment');
+            toast.error('Failed to reject payment');
         } finally {
             setRejectingPayment(false);
             setRejectionNote('');
@@ -117,11 +118,11 @@ const PaymentVerificationPage = () => {
                 window.location.reload();
             } else {
                 const errorData = await response.json();
-                alert('Failed to confirm payment: ' + errorData.error?.message);
+                toast.error('Failed to confirm payment: ' + errorData.error?.message);
             }
         } catch (error) {
             console.error('Error confirming payment:', error);
-            alert('Failed to confirm payment');
+            toast.error('Failed to confirm payment');
         } finally {
             setConfirmingPayment(false);
         }
@@ -349,7 +350,7 @@ const PaymentVerificationPage = () => {
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
                             </div>
-                            
+
                             <div className="text-center mb-6">
                                 <QRCodeGenerator
                                     upiId={selectedPayment.user?.email || 'default@upi'}
@@ -406,7 +407,7 @@ const PaymentVerificationPage = () => {
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
                             </div>
-                            
+
                             <div className="mb-4">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Reason for rejection
