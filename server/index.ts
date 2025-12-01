@@ -8,14 +8,3 @@ import imageRoutes from './controllers/imageController.js';
 import userRoutes from './routes/users.js';
 import { supabaseServer } from './lib/supabaseServer.js';
 import { AuthService } from './auth.js';
-=======
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import upiPaymentRoutes from './upi-payment.js';
-import { PropertiesController } from './controllers/propertiesController.js';
-import messagesRoutes from './controllers/messagesController.js';
-import imageRoutes from './controllers/imageController.js';
-import userRoutes from './routes/users.js';
-import { supabaseServer } from './lib/supabaseServer.js';
-import { AuthService } from './auth.js';
