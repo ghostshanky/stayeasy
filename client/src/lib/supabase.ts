@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Use VITE_ prefixed variables for client-side, fallback to non-prefixed for server-side
-const supabaseUrl = import.meta.env.SUPABASE_URL || 'https://your-project.supabase.co'
-const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY || 'your-anon-key'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
 
 // Add validation to ensure we have proper credentials
 if (supabaseUrl === 'https://your-project.supabase.co' || supabaseAnonKey === 'your-anon-key') {

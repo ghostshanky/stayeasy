@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { useOwnerPayments, usePendingPayments } from '../../hooks/usePayments';
+import React from 'react';
 
-const OwnerPaymentsList = () => {
-    const [activeTab, setActiveTab] = useState('pending');
-    const { items: payments, loading, error } = useOwnerPayments('owner-id-here', 10, 1, activeTab === 'pending' ? undefined : 'VERIFIED');
-    const { items: pendingPayments } = usePendingPayments('owner-id-here');
+interface OwnerPaymentsListProps {
+    payments: any[];
+}
 
+const OwnerPaymentsList: React.FC<OwnerPaymentsListProps> = ({ payments }) => {
     const formatCurrency = (amount: number) => {
         return `₹${amount.toLocaleString()}`;
     };
@@ -21,12 +20,15 @@ const OwnerPaymentsList = () => {
     const getStatusBadge = (status: string) => {
         const statusConfig = {
             'VERIFIED': { className: 'bg-green-100 text-green-800', text: 'Paid' },
+            'COMPLETED': { className: 'bg-green-100 text-green-800', text: 'Completed' },
             'AWAITING_PAYMENT': { className: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
+            'PENDING': { className: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
             'AWAITING_OWNER_VERIFICATION': { className: 'bg-blue-100 text-blue-800', text: 'Under Verification' },
             'REJECTED': { className: 'bg-red-100 text-red-800', text: 'Rejected' },
+            'FAILED': { className: 'bg-red-100 text-red-800', text: 'Failed' },
             'REFUNDED': { className: 'bg-gray-100 text-gray-800', text: 'Refunded' }
         };
-        
+
         const config = statusConfig[status as keyof typeof statusConfig] || { className: 'bg-gray-100 text-gray-800', text: status };
         return (
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}>
@@ -35,46 +37,14 @@ const OwnerPaymentsList = () => {
         );
     };
 
-    if (loading) {
-        return (
-            <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex flex-col gap-4 rounded-xl p-4 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 animate-pulse">
-                        <div className="flex justify-between items-center">
-                            <div className="space-y-2">
-                                <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
-                                <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
-                                <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-                            </div>
-                            <div className="text-right space-y-2">
-                                <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
-                                <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-16"></div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="text-center py-8">
-                <p className="text-red-500">Error loading payments: {error}</p>
-            </div>
-        );
-    }
-
-    const displayPayments = activeTab === 'pending' ? pendingPayments : payments;
-
     return (
         <div className="space-y-4">
-            {displayPayments.length === 0 ? (
+            {payments.length === 0 ? (
                 <div className="text-center py-8">
                     <p className="text-gray-500">No payments found</p>
                 </div>
             ) : (
-                displayPayments.map((payment) => (
+                payments.map((payment) => (
                     <div key={payment.id} className="flex flex-col gap-4 rounded-xl p-4 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800">
                         <div className="flex justify-between items-center">
                             <div>
@@ -89,14 +59,14 @@ const OwnerPaymentsList = () => {
                         </div>
                         <div className="flex justify-between text-sm text-[#617989] dark:text-gray-400">
                             <span>
-                                Booking: {formatDate(payment.booking?.check_in)} - {formatDate(payment.booking?.check_out)}
+                                Booking: {payment.booking ? `${formatDate(payment.booking.check_in)} - ${formatDate(payment.booking.check_out)}` : 'N/A'}
                             </span>
                             <span>
                                 {payment.upi_reference && `UPI Reference: ${payment.upi_reference}`}
                             </span>
                         </div>
                         <div className="flex gap-2 mt-2">
-                            {payment.status === 'VERIFIED' && (
+                            {(payment.status === 'VERIFIED' || payment.status === 'COMPLETED') && (
                                 <button className="px-3 py-1 text-sm font-medium text-primary bg-primary/10 rounded-md hover:bg-primary/20">
                                     Download Receipt
                                 </button>

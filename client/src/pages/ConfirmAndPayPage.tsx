@@ -1,25 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Page } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../api/apiClient';
+import { useAuth } from '../hooks/useAuth';
 import QRCodeGenerator from '../components/QRCodeGenerator';
 import toast from 'react-hot-toast';
+import { BRAND } from '../config/brand';
 
 interface Booking {
     id: string;
-    user_id: string;
-    property_id: string;
-    check_in: string;
-    check_out: string;
+    userId: string;
+    propertyId: string;
+    checkIn: string;
+    checkOut: string;
     status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-    total_amount: number;
-    created_at: string;
-    updated_at: string;
+    guests: number;
+    paymentStatus: string;
+    createdAt: string;
+    updatedAt: string;
     property: {
         id: string;
         title: string;
         location: string;
-        price_per_night: number;
+        pricePerNight: number;
         images: string[];
         owner: {
             id: string;
@@ -31,6 +33,7 @@ interface Booking {
 
 const ConfirmAndPayPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [booking, setBooking] = useState<Booking | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -52,82 +55,51 @@ const ConfirmAndPayPage = () => {
             }
 
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) {
-                    setError('Please login to continue');
-                    setLoading(false);
-                    return;
+                const response = await apiClient.get(`/tenant/bookings/${bookingId}`);
+
+                if (response.success && response.data) {
+                    setBooking(response.data);
+                } else {
+                    throw new Error(response.error?.message || 'Failed to load booking details');
                 }
-
-                const { data: bookingData, error } = await supabase
-                    .from("bookings")
-                    .select(`
-                        id,
-                        user_id,
-                        property_id,
-                        check_in,
-                        check_out,
-                        status,
-                        total_amount,
-                        created_at,
-                        updated_at,
-                        property:properties(
-                            id,
-                            title,
-                            location,
-                            price_per_night,
-                            images,
-                            owner:users(id, name, email)
-                        )
-                    `)
-                    .eq('id', bookingId)
-                    .eq('user_id', user.id)
-                    .single();
-
-                if (error) {
-                    throw error;
-                }
-
-                setBooking(bookingData);
-                setLoading(false);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Error fetching booking:', err);
-                setError('Failed to load booking details');
+                setError(err.message || 'Failed to load booking details');
+            } finally {
                 setLoading(false);
             }
         };
-        getBooking();
-    }, []);
+
+        if (user) {
+            getBooking();
+        }
+    }, [user]);
 
     const handleCreatePayment = async () => {
         if (!booking) return;
 
+        // Calculate total amount based on nights and price per night
+        const nights = Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24));
+        const totalAmount = booking.property.pricePerNight * nights;
+
         setProcessingPayment(true);
         try {
-            const response = await fetch('/api/payments/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    bookingId: booking.id,
-                    amount: booking.total_amount,
-                    upiId,
-                    merchantName
-                }),
+            const response = await apiClient.post('/payments/create', {
+                bookingId: booking.id,
+                amount: totalAmount,
+                upiId,
+                merchantName
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                setPaymentId(data.paymentId);
+            if (response.success && response.data) {
+                setPaymentId(response.data.paymentId);
                 setShowQRModal(true);
             } else {
-                const errorData = await response.json();
-                toast.error('Failed to create payment: ' + errorData.error?.message);
+                toast.error('Failed to create payment: ' + (response.error?.message || 'Unknown error'));
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error creating payment:', error);
-            toast.error('Failed to create payment');
+            toast.error('Failed to create payment: ' + (error.message || 'Unknown error'));
         } finally {
             setProcessingPayment(false);
         }
@@ -143,6 +115,12 @@ const ConfirmAndPayPage = () => {
             month: 'short',
             day: 'numeric'
         });
+    };
+
+    const calculateTotalAmount = (booking: Booking) => {
+        if (!booking) return 0;
+        const nights = Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24));
+        return booking.property.pricePerNight * nights;
     };
 
     if (loading) {
@@ -188,7 +166,7 @@ const ConfirmAndPayPage = () => {
                             {error}
                         </p>
                         <button
-                            onClick={() => navigate('bookings')}
+                            onClick={() => navigate('/bookings')}
                             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
                         >
                             Back to Bookings
@@ -212,7 +190,7 @@ const ConfirmAndPayPage = () => {
                             The booking you're looking for doesn't exist.
                         </p>
                         <button
-                            onClick={() => navigate('bookings')}
+                            onClick={() => navigate('/bookings')}
                             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
                         >
                             Back to Bookings
@@ -228,7 +206,7 @@ const ConfirmAndPayPage = () => {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
                     <button
-                        onClick={() => navigate('bookings')}
+                        onClick={() => navigate('/bookings')}
                         className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
                     >
                         <span className="material-symbols-outlined">arrow_back</span>
@@ -253,38 +231,45 @@ const ConfirmAndPayPage = () => {
                         </h2>
 
                         <div className="space-y-4">
-                            <div>
-                                <h3 className="font-semibold text-gray-900 dark:text-white">
-                                    {booking.property.title}
-                                </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {booking.property.location}
-                                </p>
+                            <div className="flex gap-4">
+                                <img
+                                    src={booking.property.images?.[0] || BRAND.defaultPropertyImage}
+                                    alt={booking.property.title}
+                                    className="w-24 h-24 rounded-lg object-cover"
+                                />
+                                <div>
+                                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                                        {booking.property.title}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        {booking.property.location}
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <span className="text-gray-500 dark:text-gray-400">Check-in:</span>
                                     <span className="ml-2 text-gray-900 dark:text-white font-medium">
-                                        {formatDate(booking.check_in)}
+                                        {formatDate(booking.checkIn)}
                                     </span>
                                 </div>
                                 <div>
                                     <span className="text-gray-500 dark:text-gray-400">Check-out:</span>
                                     <span className="ml-2 text-gray-900 dark:text-white font-medium">
-                                        {formatDate(booking.check_out)}
+                                        {formatDate(booking.checkOut)}
                                     </span>
                                 </div>
                                 <div>
                                     <span className="text-gray-500 dark:text-gray-400">Nights:</span>
                                     <span className="ml-2 text-gray-900 dark:text-white font-medium">
-                                        {Math.ceil((new Date(booking.check_out).getTime() - new Date(booking.check_in).getTime()) / (1000 * 60 * 60 * 24))}
+                                        {Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24))}
                                     </span>
                                 </div>
                                 <div>
                                     <span className="text-gray-500 dark:text-gray-400">Price/Night:</span>
                                     <span className="ml-2 text-gray-900 dark:text-white font-medium">
-                                        {formatCurrency(booking.property.price_per_night)}
+                                        {formatCurrency(booking.property.pricePerNight)}
                                     </span>
                                 </div>
                             </div>
@@ -295,7 +280,7 @@ const ConfirmAndPayPage = () => {
                                         Total Amount
                                     </span>
                                     <span className="text-2xl font-bold text-primary">
-                                        {formatCurrency(booking.total_amount)}
+                                        {formatCurrency(calculateTotalAmount(booking))}
                                     </span>
                                 </div>
                             </div>
@@ -366,7 +351,7 @@ const ConfirmAndPayPage = () => {
                 </div>
 
                 {/* QR Code Modal */}
-                {showQRModal && paymentId && (
+                {showQRModal && paymentId && booking && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-md w-full">
                             <div className="flex justify-between items-center mb-4">
@@ -384,15 +369,15 @@ const ConfirmAndPayPage = () => {
                             <div className="text-center mb-6">
                                 <QRCodeGenerator
                                     upiId={upiId}
-                                    amount={booking.total_amount}
+                                    amount={calculateTotalAmount(booking)}
                                     note={`StayEasy Payment - ${paymentId}`}
                                 />
                             </div>
 
                             <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-6">
                                 <p><strong>Property:</strong> {booking.property.title}</p>
-                                <p><strong>Amount:</strong> {formatCurrency(booking.total_amount)}</p>
-                                <p><strong>Booking:</strong> {formatDate(booking.check_in)} - {formatDate(booking.check_out)}</p>
+                                <p><strong>Amount:</strong> {formatCurrency(calculateTotalAmount(booking))}</p>
+                                <p><strong>Booking:</strong> {formatDate(booking.checkIn)} - {formatDate(booking.checkOut)}</p>
                                 <p><strong>Payment ID:</strong> {paymentId}</p>
                             </div>
 
@@ -400,7 +385,7 @@ const ConfirmAndPayPage = () => {
                                 <button
                                     onClick={() => {
                                         setShowQRModal(false);
-                                        navigate('payments');
+                                        navigate('/payments');
                                     }}
                                     className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                                 >

@@ -1,0 +1,117 @@
+From e9b9ca97ed4e6092d51415bc27ca9e624c42d3e4 Mon Sep 17 00:00:00 2001
+From: ghostshanky <actofjoy00@gmail.com>
+Date: Mon, 1 Dec 2025 13:08:50 +0530
+Subject: [PATCH 03/19] Fix #4: Reduce auth refresh cooldown to 2 seconds
+
+- Changed cooldown from 5000ms to 2000ms
+- Prevents blocking legitimate user refreshes
+- Still protects against infinite retry loops
+- Improves login state persistence
+---
+ client/src/hooks/useAuth.ts | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
+
+diff --git a/client/src/hooks/useAuth.ts b/client/src/hooks/useAuth.ts
+index 8d0fed9..a9859aa 100644
+--- a/client/src/hooks/useAuth.ts
++++ b/client/src/hooks/useAuth.ts
+@@ -67,14 +67,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
+   const refreshUser = async () => {
+     // Prevent infinite retries with cooldown mechanism
+     const now = Date.now();
+-    if (refreshInProgress.current || (now - lastRefreshTime < 5000)) {
++    if (refreshInProgress.current || (now - lastRefreshTime < 2000)) {
+       console.log('🔄 [Auth] Refresh already in progress or too soon, skipping');
+       return;
+     }
+-    
++
+     refreshInProgress.current = true;
+     setLastRefreshTime(now);
+-    
++
+     try {
+       const token = localStorage.getItem('accessToken');
+       if (!token) {
+@@ -88,10 +88,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
+       apiClient.setAuthToken(token);
+ 
+       console.log('🔍 [Auth] Making request to /auth/me');
+-      
++
+       // Get user profile from the server
+       const response = await apiClient.get('/auth/me');
+-      
++
+       console.log('🔍 [Auth] /auth/me response:', {
+         success: response.success,
+         hasData: !!response.data,
+@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
+         status: error.response?.status,
+         config: error.config
+       });
+-      
++
+       // Only clear auth if it's a 401 or auth-related error
+       if (error.response?.status === 401 || error.code === 'AUTH_ERROR') {
+         setUser(null);
+@@ -141,11 +141,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
+       // DIAGNOSTIC: Log client-side environment
+       console.log('🔍 [Client] Login Environment Check:');
+       console.log('   - API Base URL:', apiClient.getConfig().baseURL);
+-      
++
+       console.log('🔍 [Client] Login attempt:', { email });
+ 
+       const response = await apiClient.post('/auth/login', { email, password });
+-      
++
+       console.log('🔍 [Client] Login response:', {
+         hasData: !!response.data,
+         success: response.success,
+@@ -155,13 +155,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
+ 
+       if (response.success) {
+         const { accessToken, refreshToken, user } = response.data;
+-        
++
+         console.log('✅ [Client] Login successful, storing tokens');
+-        
++
+         // Store tokens
+         localStorage.setItem('accessToken', accessToken);
+         localStorage.setItem('refreshToken', refreshToken);
+-        
++
+         // Set the token in the API client
+         apiClient.setAuthToken(accessToken);
+ 
+@@ -202,7 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
+         name,
+         role: 'TENANT' // Default role
+       });
+-      
++
+       console.log('🔍 [Client] Signup response:', {
+         hasData: !!response.data,
+         success: response.success,
+@@ -212,13 +212,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
+ 
+       if (response.success) {
+         const { accessToken, refreshToken, user } = response.data;
+-        
++
+         console.log('✅ [Client] Signup successful, storing tokens');
+-        
++
+         // Store tokens
+         localStorage.setItem('accessToken', accessToken);
+         localStorage.setItem('refreshToken', refreshToken);
+-        
++
+         // Set the token in the API client
+         apiClient.setAuthToken(accessToken);
+ 
+-- 
+2.51.0.windows.1
+

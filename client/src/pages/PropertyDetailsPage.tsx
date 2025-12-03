@@ -1,64 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Page } from '../types';
 import MessageHostModal from '../components/MessageHostModal';
-import { sendMessage } from '../lib/messages';
-import { useProperties } from '../hooks/useProperties';
 import { useReviews } from '../hooks/useReviews';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { apiClient } from '../config/api';
+import { BRAND } from '../config/brand';
 
 const PropertyDetailsPage = () => {
     const { id: propertyId } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { items: properties, loading: propertiesLoading } = useProperties(1, 1);
+    const { user } = useAuth();
+
+    // We fetch reviews using the hook
     const { items: reviews, loading: reviewsLoading } = useReviews(propertyId, 10, 1);
+
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
     const [property, setProperty] = useState<any>(null);
     const [hostName, setHostName] = useState('');
+    const [hostId, setHostId] = useState('');
     const [loading, setLoading] = useState(true);
+    const [bookingLoading, setBookingLoading] = useState(false);
+
+    const handleRequestToBook = async () => {
+        if (!property || !user) {
+            alert('Please login to make a booking');
+            return;
+        }
+
+        // For now, let's create a simple booking with default dates
+        // In a real app, you'd want a date selection modal
+        const checkIn = new Date();
+        const checkOut = new Date();
+        checkOut.setDate(checkIn.getDate() + 7); // 7 days stay
+
+        setBookingLoading(true);
+        try {
+            const response = await apiClient.post('/bookings/create', {
+                propertyId: property.id,
+                checkIn: checkIn.toISOString(),
+                checkOut: checkOut.toISOString(),
+                guestCount: 1
+            });
+
+            if (response.success && response.data) {
+                const booking = response.data;
+                // Navigate to confirm page with booking ID
+                navigate(`/confirm?bookingId=${booking.id}`);
+            } else {
+                alert('Failed to create booking: ' + (response.error?.message || 'Unknown error'));
+            }
+        } catch (error: any) {
+            console.error('Error creating booking:', error);
+            alert('Failed to create booking: ' + (error.message || 'Unknown error'));
+        } finally {
+            setBookingLoading(false);
+        }
+    };
 
     useEffect(() => {
         const fetchPropertyDetails = async () => {
             try {
                 setLoading(true);
-                
-                if (!propertyId) return;
-                
-                // Fetch specific property by ID
-                const { data: propertyData, error: propertyError } = await supabase
-                    .from('properties')
-                    .select(`
-                        *,
-                        files (url),
-                        profiles (full_name, email)
-                    `)
-                    .eq('id', propertyId)
-                    .single();
+                const response = await apiClient.get(`/properties/${propertyId}`);
+                if (response.success && response.data) {
+                    const propertyData = response.data;
 
-                if (propertyError) {
-                    console.error('Error fetching property:', propertyError);
-                    return;
+                    // Ensure images is an array and handle fallback
+                    let images = propertyData.images || [];
+                    if (typeof images === 'string') {
+                        try {
+                            images = JSON.parse(images);
+                        } catch (e) {
+                            images = [images];
+                        }
+                    }
+                    if (!Array.isArray(images) || images.length === 0) {
+                        images = [BRAND.defaultAvatar];
+                    }
+
+                    // Ensure we have at least 5 images for the grid layout by repeating if necessary
+                    while (images.length < 5) {
+                        images = [...images, ...images].slice(0, 5);
+                    }
+
+                    setProperty({
+                        ...propertyData,
+                        images: images,
+                        rating: propertyData.rating || 0,
+                        price_per_night: propertyData.pricePerNight || propertyData.price_per_night || 0
+                    });
+
+                    // Set host name if available
+                    if (propertyData.owner) {
+                        setHostName(propertyData.owner.name || 'Host');
+                        setHostId(propertyData.owner.id || '');
+                    }
                 }
-
-                // Get property images
-                const images = (propertyData as any).files?.map((file: any) => file.url) || ['/default_profile_pic.jpg'];
-
-                // Get host name
-                const hostName = (propertyData as any).profiles?.full_name || (propertyData as any).profiles?.email || 'Unknown Host';
-
-                setProperty({
-                    id: (propertyData as any).id,
-                    name: (propertyData as any).name,
-                    title: (propertyData as any).name,
-                    location: (propertyData as any).address,
-                    price_per_night: (propertyData as any).price,
-                    images: images,
-                    rating: 4.8, // TODO: Fetch actual rating from reviews
-                    description: (propertyData as any).description || '',
-                    available: (propertyData as any).available
-                });
-
-                setHostName(hostName);
             } catch (error) {
                 console.error('Error fetching property details:', error);
             } finally {
@@ -89,11 +126,11 @@ const PropertyDetailsPage = () => {
                                 <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">/</span>
                                 <button onClick={() => navigate('/search')} className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Properties</button>
                                 <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">/</span>
-                                <span className="text-gray-800 dark:text-gray-200 text-sm font-medium">{property.title}</span>
+                                <span className="text-gray-800 dark:text-gray-200 text-sm font-medium">{property.title || property.name}</span>
                             </div>
                             <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
                                 <div className="flex flex-col gap-2">
-                                    <p className="text-gray-900 dark:text-white text-3xl font-bold tracking-tight">{property.name}</p>
+                                    <p className="text-gray-900 dark:text-white text-3xl font-bold tracking-tight">{property.title || property.name}</p>
                                     <div className="flex items-center gap-4 text-gray-500 dark:text-gray-400 text-sm">
                                         <div className="flex items-center gap-1">
                                             <span className="material-symbols-outlined text-base">star</span>
@@ -129,16 +166,40 @@ const PropertyDetailsPage = () => {
                                     <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
                                         <div className="flex justify-between items-center">
                                             <div>
-                                                <h2 className="text-gray-900 dark:text-white text-xl font-bold">Private Room in a PG hosted by {hostName}</h2>
-                                                <p className="text-gray-500 dark:text-gray-400">2-person sharing • 1 Bathroom • Kitchenette</p>
+                                                <h2 className="text-gray-900 dark:text-white text-xl font-bold">Hosted by {hostName}</h2>
+                                                <p className="text-gray-500 dark:text-gray-400">
+                                                    {property.capacity} Guests • {property.amenities?.length || 0} Amenities
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="py-6 border-b border-gray-200 dark:border-gray-700">
                                         <h3 className="text-gray-900 dark:text-white text-xl font-bold mb-4">What this place offers</h3>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex items-center gap-3"><span className="material-symbols-outlined text-gray-700 dark:text-gray-300">wifi</span><span className="text-gray-600 dark:text-gray-300">High-speed Wi-Fi</span></div>
-                                            <div className="flex items-center gap-3"><span className="material-symbols-outlined text-gray-700 dark:text-gray-300">ac_unit</span><span className="text-gray-600 dark:text-gray-300">Air Conditioning</span></div>
+                                            {property.amenities && property.amenities.length > 0 ? (
+                                                property.amenities.map((amenity: string, index: number) => {
+                                                    // Simple mapping for common amenities
+                                                    let icon = 'check_circle';
+                                                    const lowerAmenity = amenity.toLowerCase();
+                                                    if (lowerAmenity.includes('wifi') || lowerAmenity.includes('internet')) icon = 'wifi';
+                                                    else if (lowerAmenity.includes('ac') || lowerAmenity.includes('air')) icon = 'ac_unit';
+                                                    else if (lowerAmenity.includes('tv')) icon = 'tv';
+                                                    else if (lowerAmenity.includes('kitchen')) icon = 'kitchen';
+                                                    else if (lowerAmenity.includes('parking')) icon = 'local_parking';
+                                                    else if (lowerAmenity.includes('gym')) icon = 'fitness_center';
+                                                    else if (lowerAmenity.includes('pool')) icon = 'pool';
+                                                    else if (lowerAmenity.includes('laundry') || lowerAmenity.includes('washer')) icon = 'local_laundry_service';
+
+                                                    return (
+                                                        <div key={index} className="flex items-center gap-3">
+                                                            <span className="material-symbols-outlined text-gray-700 dark:text-gray-300">{icon}</span>
+                                                            <span className="text-gray-600 dark:text-gray-300">{amenity}</span>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p className="text-gray-500 dark:text-gray-400">No amenities listed.</p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="py-6">
@@ -176,7 +237,7 @@ const PropertyDetailsPage = () => {
                                             ₹{property.price_per_night.toLocaleString()} <span className="text-base font-normal text-gray-500 dark:text-gray-400">/ month</span>
                                         </p>
                                         <div className="space-y-4">
-                                            <button onClick={() => navigate('/confirm')} className="w-full flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary text-white text-base font-bold hover:bg-primary/90 transition-colors">
+                                            <button onClick={handleRequestToBook} className="w-full flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary text-white text-base font-bold hover:bg-primary/90 transition-colors">
                                                 <span>Request to Book</span>
                                             </button>
                                             <button onClick={() => setIsMessageModalOpen(true)} className="w-full flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-base font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
@@ -199,10 +260,11 @@ const PropertyDetailsPage = () => {
                     )}
                 </main>
             </div>
-            <MessageHostModal 
+            <MessageHostModal
                 isOpen={isMessageModalOpen}
                 onClose={() => setIsMessageModalOpen(false)}
                 hostName={hostName}
+                hostId={hostId}
                 propertyId={propertyId}
             />
         </>

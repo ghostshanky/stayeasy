@@ -1,155 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { Page, Booking } from '../types';
+import { Page, Booking, StatChangeDirection } from '../types';
 import SideNavBar from '../components/SideNavBar';
-import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { DashboardCardSkeleton } from '../components/common';
 import toast from 'react-hot-toast';
+import { apiClient } from '../api/apiClient';
+import { useAuth } from '../hooks/useAuth';
+import { BRAND } from '../config/brand';
 
 interface StatCardData {
   title: string;
   value: string;
   change?: string;
-  changeDirection?: 'increase' | 'decrease';
+  changeDirection?: StatChangeDirection;
   icon: string;
   color: string;
 }
 
 const TenantDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [userName, setUserName] = useState('User');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-
-  interface UserProfile {
-    full_name?: string;
-  }
 
   useEffect(() => {
-    fetchUserData();
-    fetchBookings();
-  }, []);
-
-  const fetchUserData = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      if (user) {
-        // Fetch user profile from the database to get the actual name
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError);
-          // Fallback to email-based name if profile not found
-          setUserName(user.email?.split('@')[0] || 'User');
-        } else {
-          setUserName((profile as any)?.full_name || user.email?.split('@')[0] || 'User');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
+    if (user) {
+      setUserName(user.name || user.email?.split('@')[0] || 'User');
+      fetchBookings();
     }
-  };
+  }, [user]);
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const response = await apiClient.get('/bookings/tenant/bookings');
 
-      if (user) {
-        const { data, error } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            properties (
-              id,
-              title,
-              location,
-              images,
-              price
-            )
-          `)
-          .eq('tenant_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.warn('Database connection failed, using sample bookings:', error.message);
-          // Use sample bookings for development/testing
-          const sampleBookings: Booking[] = [
-            {
-              id: crypto.randomUUID(),
-              tenant_id: user.id,
-              owner_id: crypto.randomUUID(),
-              property_id: crypto.randomUUID(),
-              check_in: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-              check_out: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
-              status: 'CONFIRMED',
-              total_amount: 8500 * 7,
-              payment_status: 'COMPLETED' as any,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              properties: {
-                id: crypto.randomUUID(),
-                title: 'Modern PG near Tech Park',
-                location: 'Bangalore, Karnataka',
-                images: ['https://via.placeholder.com/400x300?text=Property+1'],
-                price: 8500
-              }
-            },
-            {
-              id: crypto.randomUUID(),
-              tenant_id: user.id,
-              owner_id: crypto.randomUUID(),
-              property_id: crypto.randomUUID(),
-              check_in: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-              check_out: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days from now
-              status: 'PENDING',
-              total_amount: 4500 * 2,
-              payment_status: 'PENDING',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              properties: {
-                id: crypto.randomUUID(),
-                title: 'Cozy Hostel in City Center',
-                location: 'Mumbai, Maharashtra',
-                images: ['https://via.placeholder.com/400x300?text=Property+2'],
-                price: 4500
-              }
-            },
-            {
-              id: crypto.randomUUID(),
-              tenant_id: user.id,
-              owner_id: crypto.randomUUID(),
-              property_id: crypto.randomUUID(),
-              check_in: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
-              check_out: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-              status: 'COMPLETED',
-              total_amount: 12000 * 5,
-              payment_status: 'COMPLETED' as any,
-              created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-              properties: {
-                id: crypto.randomUUID(),
-                title: 'Luxury Apartment PG',
-                location: 'Delhi NCR',
-                images: ['https://via.placeholder.com/400x300?text=Property+3'],
-                price: 12000
-              }
-            }
-          ];
-          setBookings(sampleBookings);
-          return;
-        }
-
-        setBookings(data || []);
+      if (response.success && response.data) {
+        // Map backend response to frontend Booking interface
+        const mappedBookings = response.data.map((booking: any) => ({
+          ...booking,
+          properties: booking.property ? {
+            ...booking.property,
+            price: booking.property.pricePerNight || booking.property.price
+          } : undefined
+        }));
+        setBookings(mappedBookings);
+      } else {
+        console.error('Failed to fetch bookings:', response.error);
+        // Fallback to empty list or handle error
+        setBookings([]);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -266,16 +170,13 @@ const TenantDashboard = () => {
   ];
 
   const renderBookingCard = (booking: Booking) => (
-    <div key={booking.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
+    <div key={booking.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
       <div className="flex gap-4">
-        <div className="flex-shrink-0">
-          <img
-            src={booking.properties?.images?.[0] || '/default_profile_pic.jpg'}
-            alt={booking.properties?.title}
-            className="w-24 h-24 rounded-lg object-cover"
-          />
-        </div>
-
+        <img
+          src={booking.properties?.images?.[0] || BRAND.defaultAvatar}
+          alt={booking.properties?.title}
+          className="w-24 h-24 rounded-lg object-cover"
+        />
         <div className="flex-1">
           <h3 className="font-semibold text-gray-800 dark:text-white">
             {booking.properties?.title}
@@ -324,122 +225,119 @@ const TenantDashboard = () => {
   );
 
   return (
-    <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
-      <SideNavBar />
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-        <div className="mx-auto max-w-7xl">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Welcome back, {userName}! 👋
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Here's what's happening with your stays today
-            </p>
-          </div>
+    <div className="mx-auto max-w-7xl">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Welcome back, {userName}! 👋
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Here's what's happening with your stays today
+          </p>
+        </div>
+      </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {loading ? (
-              // Show skeleton loaders for stats cards
-              Array.from({ length: 4 }).map((_, index) => (
-                <DashboardCardSkeleton key={index} />
-              ))
-            ) : (
-              stats.map((stat, index) => (
-                <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
-                    </div>
-                    <div className={`p-3 rounded-lg bg-gray-100 dark:bg-gray-700`}>
-                      <span className="material-symbols-outlined text-2xl" style={{ color: stat.color }}>
-                        {stat.icon}
-                      </span>
-                    </div>
-                  </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {loading ? (
+          // Show skeleton loaders for stats cards
+          Array.from({ length: 4 }).map((_, index) => (
+            <DashboardCardSkeleton key={index} />
+          ))
+        ) : (
+          stats.map((stat, index) => (
+            <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
                 </div>
-              ))
+                <div className={`p-3 rounded-lg bg-gray-100 dark:bg-gray-700`}>
+                  <span className="material-symbols-outlined text-2xl" style={{ color: stat.color }}>
+                    {stat.icon}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {getQuickActions().map((action, index) => (
+            <button
+              key={index}
+              onClick={action.action}
+              className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-all hover:scale-105 text-left"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <span className="material-symbols-outlined text-2xl text-primary">
+                  {action.icon}
+                </span>
+                <h3 className="font-semibold text-gray-900 dark:text-white">{action.title}</h3>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Bookings */}
+      <div className="space-y-6">
+        {/* Upcoming Bookings */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Upcoming Stays</h2>
+            <button
+              onClick={() => navigate('/bookings')}
+              className="text-primary hover:text-primary/80 text-sm font-medium"
+            >
+              View All →
+            </button>
+          </div>
+          {getUpcomingBookings().length > 0 ? (
+            <div className="space-y-4">
+              {getUpcomingBookings().slice(0, 2).map(renderBookingCard)}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+              <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_upcoming</span>
+              <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
+            </div>
+          )}
+        </div>
+
+        {/* Current Bookings */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Current Stay</h2>
+            {getCurrentBookings().length > 0 && (
+              <button
+                onClick={() => navigate('/bookings')}
+                className="text-primary hover:text-primary/80 text-sm font-medium"
+              >
+                View All →
+              </button>
             )}
           </div>
-
-          {/* Quick Actions */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {getQuickActions().map((action, index) => (
-                <button
-                  key={index}
-                  onClick={action.action}
-                  className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-all hover:scale-105 text-left"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="material-symbols-outlined text-2xl text-primary">
-                      {action.icon}
-                    </span>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{action.title}</h3>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
-                </button>
-              ))}
+          {loading ? (
+            <DashboardCardSkeleton />
+          ) : getCurrentBookings().length > 0 ? (
+            <div className="space-y-4">
+              {getCurrentBookings().slice(0, 1).map(renderBookingCard)}
             </div>
-          </div>
-
-          {/* Recent Bookings */}
-          <div className="space-y-6">
-            {/* Upcoming Bookings */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Upcoming Stays</h2>
-                <button
-                  onClick={() => navigate('/bookings')}
-                  className="text-primary hover:text-primary/80 text-sm font-medium"
-                >
-                  View All →
-                </button>
-              </div>
-              {getUpcomingBookings().length > 0 ? (
-                <div className="space-y-4">
-                  {getUpcomingBookings().slice(0, 2).map(renderBookingCard)}
-                </div>
-              ) : (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                  <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_upcoming</span>
-                  <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
-                </div>
-              )}
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+              <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">today</span>
+              <p className="text-gray-500 dark:text-gray-400">No active bookings</p>
             </div>
-
-            {/* Current Bookings */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Current Stay</h2>
-                {getCurrentBookings().length > 0 && (
-                  <button
-                    onClick={() => navigate('/bookings')}
-                    className="text-primary hover:text-primary/80 text-sm font-medium"
-                  >
-                    View All →
-                  </button>
-                )}
-              </div>
-              {loading ? (
-                <DashboardCardSkeleton />
-              ) : getCurrentBookings().length > 0 ? (
-                <div className="space-y-4">
-                  {getCurrentBookings().slice(0, 1).map(renderBookingCard)}
-                </div>
-              ) : (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                  <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">today</span>
-                  <p className="text-gray-500 dark:text-gray-400">No active bookings</p>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 };

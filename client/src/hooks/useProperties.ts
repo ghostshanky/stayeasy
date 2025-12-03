@@ -1,80 +1,57 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { apiClient } from "../api/apiClient";
+import { useState, useEffect } from 'react';
+import { apiClient } from '../api/apiClient';
+import { BRAND } from '../config/brand';
 
-interface Property {
+export interface Property {
   id: string;
-  name: string;
+  title: string;
   location: string;
-  price: string;
-  priceValue: number;
-  images?: string[];
-  imageUrl?: string;
-  rating?: number;
+  price_per_night: number;
+  images: string[];
+  rating: number;
 }
 
-export function useProperties(limit = 12, page = 1) {
-  const [items, setItems] = useState<Property[]>([]);
+export const useProperties = () => {
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-
     const fetchProperties = async () => {
       try {
-        console.log('🔍 [useProperties] Fetching properties from API...');
-
-        const params = new URLSearchParams({
-          limit: limit.toString(),
-          page: page.toString(),
+        const response = await apiClient.get('/properties', {
+          params: {
+            limit: 12,
+            page: 1
+          }
         });
 
-        const response = await apiClient.get(`/properties?${params.toString()}`);
-
-        if (!mounted) return;
-
-        console.log('🔍 [useProperties] API Response:', response);
-
         if (response.success && response.data) {
-          // Transform backend data to match frontend Property interface
-          const transformedProperties = response.data.map((prop: any) => ({
+          const formattedProperties = response.data.map((prop: any) => ({
             id: prop.id,
-            name: prop.title || prop.name || 'Unnamed Property',
-            location: prop.location || 'Unknown Location',
+            title: prop.title,
+            location: prop.location,
             price: prop.price_per_night ? `₹${prop.price_per_night}` : 'Price not available',
             priceValue: prop.price_per_night || 0,
             images: prop.images || [],
-            imageUrl: prop.images?.[0] || 'https://via.placeholder.com/400x300?text=No+Image',
+            imageUrl: prop.images?.[0] || BRAND.defaultPropertyImage,
             rating: prop.rating || 0
           }));
 
-          setItems(transformedProperties);
-          console.log('✅ [useProperties] Properties loaded and transformed:', transformedProperties.length);
+          setProperties(formattedProperties);
         } else {
-          console.error('❌ [useProperties] Failed to fetch properties:', response.error);
-          setError(response.error?.message || 'Failed to fetch properties');
-          setItems([]);
+          throw new Error(response.error?.message || 'Failed to fetch properties');
         }
-      } catch (error: any) {
-        if (mounted) {
-          console.error('❌ [useProperties] Error fetching properties:', error);
-          setError(error instanceof Error ? error.message : 'Unknown error occurred');
-          setItems([]);
-        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch properties');
+        console.error('Error fetching properties:', err);
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
     fetchProperties();
+  }, []);
 
-    return () => { mounted = false; };
-  }, [limit, page]);
-
-  return { items, loading, error };
-}
+  return { properties, loading, error };
+};

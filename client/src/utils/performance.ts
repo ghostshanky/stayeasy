@@ -191,7 +191,7 @@ export function VirtualList<T>({
   },
     React.createElement('div', { style: { height: totalHeight, position: 'relative' } },
       React.createElement('div', { style: { position: 'absolute', top: offsetY, width: '100%' } },
-        visibleItems.map((item, index) => 
+        visibleItems.map((item, index) =>
           React.createElement('div', {
             key: index,
             style: {
@@ -215,10 +215,10 @@ export function withPerformanceTracking<T extends React.ComponentType<any>>(
   componentName: string
 ): T {
   const MemoizedComponent = memo(Component);
-  
+
   const TrackedComponent = (props: Parameters<T>[0]) => {
     const { measureRender } = usePerformance(componentName);
-    
+
     return useMemo(() => {
       return React.createElement(MemoizedComponent, { ...props, measureRender });
     }, [props, measureRender]);
@@ -409,25 +409,3 @@ export function usePerformanceCollector(componentName: string) {
 
   return { metrics, measureRender };
 }
-
-// Export all utilities and hooks
-export {
-  useDebounce,
-  useDebouncedState,
-  useThrottle,
-  useIntersectionObserver,
-  useVirtualScroll,
-  useOptimizedSearch,
-  usePerformanceCollector,
-};
-
-// Export components
-export {
-  VirtualList,
-  OptimizedImage,
-};
-
-// Export types
-export type {
-  PerformanceMetrics,
-};

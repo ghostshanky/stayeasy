@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { Page } from '../types';
+import { useState } from 'react';
 import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
 import OwnerPaymentsList from '../components/owner/OwnerPaymentsList';
@@ -11,14 +10,14 @@ const OwnerPaymentsPage = () => {
 
   const filterPayments = (payments: any[], status?: string) => {
     if (status === 'all') return payments;
-    return payments.filter(payment => payment.status === status);
+    return payments.filter(payment => payment.status === status.toUpperCase());
   };
 
   const getPaymentStats = () => {
     const total = payments.reduce((sum: number, payment: any) => sum + (payment.amount || 0), 0);
-    const completed = payments.filter((p: any) => p.status === 'COMPLETED').length;
-    const pending = payments.filter((p: any) => p.status === 'PENDING').length;
-    const failed = payments.filter((p: any) => p.status === 'FAILED').length;
+    const completed = payments.filter((p: any) => p.status === 'COMPLETED' || p.status === 'VERIFIED').length;
+    const pending = payments.filter((p: any) => p.status === 'PENDING' || p.status === 'AWAITING_PAYMENT').length;
+    const failed = payments.filter((p: any) => p.status === 'FAILED' || p.status === 'REJECTED').length;
 
     return {
       total,
@@ -49,7 +48,7 @@ const OwnerPaymentsPage = () => {
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
           <OwnerHeader userName="Alex" />
-          
+
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">Payments</h1>
             <p className="text-text-light-secondary dark:text-text-dark-secondary">Manage payments for your properties</p>

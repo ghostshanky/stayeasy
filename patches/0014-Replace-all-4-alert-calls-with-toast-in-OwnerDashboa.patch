@@ -1,0 +1,106 @@
+From d3311823f2842181a49a754c3d718f641ea27465 Mon Sep 17 00:00:00 2001
+From: ghostshanky <actofjoy00@gmail.com>
+Date: Mon, 1 Dec 2025 15:08:18 +0530
+Subject: [PATCH 14/19] Replace all 4 alert() calls with toast in
+ OwnerDashboard
+
+---
+ client/src/pages/OwnerDashboard.tsx | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/client/src/pages/OwnerDashboard.tsx b/client/src/pages/OwnerDashboard.tsx
+index 85c3a22..3695097 100644
+--- a/client/src/pages/OwnerDashboard.tsx
++++ b/client/src/pages/OwnerDashboard.tsx
+@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
+ import { useNavigate } from 'react-router-dom';
+ import { useAuth } from '../hooks/useAuth';
+ import { DashboardCardSkeleton } from '../components/common';
++import toast from 'react-hot-toast';
+ 
+ const OwnerDashboard = () => {
+     const navigate = useNavigate();
+@@ -36,7 +37,7 @@ const OwnerDashboard = () => {
+         const fetchStats = async () => {
+             try {
+                 setLoading(true);
+-                
++
+                 if (!user) {
+                     setError('User not authenticated');
+                     return;
+@@ -108,7 +109,7 @@ const OwnerDashboard = () => {
+                 // Calculate stats
+                 const totalProperties = propertiesData.length;
+                 const activeBookings = bookingsData.filter((b: any) => b.status === 'confirmed').length;
+-                
++
+                 // Calculate monthly revenue (current month)
+                 const currentMonth = new Date().getMonth();
+                 const currentYear = new Date().getFullYear();
+@@ -116,7 +117,7 @@ const OwnerDashboard = () => {
+                     .filter(p => {
+                         const paymentDate = new Date((p as any).created_at);
+                         return paymentDate.getMonth() === currentMonth &&
+-                               paymentDate.getFullYear() === currentYear;
++                            paymentDate.getFullYear() === currentYear;
+                     })
+                     .reduce((sum, p) => sum + (p as any).amount, 0);
+ 
+@@ -197,7 +198,7 @@ const OwnerDashboard = () => {
+                 window.location.reload();
+             } catch (err) {
+                 console.error('Error deleting property:', err);
+-                alert('Failed to delete property. Please try again.');
++                toast.error('Failed to delete property. Please try again.');
+             }
+         }
+     };
+@@ -231,7 +232,7 @@ const OwnerDashboard = () => {
+             window.location.reload();
+         } catch (err) {
+             console.error('Error toggling property status:', err);
+-            alert('Failed to update property status. Please try again.');
++            toast.error('Failed to update property status. Please try again.');
+         }
+     };
+ 
+@@ -248,7 +249,7 @@ const OwnerDashboard = () => {
+             window.location.reload();
+         } catch (err) {
+             console.error('Error verifying payment:', err);
+-            alert('Failed to verify payment. Please try again.');
++            toast.error('Failed to verify payment. Please try again.');
+         }
+     };
+ 
+@@ -265,7 +266,7 @@ const OwnerDashboard = () => {
+             window.location.reload();
+         } catch (err) {
+             console.error('Error rejecting payment:', err);
+-            alert('Failed to reject payment. Please try again.');
++            toast.error('Failed to reject payment. Please try again.');
+         }
+     };
+ 
+@@ -275,7 +276,7 @@ const OwnerDashboard = () => {
+             <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+                 <div className="mx-auto max-w-7xl">
+                     <OwnerHeader userName={user?.name || 'User'} />
+-                    
++
+                     {/* Tab Navigation */}
+                     <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+                         <button
+@@ -291,7 +292,7 @@ const OwnerDashboard = () => {
+                             Payment Verification
+                         </button>
+                     </div>
+-                    
++
+                     {error && <div className="text-center py-10 text-error">{error}</div>}
+                     {loading ? (
+                         <>
+-- 
+2.51.0.windows.1
+

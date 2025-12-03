@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../api/apiClient';
+import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 interface SettingsSectionProps {
@@ -19,10 +20,9 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) =>
 
 const OwnerSettingsPage = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -36,47 +36,37 @@ const OwnerSettingsPage = () => {
   });
 
   useEffect(() => {
-    fetchUserData();
-  }, []);
+    if (user) {
+      fetchUserData();
+    }
+  }, [user]);
 
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (!user) return;
 
-      if (authError || !authUser) {
-        throw authError;
+      const response = await apiClient.get(`/users/${user.id}`);
+
+      if (response.success && response.data) {
+        const userData = response.data;
+        setFormData({
+          name: userData.name || '',
+          email: userData.email || '',
+          phone: userData.mobile || '',
+          bio: userData.bio || '',
+          notificationPreferences: {
+            email: true, // Default values as these might not be in DB yet
+            push: true,
+            sms: false
+          }
+        });
+      } else {
+        toast.error('Failed to load profile data');
       }
-
-      setUser(authUser);
-
-      // Fetch user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      setProfile(profileData);
-
-      // Set form data
-      setFormData({
-        name: (profileData as any)?.full_name || authUser.user_metadata?.full_name || '',
-        email: authUser.email || '',
-        phone: (profileData as any)?.phone || '',
-        bio: (profileData as any)?.bio || '',
-        notificationPreferences: {
-          email: (profileData as any)?.notification_preferences?.email ?? true,
-          push: (profileData as any)?.notification_preferences?.push ?? true,
-          sms: (profileData as any)?.notification_preferences?.sms ?? false
-        }
-      });
     } catch (error) {
       console.error('Error fetching user data:', error);
+      toast.error('Error loading profile');
     } finally {
       setLoading(false);
     }
@@ -102,63 +92,61 @@ const OwnerSettingsPage = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
+      if (!user) return;
 
-      // Update user metadata
-      if (formData.name !== user.user_metadata?.full_name) {
-        const { error: updateError } = await supabase.auth.updateUser({
-          data: {
-            full_name: formData.name
-          }
-        });
+      const payload = {
+        name: formData.name,
+        mobile: formData.phone,
+        bio: formData.bio,
+        // Notification preferences would go here if backend supported it
+      };
 
-        if (updateError) {
-          throw updateError;
-        }
+      const response = await apiClient.put(`/users/${user.id}`, payload);
+
+      if (response.success) {
+        toast.success('Profile updated successfully!');
+        // Ideally update local user context here if name changed
+      } else {
+        throw new Error(response.error?.message || 'Failed to update profile');
       }
-
-      // Update profile
-      const { error: profileError } = await (supabase as any)
-        .from('profiles')
-        .update({
-          full_name: formData.name,
-          phone: formData.phone,
-          bio: formData.bio,
-          notification_preferences: formData.notificationPreferences,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      toast.success('Profile updated successfully!');
-      fetchUserData(); // Refresh data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving profile:', error);
-      toast.error('Failed to update profile. Please try again.');
+      toast.error(error.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
   };
 
   const handlePasswordChange = async () => {
-    const newPassword = prompt('Enter new password:');
+    const currentPassword = prompt('Enter current password:');
+    if (!currentPassword) return;
+
+    const newPassword = prompt('Enter new password (min 6 chars):');
     if (!newPassword) return;
 
+    if (newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
+      if (!user) return;
+
+      const response = await apiClient.put(`/users/${user.id}/password`, {
+        currentPassword,
+        newPassword
       });
 
-      if (error) {
-        throw error;
+      if (response.success) {
+        toast.success('Password updated successfully! Please login again.');
+        await logout();
+        navigate('/auth');
+      } else {
+        throw new Error(response.error?.message || 'Failed to update password');
       }
-
-      toast.success('Password updated successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating password:', error);
-      toast.error('Failed to update password. Please try again.');
+      toast.error(error.message || 'Failed to update password');
     }
   };
 
@@ -167,28 +155,38 @@ const OwnerSettingsPage = () => {
       return;
     }
 
+    const confirmText = prompt('Type "DELETE" to confirm account deletion:');
+    if (confirmText !== 'DELETE') {
+      toast.error('Account deletion cancelled');
+      return;
+    }
+
     try {
-      const { error } = await supabase.auth.admin.deleteUser(user.id);
+      if (!user) return;
 
-      if (error) {
-        throw error;
+      const response = await apiClient.delete(`/users/${user.id}`);
+
+      if (response.success) {
+        toast.success('Account deleted successfully.');
+        await logout();
+        navigate('/');
+      } else {
+        throw new Error(response.error?.message || 'Failed to delete account');
       }
-
-      toast.success('Account deleted successfully.');
-      navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting account:', error);
-      toast.error('Failed to delete account. Please try again.');
+      toast.error(error.message || 'Failed to delete account');
     }
   };
 
   if (loading) {
     return (
-      <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
+      <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary h-screen">
         <OwnerSideNavBar />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="mx-auto max-w-7xl">
-            <div className="text-center py-10">Loading Settings...</div>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Loading Settings...</p>
           </div>
         </main>
       </div>
@@ -196,7 +194,7 @@ const OwnerSettingsPage = () => {
   }
 
   return (
-    <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
+    <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary h-screen">
       <OwnerSideNavBar />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
@@ -220,7 +218,7 @@ const OwnerSettingsPage = () => {
                       type="text"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                     />
                   </div>
 
@@ -232,7 +230,7 @@ const OwnerSettingsPage = () => {
                       type="email"
                       value={formData.email}
                       disabled
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Email cannot be changed
@@ -247,7 +245,7 @@ const OwnerSettingsPage = () => {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                       placeholder="+91 98765 43210"
                     />
                   </div>
@@ -260,7 +258,7 @@ const OwnerSettingsPage = () => {
                       value={formData.bio}
                       onChange={(e) => handleInputChange('bio', e.target.value)}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors resize-none"
                       placeholder="Tell us about yourself..."
                     />
                   </div>
@@ -323,19 +321,21 @@ const OwnerSettingsPage = () => {
               {/* Security Settings */}
               <SettingsSection title="Security">
                 <div className="space-y-4">
-                  <button
-                    onClick={handlePasswordChange}
-                    className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    Change Password
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                      onClick={handlePasswordChange}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Change Password
+                    </button>
 
-                  <button
-                    onClick={handleDeleteAccount}
-                    className="w-full sm:w-auto px-4 py-2 border border-red-300 dark:border-red-600 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                  >
-                    Delete Account
-                  </button>
+                    <button
+                      onClick={handleDeleteAccount}
+                      className="px-4 py-2 border border-red-300 dark:border-red-600 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      Delete Account
+                    </button>
+                  </div>
                 </div>
               </SettingsSection>
             </div>
@@ -385,7 +385,7 @@ const OwnerSettingsPage = () => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>

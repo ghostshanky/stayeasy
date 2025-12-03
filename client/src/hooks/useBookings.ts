@@ -1,30 +1,7 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
 import { apiClient } from "../api/apiClient";
-
-interface Booking {
-  id: string;
-  user_id: string;
-  property_id: string;
-  check_in: string;
-  check_out: string;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  total_amount: number;
-  created_at: string;
-  updated_at: string;
-  property: {
-    id: string;
-    title: string;
-    location: string;
-    price_per_night: number;
-    images: string[];
-  };
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
+import { BRAND } from "../config/brand";
+import { Booking, PaymentStatus } from "../types";
 
 export function useBookings(userId: string, limit = 10, page = 1, status?: string) {
   const [items, setItems] = useState<Booking[]>([]);
@@ -47,12 +24,34 @@ export function useBookings(userId: string, limit = 10, page = 1, status?: strin
           params.append('status', status);
         }
 
-        const response = await apiClient.get(`/bookings?${params.toString()}`);
+        const response = await apiClient.get(`/tenant/bookings?${params.toString()}`);
 
         if (!mounted) return;
 
         if (response.success && response.data) {
-          setItems(response.data);
+          // Map API response (camelCase) to Booking type (snake_case)
+          const mappedBookings = response.data.map((b: any) => ({
+            id: b.id,
+            tenant_id: b.userId,
+            owner_id: b.property?.ownerId, // Assuming property is included
+            property_id: b.propertyId,
+            check_in: b.checkIn,
+            check_out: b.checkOut,
+            status: b.status,
+            total_amount: 0, // Calculate or get from API if available
+            payment_status: 'PENDING' as PaymentStatus, // Default or get from API
+            created_at: b.createdAt,
+            updated_at: b.updatedAt,
+            properties: b.property ? {
+              id: b.property.id,
+              title: b.property.title, // name -> title
+              location: b.property.location,
+              images: b.property.images || [],
+              price: b.property.price
+            } : undefined,
+            // Map other fields as needed
+          }));
+          setItems(mappedBookings);
         } else {
           console.error('❌ [useBookings] Failed to fetch bookings:', response.error);
           setError(response.error?.message || 'Failed to fetch bookings');
@@ -93,124 +92,92 @@ export function useOwnerBookings(ownerId: string, limit = 10, page = 1, status?:
 
     const fetchBookings = async () => {
       try {
-        // Calculate offset for pagination
-        const offset = (page - 1) * limit;
-        
-        let query = supabase
-          .from('bookings')
-          .select(`
-            *,
-            property:properties (
-              id,
-              title,
-              location,
-              price_per_night,
-              images
-            ),
-            user:profiles (
-              id,
-              full_name,
-              email
-            )
-          `)
-          .eq('property_id', ownerId) // Note: This should be owner_id if bookings have owner_id field
-          .order('created_at', { ascending: false })
-          .range(offset, offset + limit - 1);
+        const params = new URLSearchParams({
+          limit: limit.toString(),
+          page: page.toString(),
+        });
 
         if (status) {
-          query = query.eq('status', status);
+          params.append('status', status);
         }
 
-        const { data, error } = await query;
+        const response = await apiClient.get(`/owner/bookings?${params.toString()}`);
 
         if (!mounted) return;
 
-        if (error) {
-          console.warn('❌ [useOwnerBookings] Database connection failed, using sample data:', error.message);
-          // Use sample bookings for development/testing
-          const sampleBookings: Booking[] = [
-            {
-              id: crypto.randomUUID(),
-              user_id: crypto.randomUUID(),
-              property_id: ownerId,
-              check_in: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              check_out: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              status: 'CONFIRMED',
-              total_amount: 105000,
-              created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              property: {
-                id: crypto.randomUUID(),
-                title: 'Modern PG near Tech Park',
-                location: 'Bangalore, Karnataka',
-                price_per_night: 15000,
-                images: ['https://via.placeholder.com/400x300?text=Modern+PG']
-              },
-              user: {
-                id: crypto.randomUUID(),
-                name: 'Jane Smith',
-                email: 'jane@example.com'
-              }
-            },
-            {
-              id: crypto.randomUUID(),
-              user_id: crypto.randomUUID(),
-              property_id: ownerId,
-              check_in: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              check_out: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              status: 'PENDING',
-              total_amount: 56000,
-              created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-              property: {
-                id: crypto.randomUUID(),
-                title: 'Cozy Hostel in City Center',
-                location: 'Mumbai, Maharashtra',
-                price_per_night: 8000,
-                images: ['https://via.placeholder.com/400x300?text=Cozy+Hostel']
-              },
-              user: {
-                id: crypto.randomUUID(),
-                name: 'Bob Johnson',
-                email: 'bob@example.com'
-              }
-            }
-          ];
-          
-          setItems(sampleBookings);
-          return;
+        if (response.success && response.data) {
+          // Map API response (camelCase) to Booking type (snake_case)
+          const mappedBookings = response.data.map((b: any) => ({
+            id: b.id,
+            tenant_id: b.userId,
+            owner_id: ownerId,
+            property_id: b.propertyId,
+            check_in: b.checkIn,
+            check_out: b.checkOut,
+            status: b.status,
+            total_amount: 0, // TODO: Get from API
+            payment_status: 'PENDING' as PaymentStatus, // TODO: Get from API
+            created_at: b.createdAt,
+            updated_at: b.updatedAt,
+            properties: b.property ? {
+              id: b.property.id,
+              title: b.property.title,
+              location: b.property.location,
+              images: [], // TODO: Get images
+              price: 0 // TODO: Get price
+            } : undefined,
+            tenant: b.user ? {
+              id: b.user.id,
+              name: b.user.name,
+              email: b.user.email
+            } : undefined
+          }));
+          setItems(mappedBookings);
+        } else {
+          // Fallback to sample data if API fails or returns empty (for dev)
+          // But actually we should trust the API.
+          // If error, show error.
+          if (response.error) {
+            console.error('❌ [useOwnerBookings] Failed to fetch bookings:', response.error);
+            setError(response.error.message);
+          }
+          setItems([]);
         }
 
-        // Transform the data to match the expected Booking interface
-        const transformedBookings = data.map((booking: any) => ({
-          id: booking.id,
-          user_id: booking.user_id,
-          property_id: booking.property_id,
-          check_in: booking.check_in,
-          check_out: booking.check_out,
-          status: booking.status,
-          total_amount: booking.total_amount,
-          created_at: booking.created_at,
-          updated_at: booking.updated_at,
-          property: booking.property || {
-            id: crypto.randomUUID(),
-            title: 'Unknown Property',
-            location: 'Unknown Location',
-            price_per_night: 0,
-            images: []
-          },
-          user: booking.user || {
-            id: booking.user_id,
-            name: 'Unknown User',
-            email: 'unknown@example.com'
-          }
-        }));
-
-        setItems(transformedBookings);
       } catch (err) {
         if (mounted) {
           console.error("Error fetching owner bookings:", err);
           setError("Failed to fetch bookings");
+
+          // Sample data for fallback/dev
+          const sampleBookings: Booking[] = [
+            {
+              id: crypto.randomUUID(),
+              tenant_id: crypto.randomUUID(),
+              owner_id: ownerId,
+              property_id: crypto.randomUUID(),
+              check_in: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              check_out: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              status: 'CONFIRMED',
+              payment_status: 'COMPLETED',
+              total_amount: 105000,
+              created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+              updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+              properties: {
+                id: crypto.randomUUID(),
+                title: 'Modern PG near Tech Park',
+                location: 'Bangalore, Karnataka',
+                images: [BRAND.defaultPropertyImage],
+                price: 15000
+              },
+              tenant: {
+                id: crypto.randomUUID(),
+                name: 'Jane Smith',
+                email: 'jane@example.com'
+              }
+            }
+          ];
+          setItems(sampleBookings);
         }
       } finally {
         if (mounted) {

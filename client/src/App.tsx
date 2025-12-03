@@ -69,11 +69,6 @@ function App() {
                             <Route path="/unauthorized" element={<UnauthorizedPage />} />
                             
                             {/* Authenticated Routes (require login) */}
-                            <Route path="/profile" element={
-                                <ProtectedRoute>
-                                    <ProfilePage />
-                                </ProtectedRoute>
-                            } />
                             <Route path="/bookings" element={
                                 <ProtectedRoute>
                                     <BookingsPage />
@@ -92,6 +87,11 @@ function App() {
                             <Route path="/verify-payment" element={
                                 <ProtectedRoute>
                                     <PaymentVerificationPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/profile" element={
+                                <ProtectedRoute>
+                                    <ProfilePage />
                                 </ProtectedRoute>
                             } />
                             
@@ -117,7 +117,7 @@ function App() {
                             {/* Admin Routes (require ADMIN role) */}
                             <Route path="/dashboard/admin" element={
                                 <ProtectedRoute requiredRoles={['ADMIN']}>
-                                    <AdminDashboard />
+                                    <AdminDashboard navigate={useNavigate()} />
                                 </ProtectedRoute>
                             } />
                             <Route path="/admin-dashboard/*" element={

@@ -1,26 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { StayEasyLogo } from '../App';
 import { BRAND } from '../config/brand';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useAuth } from '../hooks/useAuth';
 import MobileMenu from './MobileMenu';
+import AvatarMenu from './AvatarMenu';
+
 // Simple Cloudinary URL helper
 const getCloudinaryUrl = (publicId: string, width = 200, height = 200): string => {
-  if (!publicId) return "/default_profile_pic.jpg";
-  return `https://res.cloudinary.com/degncsmrz/image/upload/w_${width},h_${height},c_fill,f_auto,q_auto/${publicId}`;
+    if (!publicId) return BRAND.defaultAvatar;
+    return `https://res.cloudinary.com/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'degncsmrz'}/image/upload/w_${width},h_${height},c_fill,f_auto,q_auto/${publicId}`;
 };
 
 export default function Header() {
-    const navigate = useNavigate();
-    const { user, logout, loading } = useAuth();
+    const { user } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { isDarkMode, toggleDarkMode } = useDarkMode();
 
-    const imageUrl = user?.user_metadata?.image_id
-        ? getCloudinaryUrl(user.user_metadata.image_id, 200, 200)
-        : "/default_profile_pic.jpg";
+    const getUserData = () => {
+        if (!user) return null;
+
+        return {
+            id: user.id,
+            email: user.email || '',
+            name: user.name || 'User',
+            role: user.role || 'TENANT',
+            avatar_url: user.image_id ? getCloudinaryUrl(user.image_id) : BRAND.defaultAvatar,
+            created_at: '',
+            updated_at: ''
+        };
+    };
+
+    const userData = getUserData();
 
     return (
         <>
@@ -70,18 +82,12 @@ export default function Header() {
                                         My Bookings
                                     </Link>
 
-                                    {/* Profile */}
-                                    <img
-                                        src={imageUrl}
-                                        onClick={() => navigate('/profile')}
-                                        className="w-10 h-10 rounded-full cursor-pointer border border-gray-300 hover:scale-105 transition"
-                                        alt="Profile"
-                                    />
-
-                                    {/* Logout */}
-                                    <button onClick={logout} title="Logout" className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                                        <span className="material-symbols-outlined">logout</span>
-                                    </button>
+                                    {/* Avatar Menu */}
+                                    {userData && (
+                                        <AvatarMenu
+                                            user={userData}
+                                        />
+                                    )}
                                 </>
                             ) : (
                                 <>

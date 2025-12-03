@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { apiClient } from '../api/apiClient';
 
 export interface Message {
@@ -42,7 +41,7 @@ export function useMessages(userId: string) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get('/api/messages/conversations');
+      const response = await apiClient.get('/messages/conversations');
 
       if (response.success && response.data) {
         setConversations(response.data);
@@ -65,10 +64,10 @@ export function useMessages(userId: string) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get(`/messages/${otherUserId}`);
+      const response = await apiClient.get(`/messages/conversation/${otherUserId}`);
 
       if (response.success && response.data) {
-        setMessages(response.data);
+        setMessages(response.data.messages);
       } else {
         console.error('❌ [useMessages] Failed to fetch messages:', response.error);
         setError(response.error?.message || 'Failed to fetch messages');
@@ -85,7 +84,7 @@ export function useMessages(userId: string) {
   // Send a new message
   const sendMessage = async (recipientId: string, content: string, propertyId?: string) => {
     try {
-      const response = await apiClient.post('/api/messages', {
+      const response = await apiClient.post('/messages', {
         recipientId,
         content,
         propertyId
@@ -106,13 +105,10 @@ export function useMessages(userId: string) {
   // Mark messages as read
   const markMessagesAsRead = async (messageIds: string[]) => {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .update({ read_at: new Date().toISOString() })
-        .in('id', messageIds);
+      const response = await apiClient.put('/messages/read', { messageIds });
 
-      if (error) {
-        throw new Error(error.message || 'Failed to mark messages as read');
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to mark messages as read');
       }
 
       // Update local state
@@ -133,71 +129,43 @@ export function useMessages(userId: string) {
       setLoading(true);
       setError(null);
 
-      const offset = (page - 1) * limit;
-      
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          *,
-          sender:profiles!senderId (
-            full_name,
-            email,
-            role
-          ),
-          recipient:profiles!recipientId (
-            full_name,
-            email,
-            role
-          ),
-          property:properties (
-            id,
-            title
-          )
-        `)
-        .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+      // Using inbox endpoint which returns received messages.
+      // Note: This might not include sent messages if the backend endpoint is strictly inbox.
+      const response = await apiClient.get(`/messages/inbox?page=${page}&limit=${limit}`);
 
-      if (error) {
-        console.warn('❌ [useMessages] Database connection failed, using sample data:', error.message);
-        // Use sample messages for development/testing
-        const sampleMessages: Message[] = [
-          {
-            id: crypto.randomUUID(),
-            senderId: userId,
-            recipientId: crypto.randomUUID(),
-            content: 'Hello! I\'m interested in your property.',
-            createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-            recipient: {
-              id: crypto.randomUUID(),
-              name: 'Jane Smith',
-              email: 'jane@example.com',
-              role: 'OWNER'
-            }
-          }
-        ];
-        
-        setMessages(sampleMessages);
-        return { total: 1, page, limit };
+      if (response.success && response.data) {
+        // Transform data if necessary, but apiClient response should be already usable
+        // The backend returns { success: true, data: [...], pagination: {...} }
+        // We need to match the expected return type of this function
+
+        const transformedMessages = response.data.map((msg: any) => ({
+          id: msg.id,
+          senderId: msg.sender?.id || msg.sender_id, // Handle both cases if backend varies
+          recipientId: msg.receiver?.id || msg.recipient_id,
+          content: msg.content,
+          propertyId: msg.property_id,
+          readAt: msg.read ? new Date().toISOString() : undefined, // backend returns boolean 'read'
+          createdAt: msg.created_at,
+          sender: msg.sender,
+          recipient: msg.receiver,
+          property: msg.property
+        }));
+
+        setMessages(transformedMessages);
+        return {
+          total: response.pagination?.total || transformedMessages.length,
+          page: response.pagination?.page || page,
+          limit: response.pagination?.limit || limit
+        };
+      } else {
+        console.error('❌ [useMessages] Failed to fetch all messages:', response.error);
+        setError(response.error?.message || 'Failed to fetch messages');
+        setMessages([]);
+        return { total: 0, page, limit };
       }
-
-      const transformedMessages = data.map((msg: any) => ({
-        id: msg.id,
-        senderId: msg.sender_id,
-        recipientId: msg.recipient_id,
-        content: msg.content,
-        propertyId: msg.property_id,
-        readAt: msg.read_at,
-        createdAt: msg.created_at,
-        sender: msg.sender,
-        recipient: msg.recipient,
-        property: msg.property
-      }));
-
-      setMessages(transformedMessages);
-      return { total: 100, page, limit }; // Mock pagination
     } catch (err: any) {
       setError(err.message || 'An error occurred while fetching messages');
+      return { total: 0, page, limit };
     } finally {
       setLoading(false);
     }

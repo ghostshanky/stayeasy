@@ -1,0 +1,41 @@
+From bee23485ce3fa82a818575ed869781324c471a4e Mon Sep 17 00:00:00 2001
+From: ghostshanky <actofjoy00@gmail.com>
+Date: Mon, 1 Dec 2025 15:16:32 +0530
+Subject: [PATCH 19/19] Remove unused MockPropertiesController import
+
+---
+ server/server.ts | 18 ------------------
+ 1 file changed, 18 deletions(-)
+
+diff --git a/server/server.ts b/server/server.ts
+index ce03c1c..a7f0e00 100644
+--- a/server/server.ts
++++ b/server/server.ts
+@@ -248,24 +248,6 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
+   })
+ })
+ 
+-// Protected routes with auth middleware
+-app.use('/api', authMiddleware)
+-
+-// Mount API routes
+-app.use('/api/chats', chatApi)
+-app.use('/api/messages', messagesRouter)
+-// Create express routers for controllers
+-const bookingsRouter = express.Router()
+-bookingsRouter.post('/', BookingsController.createBooking)
+-bookingsRouter.get('/', BookingsController.getTenantBookings)
+-bookingsRouter.get('/owner', BookingsController.getOwnerBookings)
+-bookingsRouter.put('/:id', BookingsController.updateBooking)
+-bookingsRouter.delete('/:id', BookingsController.cancelBooking)
+-bookingsRouter.get('/:id', BookingsController.getBookingDetails)
+-bookingsRouter.put('/:id/status', BookingsController.updateBookingStatus)
+-
+-const reviewsRouter = express.Router()
+-reviewsRouter.post('/', ReviewsController.createReview)
+ reviewsRouter.get('/', ReviewsController.getReviews)
+ reviewsRouter.get('/:id', ReviewsController.getReviewDetails)
+ reviewsRouter.put('/:id', ReviewsController.updateReview)
+-- 
+2.51.0.windows.1
+

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useOwnerProperties } from '../../client/src/hooks/useOwnerProperties';
+import { useOwnerProperties } from '../../hooks/useOwnerProperties';
 
 const TestProperties: React.FC = () => {
   const { items, loading, error } = useOwnerProperties();

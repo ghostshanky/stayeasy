@@ -19,7 +19,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "seed:dummy": "node prisma/seed-dummy-data.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.922.0",

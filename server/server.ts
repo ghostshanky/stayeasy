@@ -4,14 +4,19 @@ import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
 import { AuthService } from './auth.js'
-import { ChatService } from './chat.js'
-import chatApi from './chat-api.js'
-import { PropertiesController } from './controllers/propertiesController.js'
-import { BookingsController } from './controllers/bookingsController.js'
-import { ReviewsController } from './controllers/reviewsController.js'
+import { PrismaClient } from '@prisma/client'
+
 import { PaymentsController } from './controllers/paymentsController.js'
 import messagesRouter from './controllers/messagesController.js'
 import { AdminController } from './controllers/adminController.js'
+import bookingsRouter from './routes/bookings.js'
+import reviewsRouter from './routes/reviews.js'
+import propertiesRoutes from './routes/properties.js'
+import usersRouter from './routes/users.js'
+import { ChatService } from './chat.js'
+
+import multer from 'multer'
+// import { supabaseServer } from './lib/supabaseServer.js'
 
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -35,6 +40,21 @@ const app = express()
 const server = createServer(app)
 const PORT = parseInt(process.env.PORT || '3002')
 
+// Initialize Chat Service
+const chatService = new ChatService(server)
+
+// Configure Multer for memory storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+})
+
+// Middleware
+app.use(cors())
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
 // Global request logging
 app.use((req, _res, next) => {
@@ -91,162 +111,20 @@ app.get('/api/health', (_req, res) => {
   })
 })
 
-// Public routes - using real PropertiesController with Supabase data
-app.get('/api/properties', PropertiesController.getProperties)
-app.get('/api/properties/:id', PropertiesController.getPropertyDetails)
+import authRouter from './routes/auth.js'
 
 // Auth routes
-app.post('/api/auth/signup', async (req, res) => {
-  try {
-    const { email, password, name, role } = req.body
+app.use('/api/auth', authRouter)
 
-    if (!email || !password || !name) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'MISSING_FIELDS', message: 'Email, password, and name are required' }
-      })
-    }
-
-    const user = await AuthService.createUser(email, password, name, role)
-    const { accessToken, refreshToken } = await AuthService.createSession(user)
-
-    res.status(201).json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        },
-        accessToken,
-        refreshToken,
-      },
-      message: 'Signup successful'
-    })
-  } catch (error: any) {
-    console.error('❌ Signup error:', error)
-    res.status(400).json({
-      success: false,
-      error: { code: 'SIGNUP_FAILED', message: error.message || 'User creation failed' }
-    })
-  }
-})
-
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'MISSING_CREDENTIALS', message: 'Email and password are required' }
-      })
-    }
-
-    const user = await AuthService.authenticateUser(email, password)
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' }
-      })
-    }
-
-    const { accessToken, refreshToken } = await AuthService.createSession(user)
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        },
-        accessToken,
-        refreshToken,
-      },
-      message: 'Login successful'
-    })
-  } catch (error) {
-    console.error('❌ Login error:', error)
-    res.status(500).json({
-      success: false,
-      error: { code: 'LOGIN_FAILED', message: 'Login failed' }
-    })
-  }
-})
-
-app.post('/api/auth/logout', authMiddleware, async (req, res) => {
-  try {
-    const { refreshToken } = req.body
-    if (refreshToken) {
-      await AuthService.logout(refreshToken)
-    }
-    res.json({ success: true, message: 'Logged out successfully' })
-  } catch (error) {
-    console.error('❌ Logout error:', error)
-    res.status(500).json({ success: false, error: 'Logout failed' })
-  }
-})
-
-app.post('/api/auth/refresh', async (req, res) => {
-  try {
-    const { refreshToken } = req.body
-    if (!refreshToken) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'MISSING_REFRESH_TOKEN', message: 'Refresh token is required' }
-      })
-    }
-
-    const newTokens = await AuthService.refreshToken(refreshToken)
-    if (!newTokens) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'INVALID_REFRESH_TOKEN', message: 'Invalid refresh token' }
-      })
-    }
-
-    res.json({
-      success: true,
-      data: {
-        accessToken: newTokens.accessToken,
-        refreshToken: newTokens.refreshToken
-      }
-    })
-  } catch (error) {
-    console.error('❌ Token refresh error:', error)
-    res.status(500).json({
-      success: false,
-      error: { code: 'TOKEN_REFRESH_FAILED', message: 'Token refresh failed' }
-    })
-  }
-})
-
-app.get('/api/auth/me', authMiddleware, (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      user: {
-        id: req.currentUser!.id,
-        email: req.currentUser!.email,
-        name: req.currentUser!.name,
-        role: req.currentUser!.role,
-      }
-    }
-  })
-})
-
-reviewsRouter.get('/', ReviewsController.getReviews)
-reviewsRouter.get('/:id', ReviewsController.getReviewDetails)
-reviewsRouter.put('/:id', ReviewsController.updateReview)
-reviewsRouter.delete('/:id', ReviewsController.deleteReview)
+// User routes (must be registered before admin routes to avoid conflicts)
+app.use('/api/users', usersRouter)
 
 const paymentsRouter = express.Router()
 paymentsRouter.post('/create', PaymentsController.createPayment)
 paymentsRouter.post('/confirm', PaymentsController.confirmPayment)
 paymentsRouter.get('/pending', PaymentsController.getPendingPayments)
+paymentsRouter.get('/', PaymentsController.getUserPayments) // Add this for user payments
+paymentsRouter.get('/owner/:ownerId', PaymentsController.getOwnerPayments) // Add this for owner payments
 paymentsRouter.post('/verify', PaymentsController.verifyPayment)
 paymentsRouter.post('/webhook', PaymentsController.handleWebhook)
 
@@ -260,9 +138,11 @@ adminRouter.delete('/users/:id', AdminController.deleteUser)
 adminRouter.get('/audit-logs', AdminController.getAuditLogs)
 adminRouter.delete('/content/:type/:id', AdminController.removeContent)
 
+app.use('/api', propertiesRoutes)
 app.use('/api/bookings', bookingsRouter)
 app.use('/api/reviews', reviewsRouter)
-app.use('/api/payments', paymentsRouter)
+app.use('/api/payments', authMiddleware, paymentsRouter)
+app.use('/api/messages', authMiddleware, messagesRouter)
 app.use('/api/admin', adminRouter)
 
 // File upload routes
@@ -270,34 +150,11 @@ app.post('/api/upload', authMiddleware, (_req, res) => {
   res.json({ success: true, message: 'File upload endpoint - to be implemented' })
 })
 
-app.post('/api/images/upload-profile', authMiddleware, (req, res) => {
-  try {
-    // In a real implementation, this would handle file upload to Cloudinary or ImageKit
-    // For now, return a success response with mock data
-    res.json({
-      success: true,
-      data: {
-        url: 'https://via.placeholder.com/150',
-        filename: 'profile.jpg',
-        size: 1024,
-        mimetype: 'image/jpeg'
-      },
-      message: 'Profile image uploaded successfully'
-    })
-  } catch (error) {
-    console.error('❌ Profile image upload error:', error)
-    res.status(500).json({
-      success: false,
-      error: { code: 'UPLOAD_FAILED', message: 'Failed to upload profile image' }
-    })
-  }
-})
-
 // Error handling middleware
 app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('❌ [Server Error]:', {
-    error: error.message,
-    stack: error.stack,
+  console.error('❌ [Server Error] Message:', error.message);
+  console.error('❌ [Server Error] Stack:', error.stack);
+  console.error('❌ [Server Error] Context:', {
     url: (_req as any).url,
     method: (_req as any).method,
     userId: (_req as any).currentUser?.id
@@ -323,7 +180,7 @@ app.use((req, res) => {
   })
 })
 
-// Start server
+
 server.listen(PORT, () => {
   console.log(`🚀 StayEasy API Server running on port ${PORT}`)
   console.log(`📱 Health check: http://localhost:${PORT}/api/health`)

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import AdminSideNavBar from '../components/admin/AdminSideNavBar';
 import AdminStatCard from '../components/admin/AdminStatCard';
+import { apiClient } from '../api/apiClient';
+import toast from 'react-hot-toast';
 
 interface User {
   id: string;
@@ -69,20 +71,15 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/admin/stats', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch admin data');
+        const response = await apiClient.get('/admin/stats');
+
+        if (response.success && response.data) {
+          setStats(response.data);
+          setError(null);
+        } else {
+          throw new Error(response.error?.message || 'Failed to fetch admin data');
         }
-        
-        const data = await response.json();
-        setStats(data.data);
-        setError(null);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to fetch admin data:", err);
         setError("Could not load dashboard data. Please try again later.");
       } finally {
@@ -100,22 +97,18 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
         limit: '10',
       });
       if (selectedRole) params.append('role', selectedRole);
-      
-      const response = await fetch(`/api/admin/users?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
+
+      const response = await apiClient.get(`/admin/users?${params}`);
+
+      if (response.success && response.data) {
+        setUsers(response.data.data || []);
+        setTotalPages(response.data.pagination?.totalPages || 1);
+      } else {
+        throw new Error(response.error?.message || 'Failed to fetch users');
       }
-      
-      const data = await response.json();
-      setUsers(data.data || []);
-      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error("Failed to fetch users:", err);
+      toast.error("Failed to fetch users");
     }
   };
 
@@ -125,22 +118,18 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
         page: currentPage.toString(),
         limit: '10',
       });
-      
-      const response = await fetch(`/api/admin/audit-logs?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch audit logs');
+
+      const response = await apiClient.get(`/admin/audit-logs?${params}`);
+
+      if (response.success && response.data) {
+        setAuditLogs(response.data.data || []);
+        setTotalPages(response.data.pagination?.totalPages || 1);
+      } else {
+        throw new Error(response.error?.message || 'Failed to fetch audit logs');
       }
-      
-      const data = await response.json();
-      setAuditLogs(data.data || []);
-      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error("Failed to fetch audit logs:", err);
+      toast.error("Failed to fetch audit logs");
     }
   };
 
@@ -154,42 +143,34 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
 
   const handleUserUpdate = async (userId: string, updates: any) => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
-        },
-        body: JSON.stringify(updates),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update user');
+      const response = await apiClient.put(`/admin/users/${userId}`, updates);
+
+      if (response.success) {
+        toast.success('User updated successfully');
+        fetchUsers(); // Refresh the list
+      } else {
+        throw new Error(response.error?.message || 'Failed to update user');
       }
-      
-      fetchUsers(); // Refresh the list
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to update user:", err);
+      toast.error(err.message || "Failed to update user");
     }
   };
 
   const handleUserDelete = async (userId: string) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        const response = await fetch(`/api/admin/users/${userId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to delete user');
+        const response = await apiClient.delete(`/admin/users/${userId}`);
+
+        if (response.success) {
+          toast.success('User deleted successfully');
+          fetchUsers(); // Refresh the list
+        } else {
+          throw new Error(response.error?.message || 'Failed to delete user');
         }
-        
-        fetchUsers(); // Refresh the list
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to delete user:", err);
+        toast.error(err.message || "Failed to delete user");
       }
     }
   };
@@ -197,22 +178,19 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
   const handleContentRemoval = async (type: string, id: string) => {
     if (window.confirm(`Are you sure you want to remove this ${type}?`)) {
       try {
-        const response = await fetch(`/api/admin/content/${type}/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to remove content');
+        const response = await apiClient.delete(`/admin/content/${type}/${id}`);
+
+        if (response.success) {
+          toast.success(`${type} removed successfully`);
+          // Refresh data based on current tab
+          if (activeTab === 'users') fetchUsers();
+          else if (activeTab === 'audit') fetchAuditLogs();
+        } else {
+          throw new Error(response.error?.message || 'Failed to remove content');
         }
-        
-        // Refresh data based on current tab
-        if (activeTab === 'users') fetchUsers();
-        else if (activeTab === 'audit') fetchAuditLogs();
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to remove content:", err);
+        toast.error(err.message || "Failed to remove content");
       }
     }
   };
@@ -299,7 +277,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
         <select
           value={selectedRole}
           onChange={(e) => setSelectedRole(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg"
+          className="px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
         >
           <option value="">All Roles</option>
           <option value="TENANT">Tenant</option>
@@ -309,44 +287,43 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-left">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
-              <th className="text-left py-3 px-4">Name</th>
-              <th className="text-left py-3 px-4">Email</th>
-              <th className="text-left py-3 px-4">Role</th>
-              <th className="text-left py-3 px-4">Properties</th>
-              <th className="text-left py-3 px-4">Bookings</th>
-              <th className="text-left py-3 px-4">Actions</th>
+              <th className="py-3 px-4">Name</th>
+              <th className="py-3 px-4">Email</th>
+              <th className="py-3 px-4">Role</th>
+              <th className="py-3 px-4">Properties</th>
+              <th className="py-3 px-4">Bookings</th>
+              <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
           <tbody>
             {users.map((user) => (
-              <tr key={user.id} className="border-b border-gray-100 dark:border-gray-700">
-                <td className="py-3 px-4">{user.name}</td>
-                <td className="py-3 px-4">{user.email}</td>
+              <tr key={user.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">{user.name}</td>
+                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{user.email}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
-                    user.role === 'OWNER' ? 'bg-blue-100 text-blue-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                      user.role === 'OWNER' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                    }`}>
                     {user.role}
                   </span>
                 </td>
-                <td className="py-3 px-4">{user._count.properties}</td>
-                <td className="py-3 px-4">{user._count.bookings}</td>
+                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{user._count?.properties || 0}</td>
+                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{user._count?.bookings || 0}</td>
                 <td className="py-3 px-4">
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleUserUpdate(user.id, { role: user.role === 'TENANT' ? 'OWNER' : 'TENANT' })}
-                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
                     >
                       Toggle Role
                     </button>
                     <button
                       onClick={() => handleUserDelete(user.id)}
-                      className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                      className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
                     >
                       Delete
                     </button>
@@ -366,18 +343,23 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
 
       <div className="space-y-4">
         {auditLogs.map((log) => (
-          <div key={log.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <div key={log.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
             <div>
-              <p className="font-medium">{log.action}</p>
+              <p className="font-medium text-gray-900 dark:text-white">{log.action}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">{log.details}</p>
-              <p className="text-xs text-gray-500">{new Date(log.created_at).toLocaleString()}</p>
+              <p className="text-xs text-gray-500 mt-1">{new Date(log.created_at).toLocaleString()}</p>
             </div>
             <div className="text-right">
-              <p className="font-medium">{log.actor.name}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{log.actor.role}</p>
+              <p className="font-medium text-gray-900 dark:text-white">{log.actor?.name || 'Unknown'}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{log.actor?.role || 'N/A'}</p>
             </div>
           </div>
         ))}
+        {auditLogs.length === 0 && (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            No audit logs found.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -398,7 +380,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
             </div>
             <button
               onClick={() => handleContentRemoval('review', 'REV123456')}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               Remove Review
             </button>
@@ -416,7 +398,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
             </div>
             <button
               onClick={() => handleContentRemoval('property', 'PROP789012')}
-              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
             >
               Remove Property
             </button>
@@ -432,33 +414,33 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
             <p className="text-gray-600 dark:text-gray-400">Manage users, monitor system activity, and moderate content</p>
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'overview' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === 'overview' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
             >
               Overview
             </button>
             <button
               onClick={() => setActiveTab('users')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'users' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === 'users' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
             >
               User Management
             </button>
             <button
               onClick={() => setActiveTab('audit')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'audit' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === 'audit' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
             >
               Audit Logs
             </button>
             <button
               onClick={() => setActiveTab('moderation')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'moderation' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === 'moderation' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
             >
               Content Moderation
             </button>

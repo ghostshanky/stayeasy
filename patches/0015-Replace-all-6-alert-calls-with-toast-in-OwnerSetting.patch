@@ -1,0 +1,99 @@
+From 5b5bcd11cb64b51df94a89373076d9d909aa9b8a Mon Sep 17 00:00:00 2001
+From: ghostshanky <actofjoy00@gmail.com>
+Date: Mon, 1 Dec 2025 15:09:06 +0530
+Subject: [PATCH 15/19] Replace all 6 alert() calls with toast in
+ OwnerSettingsPage
+
+---
+ client/src/pages/OwnerSettingsPage.tsx | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/client/src/pages/OwnerSettingsPage.tsx b/client/src/pages/OwnerSettingsPage.tsx
+index 8be7c74..3339bfe 100644
+--- a/client/src/pages/OwnerSettingsPage.tsx
++++ b/client/src/pages/OwnerSettingsPage.tsx
+@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
+ import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
+ import OwnerHeader from '../components/owner/OwnerHeader';
+ import { supabase } from '../lib/supabase';
++import toast from 'react-hot-toast';
+ 
+ interface SettingsSectionProps {
+   title: string;
+@@ -42,7 +43,7 @@ const OwnerSettingsPage = () => {
+     try {
+       setLoading(true);
+       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+-      
++
+       if (authError || !authUser) {
+         throw authError;
+       }
+@@ -101,7 +102,7 @@ const OwnerSettingsPage = () => {
+   const handleSave = async () => {
+     try {
+       setSaving(true);
+-      
++
+       // Update user metadata
+       if (formData.name !== user.user_metadata?.full_name) {
+         const { error: updateError } = await supabase.auth.updateUser({
+@@ -131,11 +132,11 @@ const OwnerSettingsPage = () => {
+         throw profileError;
+       }
+ 
+-      alert('Profile updated successfully!');
++      toast.success('Profile updated successfully!');
+       fetchUserData(); // Refresh data
+     } catch (error) {
+       console.error('Error saving profile:', error);
+-      alert('Failed to update profile. Please try again.');
++      toast.error('Failed to update profile. Please try again.');
+     } finally {
+       setSaving(false);
+     }
+@@ -154,10 +155,10 @@ const OwnerSettingsPage = () => {
+         throw error;
+       }
+ 
+-      alert('Password updated successfully!');
++      toast.success('Password updated successfully!');
+     } catch (error) {
+       console.error('Error updating password:', error);
+-      alert('Failed to update password. Please try again.');
++      toast.error('Failed to update password. Please try again.');
+     }
+   };
+ 
+@@ -168,16 +169,16 @@ const OwnerSettingsPage = () => {
+ 
+     try {
+       const { error } = await supabase.auth.admin.deleteUser(user.id);
+-      
++
+       if (error) {
+         throw error;
+       }
+ 
+-      alert('Account deleted successfully.');
++      toast.success('Account deleted successfully.');
+       navigate('/');
+     } catch (error) {
+       console.error('Error deleting account:', error);
+-      alert('Failed to delete account. Please try again.');
++      toast.error('Failed to delete account. Please try again.');
+     }
+   };
+ 
+@@ -200,7 +201,7 @@ const OwnerSettingsPage = () => {
+       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+         <div className="mx-auto max-w-7xl">
+           <OwnerHeader userName={formData.name} />
+-          
++
+           <div className="mb-6">
+             <h1 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">Settings</h1>
+             <p className="text-text-light-secondary dark:text-text-dark-secondary">Manage your account and preferences</p>
+-- 
+2.51.0.windows.1
+

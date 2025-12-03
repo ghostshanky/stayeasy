@@ -1,16 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../client/src/lib/supabase';
-
-interface Message {
-  id: string;
-  chatId?: string;
-  senderId: string;
-  recipientId: string;
-  content: string;
-  propertyId?: string;
-  readAt?: string;
-  createdAt: string;
-}
 
 interface Conversation {
   id: string;
@@ -41,9 +29,9 @@ interface OwnerMessagesListProps {
   selectedConversation: string | null;
 }
 
-const OwnerMessagesList: React.FC<OwnerMessagesListProps> = ({ 
-  onConversationSelect, 
-  selectedConversation 
+const OwnerMessagesList: React.FC<OwnerMessagesListProps> = ({
+  onConversationSelect,
+  selectedConversation
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,11 +95,10 @@ const OwnerMessagesList: React.FC<OwnerMessagesListProps> = ({
         conversations.map((conversation) => (
           <div
             key={conversation.id}
-            className={`p-4 rounded-lg cursor-pointer transition-colors ${
-              selectedConversation === conversation.id
-                ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-                : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
+            className={`p-4 rounded-lg cursor-pointer transition-colors ${selectedConversation === conversation.id
+              ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+              : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
             onClick={() => onConversationSelect(conversation.id)}
           >
             <div className="flex items-start gap-3">
@@ -120,7 +107,7 @@ const OwnerMessagesList: React.FC<OwnerMessagesListProps> = ({
                   {conversation.otherUser.name.charAt(0)}
                 </div>
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-gray-900 dark:text-white truncate">
@@ -130,11 +117,11 @@ const OwnerMessagesList: React.FC<OwnerMessagesListProps> = ({
                     {formatTime(conversation.lastMessage.createdAt)}
                   </span>
                 </div>
-                
+
                 <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-1">
                   {conversation.property?.title || 'No property'}
                 </p>
-                
+
                 <div className="flex items-center justify-between mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                     {conversation.lastMessage.content}

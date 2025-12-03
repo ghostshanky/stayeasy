@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../api/apiClient';
+import { useAuth } from '../hooks/useAuth';
 
 interface Message {
   id: string;
@@ -42,7 +43,6 @@ const MessageCard: React.FC<MessageCardProps> = ({ message, onMarkAsRead }) => {
   };
 
   const isFromTenant = message.sender.role === 'TENANT';
-  const isFromOwner = message.sender.role === 'OWNER';
 
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow ${!message.read ? 'border-l-4 border-primary' : ''}`}>
@@ -54,7 +54,7 @@ const MessageCard: React.FC<MessageCardProps> = ({ message, onMarkAsRead }) => {
             </span>
           </div>
         </div>
-        
+
         <div className="flex-1">
           <div className="flex items-start justify-between mb-2">
             <div>
@@ -84,7 +84,7 @@ const MessageCard: React.FC<MessageCardProps> = ({ message, onMarkAsRead }) => {
               </button>
             )}
           </div>
-          
+
           <div className={`p-4 rounded-lg ${isFromTenant ? 'bg-gray-50 dark:bg-gray-700' : 'bg-primary/5 dark:bg-primary/10'}`}>
             <p className="text-gray-700 dark:text-gray-300">{message.content}</p>
           </div>
@@ -95,149 +95,40 @@ const MessageCard: React.FC<MessageCardProps> = ({ message, onMarkAsRead }) => {
 };
 
 const OwnerMessagesPage = () => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
-    fetchMessages();
-  }, []);
+    if (user) {
+      fetchMessages();
+    }
+  }, [user, activeTab]);
 
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        // Get all properties owned by this user
-        const { data: properties, error: propertiesError } = await supabase
-          .from('properties')
-          .select('id')
-          .eq('owner_id', user.id);
 
-        if (propertiesError) {
-          console.warn('Database connection failed, using sample messages:', propertiesError.message);
-          // Use sample messages for development/testing
-          const sampleMessages: Message[] = [
-            {
-              id: crypto.randomUUID(),
-              content: 'Hi, I\'m interested in your Modern PG near Tech Park. Is it still available for next month?',
-              sender: {
-                id: crypto.randomUUID(),
-                name: 'John Doe',
-                role: 'TENANT'
-              },
-              receiver: {
-                id: user.id,
-                name: 'Property Owner',
-                role: 'OWNER'
-              },
-              property: {
-                id: crypto.randomUUID(),
-                title: 'Modern PG near Tech Park'
-              },
-              created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-              read: false
-            },
-            {
-              id: crypto.randomUUID(),
-              content: 'Yes, it\'s available! Would you like to schedule a viewing?',
-              sender: {
-                id: user.id,
-                name: 'Property Owner',
-                role: 'OWNER'
-              },
-              receiver: {
-                id: crypto.randomUUID(),
-                name: 'John Doe',
-                role: 'TENANT'
-              },
-              property: {
-                id: crypto.randomUUID(),
-                title: 'Modern PG near Tech Park'
-              },
-              created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
-              read: true
-            },
-            {
-              id: crypto.randomUUID(),
-              content: 'Hello, I saw your listing for the Cozy Hostel. What are the amenities included?',
-              sender: {
-                id: crypto.randomUUID(),
-                name: 'Sarah Wilson',
-                role: 'TENANT'
-              },
-              receiver: {
-                id: user.id,
-                name: 'Property Owner',
-                role: 'OWNER'
-              },
-              property: {
-                id: crypto.randomUUID(),
-                title: 'Cozy Hostel in City Center'
-              },
-              created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-              read: false
-            },
-            {
-              id: crypto.randomUUID(),
-              content: 'The hostel includes WiFi, laundry service, 24/7 security, and common areas.',
-              sender: {
-                id: user.id,
-                name: 'Property Owner',
-                role: 'OWNER'
-              },
-              receiver: {
-                id: crypto.randomUUID(),
-                name: 'Sarah Wilson',
-                role: 'TENANT'
-              },
-              property: {
-                id: crypto.randomUUID(),
-                title: 'Cozy Hostel in City Center'
-              },
-              created_at: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(), // 23 hours ago
-              read: true
-            }
-          ];
-          setMessages(sampleMessages);
-          setLoading(false);
-          return;
-        }
+      // Fetch messages from the new inbox endpoint
+      // We can pass status filter to the API if we want, but for now let's fetch all and filter client side
+      // or we can optimize by passing status query param
+      let endpoint = '/messages/inbox';
+      if (activeTab === 'unread') endpoint += '?status=unread';
+      if (activeTab === 'read') endpoint += '?status=read';
 
-        const propertyIds = properties?.map((p: any) => p.id) || [];
+      const response = await apiClient.get(endpoint);
 
-        // Get all messages where this user is the receiver
-        const { data, error } = await supabase
-          .from('messages')
-          .select(`
-            *,
-            sender (
-              id,
-              name,
-              role
-            ),
-            receiver (
-              id,
-              name,
-              role
-            ),
-            properties (
-              id,
-              title
-            )
-          `)
-          .eq('receiver_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          throw error;
-        }
-
-        setMessages(data || []);
+      if (response.success && response.data) {
+        setMessages(response.data);
+      } else {
+        console.error('Failed to fetch messages:', response.error);
+        // Fallback to empty list
+        setMessages([]);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -245,32 +136,28 @@ const OwnerMessagesPage = () => {
 
   const markAsRead = async (messageId: string) => {
     try {
-      const { error } = await (supabase as any)
-        .from('messages')
-        .update({ read: true })
-        .eq('id', messageId);
+      const response = await apiClient.put('/messages/read', {
+        messageIds: [messageId]
+      });
 
-      if (error) {
-        throw error;
+      if (response.success) {
+        // Update local state
+        setMessages(prev => prev.map(msg =>
+          msg.id === messageId ? { ...msg, read: true } : msg
+        ));
+      } else {
+        console.error('Failed to mark message as read:', response.error);
       }
-
-      // Update local state
-      setMessages(prev => prev.map(msg => 
-        msg.id === messageId ? { ...msg, read: true } : msg
-      ));
     } catch (error) {
       console.error('Error marking message as read:', error);
     }
   };
 
-  const filterMessages = (messages: Message[], status?: string) => {
-    if (status === 'all') return messages;
-    if (status === 'unread') return messages.filter(msg => !msg.read);
-    if (status === 'read') return messages.filter(msg => msg.read);
-    return messages;
-  };
-
   const getUnreadCount = () => {
+    // This might be inaccurate if we only fetched read messages, but for 'all' tab it works.
+    // Ideally we should fetch unread count separately or from the API meta.
+    // For now, let's just count from current messages if activeTab is 'all' or 'unread'.
+    if (activeTab === 'read') return 0; // We don't have unread messages in this view
     return messages.filter(msg => !msg.read).length;
   };
 
@@ -292,8 +179,8 @@ const OwnerMessagesPage = () => {
       <OwnerSideNavBar />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
-          <OwnerHeader userName="Alex" />
-          
+          <OwnerHeader userName={user?.name || 'Owner'} />
+
           <div className="mb-6">
             <div className="flex items-center justify-between">
               <div>
@@ -320,7 +207,7 @@ const OwnerMessagesPage = () => {
               onClick={() => setActiveTab('unread')}
               className={`px-4 py-2 font-medium text-sm ${activeTab === 'unread' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
             >
-              Unread ({getUnreadCount()})
+              Unread
             </button>
             <button
               onClick={() => setActiveTab('read')}
@@ -332,8 +219,8 @@ const OwnerMessagesPage = () => {
 
           {/* Messages List */}
           <div className="space-y-4">
-            {filterMessages(messages, activeTab).length > 0 ? (
-              filterMessages(messages, activeTab).map(message => (
+            {messages.length > 0 ? (
+              messages.map(message => (
                 <MessageCard
                   key={message.id}
                   message={message}
@@ -344,8 +231,8 @@ const OwnerMessagesPage = () => {
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
                 <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">chat</span>
                 <p className="text-gray-500 dark:text-gray-400">
-                  {activeTab === 'all' ? 'No messages found' : 
-                   activeTab === 'unread' ? 'No unread messages' : 'No read messages'}
+                  {activeTab === 'all' ? 'No messages found' :
+                    activeTab === 'unread' ? 'No unread messages' : 'No read messages'}
                 </p>
               </div>
             )}

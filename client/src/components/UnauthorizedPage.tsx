@@ -11,7 +11,7 @@ export default function UnauthorizedPage() {
   const handleBecomeHost = async () => {
     try {
       setIsChangingRole(true);
-      
+
       // Get the current user's access token
       const token = localStorage.getItem('accessToken');
       if (!token) {
@@ -21,25 +21,25 @@ export default function UnauthorizedPage() {
       }
 
       // Set the token in the API client
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      apiClient.setAuthToken(token);
 
       // Call the backend API to update user role to OWNER
       const response = await apiClient.patch('/auth/me/role', { role: 'OWNER' });
 
-      if (response.data.success) {
+      if (response.success) {
         showToast.success('Congratulations! You are now a host. Redirecting to owner dashboard...');
-        
+
         // Clear any existing tokens and redirect to owner dashboard
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        delete apiClient.defaults.headers.common['Authorization'];
-        
+        apiClient.clearAuthToken();
+
         // Redirect to owner dashboard after a short delay
         setTimeout(() => {
           navigate('/dashboard/owner');
         }, 2000);
       } else {
-        throw new Error(response.data.error?.message || 'Failed to update role');
+        throw new Error(response.error?.message || 'Failed to update role');
       }
     } catch (error: any) {
       console.error('Error becoming host:', error);
@@ -72,7 +72,7 @@ export default function UnauthorizedPage() {
               What happened?
             </h3>
             <p className="text-blue-700 dark:text-blue-400 text-sm">
-              {location.state?.from 
+              {location.state?.from
                 ? `You tried to access ${location.state.from.pathname} but don't have the required permissions.`
                 : 'You attempted to access a page that requires different user permissions.'
               }

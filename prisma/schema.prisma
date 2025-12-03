@@ -28,12 +28,15 @@ model User {
   // Relations
   bookings          Booking[]
   reviews           Review[]
-  chats             Chat[]
-  messages          Message[]
+  startedChats      Chat[]   @relation("UserChats")
+  receivedChats     Chat[]   @relation("OwnerChats")
+  sentMessages      Message[] @relation("SentMessages")
+  receivedMessages  Message[] @relation("ReceivedMessages")
   sessions          Session[]
   auditLogs         AuditLog[]
   notifications     Notification[]
   properties        Property[]
+  refreshTokens     RefreshToken[]
 
   @@map("users")
 }
@@ -54,7 +57,7 @@ model Property {
   capacity          Int
   amenities         Json     @default("[]")
   tags              String[] @default([])
-  status            String   @default("available") @check(status IN ("available", "unavailable"))
+  status            String   @default("available")
   available         Boolean  @default(true) @map("available")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
@@ -182,8 +185,8 @@ model Chat {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   // Relations
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  owner      User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  user       User      @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
+  owner      User      @relation("OwnerChats", fields: [ownerId], references: [id], onDelete: Cascade)
   messages   Message[]
 
   @@map("chats")
@@ -202,7 +205,8 @@ model Message {
 
   // Relations
   chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  sender        User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  sender        User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient     User     @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
   files         File[]
 
   @@map("messages")

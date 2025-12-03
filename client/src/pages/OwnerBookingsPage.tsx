@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Page, Booking } from '../types';
 import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../api/apiClient';
+import { useAuth } from '../hooks/useAuth';
+import { BRAND } from '../config/brand';
+import { PropertyCardSkeleton } from '../components/common/SkeletonLoader';
 
 interface BookingCardProps {
   booking: Booking;
@@ -37,13 +40,6 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
     });
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const getDaysCount = (checkIn: string, checkOut: string) => {
     const start = new Date(checkIn);
     const end = new Date(checkOut);
@@ -70,12 +66,12 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
       <div className="flex gap-4">
         <div className="flex-shrink-0">
           <img
-            src={booking.properties?.images?.[0] || 'https://via.placeholder.com/100x100?text=No+Image'}
+            src={booking.properties?.images?.[0] || BRAND.defaultPropertyImage}
             alt={booking.properties?.title}
             className="w-24 h-24 rounded-lg object-cover"
           />
         </div>
-        
+
         <div className="flex-1">
           <div className="flex items-start justify-between">
             <div>
@@ -97,14 +93,14 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
                   </span>
                 )}
               </div>
-              
+
               <h3 className="font-semibold text-gray-800 dark:text-white">
                 {booking.properties?.title}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 {booking.properties?.location}
               </p>
-              
+
               <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
                 <span>
                   <span className="material-symbols-outlined text-sm">calendar_today</span>
@@ -119,7 +115,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
                   ₹{(booking as any).total_amount?.toLocaleString() || '0'}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm">
                   <span className="text-gray-500">Booking ID: </span>
@@ -139,60 +135,40 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
 };
 
 const OwnerBookingsPage = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    if (user) {
+      fetchBookings();
+    }
+  }, [user]);
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        // Get all properties owned by this user
-        const { data: properties, error: propertiesError } = await supabase
-          .from('properties')
-          .select('id')
-          .eq('owner_id', user.id);
+      const response = await apiClient.get('/bookings/owner/bookings');
 
-        if (propertiesError) {
-          throw propertiesError;
-        }
-
-        const propertyIds = properties?.map((p: any) => p.id) || [];
-
-        // Get all bookings for these properties
-        const { data, error } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            properties (
-              id,
-              title,
-              location,
-              images
-            ),
-            tenant (
-              id,
-              name,
-              email
-            )
-          `)
-          .in('property_id', propertyIds)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          throw error;
-        }
-
-        setBookings(data || []);
+      if (response.success && response.data) {
+        // Map backend response to frontend Booking interface if needed
+        // The endpoint returns bookings with properties and tenant
+        const mappedBookings = response.data.map((booking: any) => ({
+          ...booking,
+          properties: booking.property ? {
+            ...booking.property,
+            price: booking.property.pricePerNight || booking.property.price
+          } : undefined
+        }));
+        setBookings(mappedBookings);
+      } else {
+        console.error('Failed to fetch bookings:', response.error);
+        setBookings([]);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -221,129 +197,126 @@ const OwnerBookingsPage = () => {
     return bookings.filter(booking => booking.status === status);
   };
 
-  if (loading) {
-    return (
-      <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
-        <OwnerSideNavBar />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="mx-auto max-w-7xl">
-            <div className="text-center py-10">Loading Bookings...</div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="flex bg-background-light dark:bg-background-dark text-text-light-primary dark:text-text-dark-primary">
       <OwnerSideNavBar />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
-          <OwnerHeader userName="Alex" />
-          
+          <OwnerHeader userName={user?.name || 'Owner'} />
+
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">Bookings</h1>
             <p className="text-text-light-secondary dark:text-text-dark-secondary">Manage bookings for your properties</p>
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-            <button
-              onClick={() => setActiveTab('upcoming')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'upcoming' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-            >
-              Upcoming ({getUpcomingBookings().length})
-            </button>
-            <button
-              onClick={() => setActiveTab('current')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'current' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-            >
-              Current ({getCurrentBookings().length})
-            </button>
-            <button
-              onClick={() => setActiveTab('past')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'past' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-            >
-              Past ({getPastBookings().length})
-            </button>
-            <button
-              onClick={() => setActiveTab('confirmed')}
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'confirmed' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-            >
-              Confirmed ({getBookingsByStatus('CONFIRMED').length})
-            </button>
-          </div>
+          {loading ? (
+            <div className="flex flex-col gap-4">
+              {[1, 2, 3].map((i) => (
+                <PropertyCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Tab Navigation */}
+              <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+                <button
+                  onClick={() => setActiveTab('upcoming')}
+                  className={`px-4 py-2 font-medium text-sm ${activeTab === 'upcoming' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                  Upcoming ({getUpcomingBookings().length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('current')}
+                  className={`px-4 py-2 font-medium text-sm ${activeTab === 'current' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                  Current ({getCurrentBookings().length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('past')}
+                  className={`px-4 py-2 font-medium text-sm ${activeTab === 'past' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                  Past ({getPastBookings().length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('confirmed')}
+                  className={`px-4 py-2 font-medium text-sm ${activeTab === 'confirmed' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                  Confirmed ({getBookingsByStatus('CONFIRMED').length})
+                </button>
+              </div>
 
-          {/* Bookings Content */}
-          <div className="space-y-6">
-            {activeTab === 'upcoming' && (
-              <div>
-                {getUpcomingBookings().length > 0 ? (
-                  <div className="space-y-4">
-                    {getUpcomingBookings().map(booking => (
-                      <BookingCard key={booking.id} booking={booking} />
-                    ))}
+              {/* Bookings Content */}
+              <div className="space-y-6">
+                {activeTab === 'upcoming' && (
+                  <div>
+                    {getUpcomingBookings().length > 0 ? (
+                      <div className="space-y-4">
+                        {getUpcomingBookings().map(booking => (
+                          <BookingCard key={booking.id} booking={booking} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                        <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_upcoming</span>
+                        <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                    <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_upcoming</span>
-                    <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
+                )}
+
+                {activeTab === 'current' && (
+                  <div>
+                    {getCurrentBookings().length > 0 ? (
+                      <div className="space-y-4">
+                        {getCurrentBookings().map(booking => (
+                          <BookingCard key={booking.id} booking={booking} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                        <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">today</span>
+                        <p className="text-gray-500 dark:text-gray-400">No current bookings</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'past' && (
+                  <div>
+                    {getPastBookings().length > 0 ? (
+                      <div className="space-y-4">
+                        {getPastBookings().map(booking => (
+                          <BookingCard key={booking.id} booking={booking} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                        <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">history</span>
+                        <p className="text-gray-500 dark:text-gray-400">No past bookings</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'confirmed' && (
+                  <div>
+                    {getBookingsByStatus('CONFIRMED').length > 0 ? (
+                      <div className="space-y-4">
+                        {getBookingsByStatus('CONFIRMED').map(booking => (
+                          <BookingCard key={booking.id} booking={booking} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                        <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">check_circle</span>
+                        <p className="text-gray-500 dark:text-gray-400">No confirmed bookings</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-
-            {activeTab === 'current' && (
-              <div>
-                {getCurrentBookings().length > 0 ? (
-                  <div className="space-y-4">
-                    {getCurrentBookings().map(booking => (
-                      <BookingCard key={booking.id} booking={booking} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                    <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">today</span>
-                    <p className="text-gray-500 dark:text-gray-400">No active bookings</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'past' && (
-              <div>
-                {getPastBookings().length > 0 ? (
-                  <div className="space-y-4">
-                    {getPastBookings().map(booking => (
-                      <BookingCard key={booking.id} booking={booking} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                    <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">history</span>
-                    <p className="text-gray-500 dark:text-gray-400">No past bookings</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'confirmed' && (
-              <div>
-                {getBookingsByStatus('CONFIRMED').length > 0 ? (
-                  <div className="space-y-4">
-                    {getBookingsByStatus('CONFIRMED').map(booking => (
-                      <BookingCard key={booking.id} booking={booking} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                    <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">check_circle</span>
-                    <p className="text-gray-500 dark:text-gray-400">No confirmed bookings</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </main>
     </div>

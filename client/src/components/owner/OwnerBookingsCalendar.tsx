@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../client/src/lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 interface Booking {
   id: string;
@@ -18,10 +18,10 @@ interface OwnerBookingsCalendarProps {
   onBookingAction: (bookingId: string, action: 'confirm' | 'cancel' | 'complete') => void;
 }
 
-const OwnerBookingsCalendar: React.FC<OwnerBookingsCalendarProps> = ({ 
-  selectedDate, 
-  onDateSelect, 
-  onBookingAction 
+const OwnerBookingsCalendar: React.FC<OwnerBookingsCalendarProps> = ({
+  selectedDate,
+  onDateSelect,
+  onBookingAction
 }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);

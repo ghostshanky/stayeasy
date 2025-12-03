@@ -1,24 +1,14 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { apiClient } from '../api/apiClient';
 import { showToast } from '../lib/toast';
-
-interface User {
-  id: string;
-  email: string;
-  role: string;
-  name?: string;
-  user_metadata?: {
-    image_id?: string;
-    full_name?: string;
-  };
-}
+import { User, UserRole } from '../types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  signup: (email: string, password: string, name: string, role?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -67,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = async () => {
     // Prevent infinite retries with cooldown mechanism
     const now = Date.now();
-    if (refreshInProgress.current || (now - lastRefreshTime < 2000)) {
+    if (refreshInProgress.current || (now - lastRefreshTime < 500)) {
       console.log('🔄 [Auth] Refresh already in progress or too soon, skipping');
       return;
     }
@@ -100,11 +90,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (response.success && response.data?.user) {
+        const backendUser = response.data.user;
         const userData: User = {
-          id: response.data.user.id,
-          email: response.data.user.email,
-          name: response.data.user.name,
-          role: response.data.user.role,
+          id: backendUser.id,
+          email: backendUser.email,
+          name: backendUser.name || backendUser.user_metadata?.full_name || '',
+          role: backendUser.role as UserRole,
+          image_id: backendUser.image_id || backendUser.user_metadata?.image_id,
+          bio: backendUser.bio,
+          mobile: backendUser.mobile
         };
         console.log('✅ [Auth] User profile updated:', userData.email);
         setUser(userData);
@@ -128,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(false);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        delete apiClient.getDefaults().headers.common['Authorization'];
+        apiClient.clearAuthToken();
       }
       // For other errors, don't clear auth, just let it be
     } finally {
@@ -170,6 +164,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: user.email,
           name: user.name,
           role: user.role,
+          image_id: user.image_id || user.user_metadata?.image_id,
+          bio: user.bio,
+          mobile: user.mobile
         };
 
         setUser(userData);
@@ -192,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (email: string, password: string, name: string) => {
+  const signup = async (email: string, password: string, name: string, role: UserRole = 'TENANT') => {
     try {
       console.log('🔍 [Client] Signup attempt:', { email, name });
 
@@ -200,7 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         name,
-        role: 'TENANT' // Default role
+        role
       });
 
       console.log('🔍 [Client] Signup response:', {
@@ -227,6 +224,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: user.email,
           name: user.name,
           role: user.role,
+          image_id: user.image_id || user.user_metadata?.image_id,
+          bio: user.bio,
+          mobile: user.mobile
         };
 
         setUser(userData);

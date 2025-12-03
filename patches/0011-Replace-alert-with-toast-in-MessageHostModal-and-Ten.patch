@@ -1,0 +1,195 @@
+From ba32b7d8e67ec48559b0fb8e879bc7d77661ce20 Mon Sep 17 00:00:00 2001
+From: ghostshanky <actofjoy00@gmail.com>
+Date: Mon, 1 Dec 2025 14:59:36 +0530
+Subject: [PATCH 11/19] Replace alert() with toast in MessageHostModal and
+ TenantDashboard
+
+---
+ client/src/components/MessageHostModal.tsx | 17 ++++++++--------
+ client/src/pages/TenantDashboard.tsx       | 23 +++++++++++-----------
+ 2 files changed, 21 insertions(+), 19 deletions(-)
+
+diff --git a/client/src/components/MessageHostModal.tsx b/client/src/components/MessageHostModal.tsx
+index b9fc6d4..0b3080d 100644
+--- a/client/src/components/MessageHostModal.tsx
++++ b/client/src/components/MessageHostModal.tsx
+@@ -1,6 +1,7 @@
+ import React, { useState } from 'react';
+ import { useAuth } from '../hooks/useAuth';
+ import { apiClient } from '../api/apiClient';
++import toast from 'react-hot-toast';
+ 
+ interface MessageHostModalProps {
+   isOpen: boolean;
+@@ -22,7 +23,7 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
+   const handleSendClick = async () => {
+     if (!message.trim()) return;
+     setIsSending(true);
+-    
++
+     try {
+       const response = await apiClient.post('/messages', {
+         recipientId: hostId,
+@@ -33,12 +34,12 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
+       if (response.success) {
+         // Close the modal and show success message
+         onClose();
+-        alert('Message sent successfully!');
++        toast.success('Message sent successfully!');
+       } else {
+         throw new Error(response.error?.message || 'Failed to send message');
+       }
+     } catch (error: any) {
+-      alert('Failed to send message. Please try again.');
++      toast.error('Failed to send message. Please try again.');
+       console.error('Error sending message:', error);
+     } finally {
+       setIsSending(false);
+@@ -47,15 +48,15 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
+   };
+ 
+   return (
+-    <div 
++    <div
+       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm"
+       onClick={onClose}
+     >
+-      <div 
++      <div
+         className="bg-surface-light dark:bg-surface-dark rounded-xl shadow-lg w-full max-w-md m-4 p-6 flex flex-col gap-4 relative"
+         onClick={e => e.stopPropagation()}
+       >
+-        <button 
++        <button
+           onClick={onClose}
+           className="absolute top-4 right-4 text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary"
+         >
+@@ -63,7 +64,7 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
+         </button>
+ 
+         <h2 className="text-xl font-bold text-text-light-primary dark:text-text-dark-primary">Message {hostName}</h2>
+-        
++
+         <textarea
+           value={message}
+           onChange={e => setMessage(e.target.value)}
+@@ -72,7 +73,7 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
+           rows={5}
+         />
+ 
+-        <button 
++        <button
+           onClick={handleSendClick}
+           disabled={isSending || !message.trim()}
+           className="w-full flex items-center justify-center rounded-lg h-11 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+diff --git a/client/src/pages/TenantDashboard.tsx b/client/src/pages/TenantDashboard.tsx
+index 12c3b51..8d1dfec 100644
+--- a/client/src/pages/TenantDashboard.tsx
++++ b/client/src/pages/TenantDashboard.tsx
+@@ -4,6 +4,7 @@ import SideNavBar from '../components/SideNavBar';
+ import { supabase } from '../lib/supabase';
+ import { useNavigate } from 'react-router-dom';
+ import { DashboardCardSkeleton } from '../components/common';
++import toast from 'react-hot-toast';
+ 
+ interface StatCardData {
+   title: string;
+@@ -15,7 +16,7 @@ interface StatCardData {
+ }
+ 
+ const TenantDashboard = () => {
+-    const navigate = useNavigate();
++  const navigate = useNavigate();
+   const [userName, setUserName] = useState('User');
+   const [bookings, setBookings] = useState<Booking[]>([]);
+   const [loading, setLoading] = useState(true);
+@@ -41,7 +42,7 @@ const TenantDashboard = () => {
+           .select('full_name')
+           .eq('id', user.id)
+           .single();
+-        
++
+         if (profileError) {
+           console.error('Error fetching user profile:', profileError);
+           // Fallback to email-based name if profile not found
+@@ -59,7 +60,7 @@ const TenantDashboard = () => {
+     try {
+       setLoading(true);
+       const { data: { user } } = await supabase.auth.getUser();
+-      
++
+       if (user) {
+         const { data, error } = await supabase
+           .from('bookings')
+@@ -159,7 +160,7 @@ const TenantDashboard = () => {
+       navigate('/confirm');
+     } catch (error) {
+       console.error('Error navigating to payment:', error);
+-      alert('Failed to process payment. Please try again.');
++      toast.error('Failed to process payment. Please try again.');
+     }
+   };
+ 
+@@ -168,7 +169,7 @@ const TenantDashboard = () => {
+       navigate('/messages');
+     } catch (error) {
+       console.error('Error opening chat:', error);
+-      alert('Failed to open chat. Please try again.');
++      toast.error('Failed to open chat. Please try again.');
+     }
+   };
+ 
+@@ -274,7 +275,7 @@ const TenantDashboard = () => {
+             className="w-24 h-24 rounded-lg object-cover"
+           />
+         </div>
+-        
++
+         <div className="flex-1">
+           <h3 className="font-semibold text-gray-800 dark:text-white">
+             {booking.properties?.title}
+@@ -282,7 +283,7 @@ const TenantDashboard = () => {
+           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+             {booking.properties?.location}
+           </p>
+-          
++
+           <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+             <span>
+               Check-in: {new Date(booking.check_in).toLocaleDateString()}
+@@ -291,12 +292,12 @@ const TenantDashboard = () => {
+               Check-out: {new Date(booking.check_out).toLocaleDateString()}
+             </span>
+           </div>
+-          
++
+           <div className="flex items-center justify-between mt-4">
+             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+               {booking.status}
+             </span>
+-            
++
+             <div className="flex gap-2">
+               {booking.status === 'CONFIRMED' && (
+                 <button
+@@ -306,7 +307,7 @@ const TenantDashboard = () => {
+                   Chat Owner
+                 </button>
+               )}
+-              
++
+               {booking.status === 'PENDING' && (
+                 <button
+                   onClick={() => handlePayment(booking.id)}
+@@ -391,7 +392,7 @@ const TenantDashboard = () => {
+             <div>
+               <div className="flex justify-between items-center mb-4">
+                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Upcoming Stays</h2>
+-                <button 
++                <button
+                   onClick={() => navigate('/bookings')}
+                   className="text-primary hover:text-primary/80 text-sm font-medium"
+                 >
+-- 
+2.51.0.windows.1
+

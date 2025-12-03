@@ -1,7 +1,7 @@
 import React from 'react';
 import { Listing, ListingStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../client/src/lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 interface ActionButtonProps {
     icon: string;
@@ -11,8 +11,8 @@ interface ActionButtonProps {
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({ icon, label, onClick, colorClass = 'hover:text-primary' }) => (
-    <button 
-        aria-label={label} 
+    <button
+        aria-label={label}
         onClick={onClick}
         className={`p-2 rounded-md hover:bg-primary/10 text-text-light-secondary dark:text-text-dark-secondary ${colorClass} transition-colors duration-200`}
     >
@@ -115,12 +115,12 @@ const OwnerListingsTable: React.FC<ListingsTableProps> = ({ listings, onEdit, on
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-center">
-                                    <ListingActions 
-                                        listingId={listing.id} 
-                                        status={listing.status} 
-                                        onEdit={onEdit} 
-                                        onDelete={onDelete} 
-                                        onToggleStatus={onToggleStatus} 
+                                    <ListingActions
+                                        listingId={listing.id}
+                                        status={listing.status}
+                                        onEdit={onEdit}
+                                        onDelete={onDelete}
+                                        onToggleStatus={onToggleStatus}
                                     />
                                 </td>
                             </tr>

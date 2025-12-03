@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Page, Booking } from '../types';
 import { useNavigate } from 'react-router-dom';
 import SideNavBar from '../components/SideNavBar';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../api/apiClient';
+import { useAuth } from '../hooks/useAuth';
+import { BRAND } from '../config/brand';
+import { PropertyCardSkeleton } from '../components/common/SkeletonLoader';
 
 interface BookingCardProps {
   booking: Booking;
-  navigate: (page: Page) => void;
+  navigate: (page: string) => void;
 }
 
 const BookingCard: React.FC<BookingCardProps> = ({ booking, navigate }) => {
@@ -71,12 +74,12 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, navigate }) => {
       <div className="flex gap-4">
         <div className="flex-shrink-0">
           <img
-            src={booking.properties?.images?.[0] || 'https://via.placeholder.com/100x100?text=No+Image'}
+            src={booking.properties?.images?.[0] || BRAND.defaultPropertyImage}
             alt={booking.properties?.title}
             className="w-24 h-24 rounded-lg object-cover"
           />
         </div>
-        
+
         <div className="flex-1">
           <div className="flex items-start justify-between">
             <div>
@@ -98,14 +101,14 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, navigate }) => {
                   </span>
                 )}
               </div>
-              
+
               <h3 className="font-semibold text-gray-800 dark:text-white">
                 {booking.properties?.title}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 {booking.properties?.location}
               </p>
-              
+
               <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
                 <span>
                   <span className="material-symbols-outlined text-sm">calendar_today</span>
@@ -120,25 +123,25 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, navigate }) => {
                   Check-in: {formatTime(booking.check_in)}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm">
                   <span className="text-gray-500">Booking ID: </span>
                   <span className="font-medium text-gray-800 dark:text-white">BK{booking.id.slice(-8)}</span>
                 </div>
-                
+
                 <div className="flex gap-2">
                   {booking.status === 'CONFIRMED' && (
                     <>
                       <button
-                        onClick={() => navigate('messages')}
+                        onClick={() => navigate('/messages')}
                         className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
                       >
                         <span className="material-symbols-outlined text-sm">chat</span>
                         Chat
                       </button>
                       <button
-                        onClick={() => navigate('propertyDetails')}
+                        onClick={() => navigate(`/property/${booking.property_id}`)}
                         className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
                       >
                         <span className="material-symbols-outlined text-sm">visibility</span>
@@ -146,21 +149,21 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, navigate }) => {
                       </button>
                     </>
                   )}
-                  
+
                   {booking.status === 'PENDING' && (
                     <button
-                      onClick={() => navigate('confirmAndPay')}
+                      onClick={() => navigate('/confirm-pay')}
                       className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
                     >
                       <span className="material-symbols-outlined text-sm">payments</span>
                       Pay Now
                     </button>
                   )}
-                  
+
                   {booking.status === 'COMPLETED' && (
                     <>
                       <button
-                        onClick={() => navigate('propertyDetails')}
+                        onClick={() => navigate(`/property/${booking.property_id}`)}
                         className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
                       >
                         <span className="material-symbols-outlined text-sm">visibility</span>
@@ -172,7 +175,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, navigate }) => {
                       </button>
                     </>
                   )}
-                  
+
                   {booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED' && (
                     <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors">
                       <span className="material-symbols-outlined text-sm">cancel</span>
@@ -190,55 +193,40 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, navigate }) => {
 };
 
 const BookingsPage = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    fetchUserData();
-    fetchBookings();
-  }, []);
-
-  const fetchUserData = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    } catch (error) {
-      console.error('Error fetching user data:', error);
+    if (user) {
+      fetchBookings();
     }
-  };
+  }, [user]);
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        const { data, error } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            properties (
-              id,
-              title,
-              location,
-              images,
-              price
-            )
-          `)
-          .eq('tenant_id', user.id)
-          .order('created_at', { ascending: false });
+      const response = await apiClient.get('/bookings/tenant/bookings');
 
-        if (error) {
-          throw error;
-        }
-
-        setBookings(data || []);
+      if (response.success && response.data) {
+        // Map backend response to frontend Booking interface
+        const mappedBookings = response.data.map((booking: any) => ({
+          ...booking,
+          properties: booking.property ? {
+            ...booking.property,
+            price: booking.property.pricePerNight || booking.property.price
+          } : undefined
+        }));
+        setBookings(mappedBookings);
+      } else {
+        console.error('Failed to fetch bookings:', response.error);
+        setBookings([]);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -267,43 +255,6 @@ const BookingsPage = () => {
     return bookings.filter(booking => booking.status === status);
   };
 
-  if (loading) {
-    return (
-      <div className="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
-        <div className="flex h-full grow">
-          <SideNavBar onNavigate={navigate} />
-          <main className="flex-1 p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex flex-wrap justify-between gap-3 mb-6">
-                <div className="flex min-w-72 flex-col gap-2">
-                  <p className="text-[#111518] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">My Bookings</p>
-                  <p className="text-[#617989] dark:text-gray-400 text-base font-normal leading-normal">Manage your stay reservations</p>
-                </div>
-              </div>
-              <div className="flex flex-col gap-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex flex-col gap-4 rounded-xl p-4 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 animate-pulse">
-                    <div className="flex justify-between items-center">
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
-                        <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
-                        <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-                      </div>
-                      <div className="text-right space-y-2">
-                        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
-                        <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-16"></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
       <div className="flex h-full grow">
@@ -317,124 +268,134 @@ const BookingsPage = () => {
               </div>
             </div>
 
-            {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200 dark:border-gray-800 mb-6">
-              <button
-                onClick={() => setActiveTab('upcoming')}
-                className={`px-4 py-2 font-medium text-sm ${activeTab === 'upcoming' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-              >
-                Upcoming Stays
-              </button>
-              <button
-                onClick={() => setActiveTab('current')}
-                className={`px-4 py-2 font-medium text-sm ${activeTab === 'current' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-              >
-                Current Stay
-              </button>
-              <button
-                onClick={() => setActiveTab('past')}
-                className={`px-4 py-2 font-medium text-sm ${activeTab === 'past' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-              >
-                Past Stays
-              </button>
-              <button
-                onClick={() => setActiveTab('cancelled')}
-                className={`px-4 py-2 font-medium text-sm ${activeTab === 'cancelled' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-              >
-                Cancelled
-              </button>
-            </div>
+            {loading ? (
+              <div className="flex flex-col gap-4">
+                {[1, 2, 3].map((i) => (
+                  <PropertyCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* Tab Navigation */}
+                <div className="flex border-b border-gray-200 dark:border-gray-800 mb-6">
+                  <button
+                    onClick={() => setActiveTab('upcoming')}
+                    className={`px-4 py-2 font-medium text-sm ${activeTab === 'upcoming' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    Upcoming Stays
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('current')}
+                    className={`px-4 py-2 font-medium text-sm ${activeTab === 'current' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    Current Stay
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('past')}
+                    className={`px-4 py-2 font-medium text-sm ${activeTab === 'past' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    Past Stays
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('cancelled')}
+                    className={`px-4 py-2 font-medium text-sm ${activeTab === 'cancelled' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    Cancelled
+                  </button>
+                </div>
 
-            {/* Bookings Content */}
-            <div className="space-y-6">
-              {activeTab === 'upcoming' && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Upcoming Stays ({getUpcomingBookings().length})
-                    </h2>
-                  </div>
-                  {getUpcomingBookings().length > 0 ? (
-                    <div className="space-y-4">
-                      {getUpcomingBookings().map(booking => (
-                        <BookingCard key={booking.id} booking={booking} navigate={navigate} />
-                      ))}
+                {/* Bookings Content */}
+                <div className="space-y-6">
+                  {activeTab === 'upcoming' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                          Upcoming Stays ({getUpcomingBookings().length})
+                        </h2>
+                      </div>
+                      {getUpcomingBookings().length > 0 ? (
+                        <div className="space-y-4">
+                          {getUpcomingBookings().map(booking => (
+                            <BookingCard key={booking.id} booking={booking} navigate={navigate} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                          <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_upcoming</span>
+                          <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                      <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_upcoming</span>
-                      <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
+                  )}
+
+                  {activeTab === 'current' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                          Current Stay ({getCurrentBookings().length})
+                        </h2>
+                      </div>
+                      {getCurrentBookings().length > 0 ? (
+                        <div className="space-y-4">
+                          {getCurrentBookings().map(booking => (
+                            <BookingCard key={booking.id} booking={booking} navigate={navigate} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                          <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">today</span>
+                          <p className="text-gray-500 dark:text-gray-400">No active bookings</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'past' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                          Past Stays ({getPastBookings().length})
+                        </h2>
+                      </div>
+                      {getPastBookings().length > 0 ? (
+                        <div className="space-y-4">
+                          {getPastBookings().map(booking => (
+                            <BookingCard key={booking.id} booking={booking} navigate={navigate} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                          <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">history</span>
+                          <p className="text-gray-500 dark:text-gray-400">No past bookings</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'cancelled' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                          Cancelled Bookings ({getBookingsByStatus('CANCELLED').length})
+                        </h2>
+                      </div>
+                      {getBookingsByStatus('CANCELLED').length > 0 ? (
+                        <div className="space-y-4">
+                          {getBookingsByStatus('CANCELLED').map(booking => (
+                            <BookingCard key={booking.id} booking={booking} navigate={navigate} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                          <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">cancel</span>
+                          <p className="text-gray-500 dark:text-gray-400">No cancelled bookings</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-
-              {activeTab === 'current' && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Current Stay ({getCurrentBookings().length})
-                    </h2>
-                  </div>
-                  {getCurrentBookings().length > 0 ? (
-                    <div className="space-y-4">
-                      {getCurrentBookings().map(booking => (
-                        <BookingCard key={booking.id} booking={booking} navigate={navigate} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                      <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">today</span>
-                      <p className="text-gray-500 dark:text-gray-400">No active bookings</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'past' && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Past Stays ({getPastBookings().length})
-                    </h2>
-                  </div>
-                  {getPastBookings().length > 0 ? (
-                    <div className="space-y-4">
-                      {getPastBookings().map(booking => (
-                        <BookingCard key={booking.id} booking={booking} navigate={navigate} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                      <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">history</span>
-                      <p className="text-gray-500 dark:text-gray-400">No past bookings</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'cancelled' && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Cancelled Bookings ({getBookingsByStatus('CANCELLED').length})
-                    </h2>
-                  </div>
-                  {getBookingsByStatus('CANCELLED').length > 0 ? (
-                    <div className="space-y-4">
-                      {getBookingsByStatus('CANCELLED').map(booking => (
-                        <BookingCard key={booking.id} booking={booking} navigate={navigate} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-                      <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">cancel</span>
-                      <p className="text-gray-500 dark:text-gray-400">No cancelled bookings</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </main>
       </div>

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
 import { PropertyCardSkeleton } from '../components/common';
+import { BRAND } from '../config/brand';
 
 interface Property {
     id: string;
@@ -25,7 +26,7 @@ const ListingCard: React.FC<{ listing: Property }> = ({ listing }) => {
     return (
         <div className="flex flex-col gap-3 pb-3 group cursor-pointer" onClick={handlePropertyClick}>
             <div className="relative w-full overflow-hidden">
-                <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-xl transition-transform duration-300 group-hover:scale-105" style={{ backgroundImage: `url("${listing.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}")` }}></div>
+                <div className="w-full bg-center bg-no-repeat aspect-[4/3] bg-cover rounded-xl transition-transform duration-300 group-hover:scale-105" style={{ backgroundImage: `url("${listing.imageUrl || BRAND.defaultPropertyImage}")` }}></div>
                 <button className="absolute top-3 right-3 text-white">
                     <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}> favorite </span>
                 </button>
@@ -109,7 +110,7 @@ const SearchResultsPage = () => {
                     price: prop.price_per_night ? `₹${prop.price_per_night}` : 'Price not available',
                     priceValue: prop.price_per_night || 0,
                     images: prop.images || [],
-                    imageUrl: prop.images?.[0] || 'https://via.placeholder.com/400x300?text=No+Image',
+                    imageUrl: prop.images?.[0] || BRAND.defaultPropertyImage,
                     rating: prop.rating || 0
                 }));
 
@@ -223,8 +224,20 @@ const SearchResultsPage = () => {
                         ) : properties.length > 0 ? (
                             properties.map(property => <ListingCard key={property.id} listing={property} />)
                         ) : (
-                            <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">
-                                No properties found matching your criteria.
+                            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                                <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                                    <span className="material-symbols-outlined text-4xl text-gray-400">search_off</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No properties found</h3>
+                                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
+                                    We couldn't find any matches for your search. Try adjusting your filters or searching for a different location.
+                                </p>
+                                <button
+                                    onClick={() => setFilters({ minPrice: '', maxPrice: '', city: '', amenities: '' })}
+                                    className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                                >
+                                    Clear All Filters
+                                </button>
                             </div>
                         )}
                     </div>

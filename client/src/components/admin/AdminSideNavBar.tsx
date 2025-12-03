@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page } from '../../types';
 import { supabase } from '../../lib/supabase';
+import { BRAND } from '../../config/brand';
 
 interface NavLinkProps {
   icon: string;
@@ -31,7 +32,7 @@ interface AdminSideNavBarProps {
 
 const AdminSideNavBar: React.FC<AdminSideNavBarProps> = () => {
   const navigate = useNavigate();
-  
+
   const handleNavigation = (page: Page) => {
     switch (page) {
       case 'adminDashboard':
@@ -68,7 +69,7 @@ const AdminSideNavBar: React.FC<AdminSideNavBarProps> = () => {
             email: authUser.email,
             name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Admin',
             role: 'ADMIN' as const,
-            avatar_url: authUser.user_metadata?.avatar_url || '/default_profile_pic.jpg',
+            avatar_url: authUser.user_metadata?.avatar_url || BRAND.defaultAvatar,
             createdAt: authUser.created_at,
             updatedAt: authUser.updated_at
           });
@@ -78,7 +79,7 @@ const AdminSideNavBar: React.FC<AdminSideNavBarProps> = () => {
             email: (profile as any).email || authUser.email,
             name: (profile as any).full_name || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Admin',
             role: (profile as any).role || 'ADMIN' as const,
-            avatar_url: (profile as any).avatar_url || authUser.user_metadata?.avatar_url || '/default_profile_pic.jpg',
+            avatar_url: (profile as any).avatar_url || authUser.user_metadata?.avatar_url || BRAND.defaultAvatar,
             createdAt: (profile as any).created_at || authUser.created_at,
             updatedAt: (profile as any).updated_at || authUser.updated_at
           });
@@ -120,7 +121,7 @@ const AdminSideNavBar: React.FC<AdminSideNavBarProps> = () => {
           ) : user ? (
             <div className="flex items-center gap-3">
               <img
-                src={user.avatar_url || '/default_profile_pic.jpg'}
+                src={user.avatar_url || BRAND.defaultAvatar}
                 alt={user.name}
                 className="w-10 h-10 rounded-full object-cover"
               />

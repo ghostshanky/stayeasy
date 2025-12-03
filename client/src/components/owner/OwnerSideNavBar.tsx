@@ -16,8 +16,8 @@ const NavLink: React.FC<NavLinkProps> = ({ icon, label, onClick, isActive = fals
   const inactiveClasses = 'text-text-light-secondary dark:text-text-dark-secondary hover:bg-primary/10 hover:text-primary';
 
   return (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 w-full text-left ${isActive ? activeClasses : inactiveClasses}`}
     >
       <span className="material-symbols-outlined text-2xl">{icon}</span>
@@ -32,7 +32,7 @@ interface OwnerSideNavBarProps {
 
 const OwnerSideNavBar: React.FC<OwnerSideNavBarProps> = () => {
   const navigate = useNavigate();
-  
+
   const handleNavigation = (page: Page) => {
     switch (page) {
       case 'ownerDashboard':
@@ -59,14 +59,14 @@ const OwnerSideNavBar: React.FC<OwnerSideNavBarProps> = () => {
   };
 
   // Mock user data - in a real app, this would come from context or props
-  const user = {
+  const user: any = {
     id: 'owner123',
     email: 'alex@example.com',
     name: 'Alex Chen',
     role: 'OWNER' as const,
-    avatar_url: '/default_profile_pic.jpg',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    avatar_url: BRAND.defaultAvatar,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
 
   return (
@@ -82,6 +82,7 @@ const OwnerSideNavBar: React.FC<OwnerSideNavBarProps> = () => {
           <NavLink icon="calendar_month" label="Bookings" onClick={() => handleNavigation('bookings')} />
           <NavLink icon="credit_card" label="Payments" onClick={() => handleNavigation('payments')} />
           <NavLink icon="chat" label="Messages" onClick={() => handleNavigation('messages')} />
+          <NavLink icon="add_business" label="Add Property" onClick={() => navigate('/owner/add-property')} />
         </nav>
       </div>
       <div className="flex flex-col gap-2">

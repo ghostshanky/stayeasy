@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useOwnerProfile } from '../../client/src/hooks/useOwnerProfile';
-import { supabase } from '../../client/src/lib/supabase';
+import { useOwnerProfile } from '../../hooks/useOwnerProfile';
+import { supabase } from '../../lib/supabase';
+import { BRAND } from '../../config/brand';
 
 interface ProfileData {
   name: string;
@@ -140,32 +141,32 @@ const OwnerProfileSettings: React.FC = () => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
       <h2 className="text-xl font-bold text-text-light-primary dark:text-text-dark-primary mb-6">Profile Settings</h2>
-      
+
       {saveError && (
         <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 rounded">
           {saveError}
         </div>
       )}
-      
+
       {saveSuccess && (
         <div className="mb-4 p-3 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 rounded">
           Profile updated successfully!
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex flex-col items-center mb-6">
+        <div className="flex items-center gap-6">
           <div className="relative">
             <img
-              src={profileData.avatar_url || '/default_profile_pic.jpg'}
+              src={avatarFile ? URL.createObjectURL(avatarFile) : (profileData.avatar_url || BRAND.defaultAvatar)}
               alt="Profile"
-              className="w-24 h-24 rounded-full object-cover border-2 border-border-light dark:border-border-dark"
+              className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
             />
-            <label 
+            <label
               htmlFor="avatar-upload"
-              className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors"
+              className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-sm"
             >
-              <span className="material-symbols-outlined text-lg">edit</span>
+              <span className="material-symbols-outlined text-sm">edit</span>
             </label>
             <input
               id="avatar-upload"
@@ -175,11 +176,14 @@ const OwnerProfileSettings: React.FC = () => {
               className="hidden"
             />
           </div>
-          <p className="mt-2 text-sm text-text-light-secondary dark:text-text-dark-secondary">
-            Click the edit icon to change your profile picture
-          </p>
+          <div>
+            <h3 className="font-medium text-text-light-primary dark:text-text-dark-primary">Profile Picture</h3>
+            <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
+              JPG, GIF or PNG. Max size of 800K
+            </p>
+          </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-text-light-primary dark:text-text-dark-primary mb-1">
@@ -195,7 +199,7 @@ const OwnerProfileSettings: React.FC = () => {
               className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-surface-light dark:bg-surface-dark text-text-light-primary dark:text-text-dark-primary"
             />
           </div>
-          
+
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-text-light-primary dark:text-text-dark-primary mb-1">
               Email Address
@@ -214,7 +218,7 @@ const OwnerProfileSettings: React.FC = () => {
               Email cannot be changed
             </p>
           </div>
-          
+
           <div>
             <label htmlFor="phone" className="block text-sm font-medium text-text-light-primary dark:text-text-dark-primary mb-1">
               Phone Number
@@ -228,7 +232,7 @@ const OwnerProfileSettings: React.FC = () => {
               className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-surface-light dark:bg-surface-dark text-text-light-primary dark:text-text-dark-primary"
             />
           </div>
-          
+
           <div>
             <label htmlFor="upi_id" className="block text-sm font-medium text-text-light-primary dark:text-text-dark-primary mb-1">
               UPI ID
@@ -247,7 +251,7 @@ const OwnerProfileSettings: React.FC = () => {
             </p>
           </div>
         </div>
-        
+
         <div className="flex justify-end">
           <button
             type="submit"

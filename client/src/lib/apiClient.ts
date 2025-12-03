@@ -47,11 +47,24 @@ class APIClient {
     /**
      * Build headers for request
      */
-    private buildHeaders(customHeaders?: HeadersInit): HeadersInit {
-        const headers: HeadersInit = {
+    private buildHeaders(customHeaders?: HeadersInit): Record<string, string> {
+        const headers: Record<string, string> = {
             'Content-Type': 'application/json',
-            ...customHeaders,
         };
+
+        if (customHeaders) {
+            if (customHeaders instanceof Headers) {
+                customHeaders.forEach((value, key) => {
+                    headers[key] = value;
+                });
+            } else if (Array.isArray(customHeaders)) {
+                customHeaders.forEach(([key, value]) => {
+                    headers[key] = value;
+                });
+            } else {
+                Object.assign(headers, customHeaders);
+            }
+        }
 
         const token = this.getAuthToken();
         if (token) {
@@ -197,7 +210,7 @@ class APIClient {
 
 // Create singleton instance
 export const apiClient = new APIClient({
-    baseURL: '',
+    baseURL: '/api',
     timeout: 30000,
     showToastOnError: true,
 });
