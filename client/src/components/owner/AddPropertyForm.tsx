@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../api/apiClient';
@@ -116,7 +117,7 @@ const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ onPropertyAdded, onCa
       };
 
       // Create property using apiClient
-      const response = await apiClient.post('/owner/properties', payload);
+      const response = await apiClient.post('/api/owner/properties', payload);
 
       if (response.success) {
         toast.success('Property added successfully!');

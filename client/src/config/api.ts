@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // API configuration
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3002/api' : '/api'),
+  baseURL: '',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -48,10 +48,10 @@ class ApiClient {
     this.instance.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('accessToken');
-        
+
         console.log('🔍 [Client Request] Checking token for:', config.url);
         console.log('🔍 [Client Request] Token found:', !!token);
-        
+
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
           console.log('✅ [Client Request] Using token');
@@ -73,7 +73,7 @@ class ApiClient {
       },
       (error) => {
         console.log('❌ [Client Response] Error:', error.response?.status, error.config?.url);
-        
+
         if (error.response?.status === 401) {
           console.log('🔄 [Client Response] 401 Unauthorized - clearing tokens');
           // Clear all auth tokens
@@ -162,41 +162,45 @@ export const checkAuthStatus = () => {
 // API endpoints
 export const API_ENDPOINTS = {
   auth: {
-    login: '/auth/login',
-    signup: '/auth/signup',
-    logout: '/auth/logout',
-    me: '/auth/me',
-    refresh: '/auth/refresh',
+    login: '/api/auth/login',
+    signup: '/api/auth/signup',
+    logout: '/api/auth/logout',
+    me: '/api/auth/me',
+    refresh: '/api/auth/refresh',
   },
   properties: {
-    list: '/properties',
-    details: (id: string) => `/properties/${id}`,
-    create: '/properties',
-    update: (id: string) => `/properties/${id}`,
-    delete: (id: string) => `/properties/${id}`,
+    list: '/api/properties',
+    details: (id: string) => `/api/properties/${id}`,
+    create: '/api/properties',
+    update: (id: string) => `/api/properties/${id}`,
+    delete: (id: string) => `/api/properties/${id}`,
   },
   bookings: {
-    list: '/bookings',
-    details: (id: string) => `/bookings/${id}`,
-    create: '/bookings',
-    update: (id: string) => `/bookings/${id}`,
-    delete: (id: string) => `/bookings/${id}`,
+    list: '/api/bookings/tenant/bookings',
+    listOwner: '/api/bookings/owner/bookings',
+    details: (id: string) => `/api/bookings/tenant/bookings/${id}`,
+    create: '/api/bookings/tenant/bookings',
+    update: (id: string) => `/api/bookings/tenant/bookings/${id}`,
+    delete: (id: string) => `/api/bookings/tenant/bookings/${id}`,
+    stats: '/api/bookings/owner/stats',
   },
   payments: {
-    list: '/payments',
-    details: (id: string) => `/payments/${id}`,
-    create: '/payments',
-    verify: (id: string) => `/payments/${id}/verify`,
+    list: '/api/payments',
+    listOwner: '/api/payments/owner',
+    details: (id: string) => `/api/payments/${id}`,
+    create: '/api/payments',
+    confirm: '/api/payments/confirm',
+    verify: (id: string) => `/api/payments/${id}/verify`,
   },
   messages: {
-    list: '/messages',
-    details: (id: string) => `/messages/${id}`,
-    send: '/messages/send',
+    list: '/api/messages',
+    details: (id: string) => `/api/messages/${id}`,
+    send: '/api/messages/send',
   },
   reviews: {
-    list: '/reviews',
-    create: '/reviews',
-    update: (id: string) => `/reviews/${id}`,
-    delete: (id: string) => `/reviews/${id}`,
+    list: '/api/reviews',
+    create: '/api/reviews',
+    update: (id: string) => `/api/reviews/${id}`,
+    delete: (id: string) => `/api/reviews/${id}`,
   },
 } as const;

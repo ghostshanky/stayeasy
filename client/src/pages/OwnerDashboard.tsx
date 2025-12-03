@@ -57,8 +57,13 @@ const OwnerDashboard = () => {
 
                     {statsLoading && <div>Loading stats...</div>}
                     {statsError && <div className="text-error">Error loading stats: {statsError}</div>}
-                    {!statsLoading && !statsError && stats && (
+                    {!statsLoading && !statsError && stats ? (
                         <OwnerStatsCards stats={stats} />
+                    ) : !statsLoading && !statsError && !stats && (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                            <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">analytics</span>
+                            <p className="text-gray-500 dark:text-gray-400">No stats available</p>
+                        </div>
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">

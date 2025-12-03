@@ -41,7 +41,7 @@ export function useMessages(userId: string) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get('/messages/conversations');
+      const response = await apiClient.get('/api/messages/conversations');
 
       if (response.success && response.data) {
         setConversations(response.data);
@@ -84,7 +84,7 @@ export function useMessages(userId: string) {
   // Send a new message
   const sendMessage = async (recipientId: string, content: string, propertyId?: string) => {
     try {
-      const response = await apiClient.post('/messages', {
+      const response = await apiClient.post('/api/messages', {
         recipientId,
         content,
         propertyId
@@ -105,7 +105,7 @@ export function useMessages(userId: string) {
   // Mark messages as read
   const markMessagesAsRead = async (messageIds: string[]) => {
     try {
-      const response = await apiClient.put('/messages/read', { messageIds });
+      const response = await apiClient.put('/api/messages/read', { messageIds });
 
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to mark messages as read');

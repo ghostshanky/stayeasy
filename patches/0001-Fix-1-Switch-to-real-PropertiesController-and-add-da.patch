@@ -44560,7 +44560,7 @@ index 5460bbb..0000000
 -                                <div className="lg:col-span-1">
 -                                    <div className="sticky top-24 p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
 -                                        <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
--                                            ₹{property.price_per_night.toLocaleString()} <span className="text-base font-normal text-gray-500 dark:text-gray-400">/ month</span>
+-                                            ₹{property.price_per_night.toLocaleString()} <span className="text-base font-normal text-gray-500 dark:text-gray-400">/ night</span>
 -                                        </p>
 -                                        <div className="space-y-4">
 -                                            <button onClick={() => navigate('/confirm')} className="w-full flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary text-white text-base font-bold hover:bg-primary/90 transition-colors">

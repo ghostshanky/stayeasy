@@ -3,20 +3,33 @@ import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
 import OwnerPaymentsList from '../components/owner/OwnerPaymentsList';
 import { useOwnerPayments } from '../hooks/useOwnerPayments';
+import { useAuth } from '../hooks/useAuth';
 
 const OwnerPaymentsPage = () => {
-  const { items: payments, loading, error } = useOwnerPayments("");
+  const { user } = useAuth();
+  const { items: payments, loading, error } = useOwnerPayments(user?.id || "");
   const [activeTab, setActiveTab] = useState('all');
 
   const filterPayments = (payments: any[], status?: string) => {
-    if (status === 'all') return payments;
+    if (status === 'all' || !status) return payments;
+    if (status === 'pending') {
+      return payments.filter(payment =>
+        payment.status === 'PENDING' ||
+        payment.status === 'AWAITING_PAYMENT' ||
+        payment.status === 'AWAITING_OWNER_VERIFICATION'
+      );
+    }
     return payments.filter(payment => payment.status === status.toUpperCase());
   };
 
   const getPaymentStats = () => {
     const total = payments.reduce((sum: number, payment: any) => sum + (payment.amount || 0), 0);
-    const completed = payments.filter((p: any) => p.status === 'COMPLETED' || p.status === 'VERIFIED').length;
-    const pending = payments.filter((p: any) => p.status === 'PENDING' || p.status === 'AWAITING_PAYMENT').length;
+    const completed = payments.filter((p: any) => p.status === 'COMPLETED' || p.status === 'VERIFIED' || p.status === 'PAID').length;
+    const pending = payments.filter((p: any) =>
+      p.status === 'PENDING' ||
+      p.status === 'AWAITING_PAYMENT' ||
+      p.status === 'AWAITING_OWNER_VERIFICATION'
+    ).length;
     const failed = payments.filter((p: any) => p.status === 'FAILED' || p.status === 'REJECTED').length;
 
     return {
@@ -47,7 +60,7 @@ const OwnerPaymentsPage = () => {
       <OwnerSideNavBar />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
-          <OwnerHeader userName="Alex" />
+          <OwnerHeader userName={user?.name || 'Owner'} />
 
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">Payments</h1>

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Page, Booking } from '../types';
+import React, { useState } from 'react';
+import { Booking } from '../types';
 import { useNavigate } from 'react-router-dom';
 import SideNavBar from '../components/SideNavBar';
-import { apiClient } from '../api/apiClient';
+import { useBookings } from '../hooks/useBookings';
 import { useAuth } from '../hooks/useAuth';
 import { BRAND } from '../config/brand';
 import { PropertyCardSkeleton } from '../components/common/SkeletonLoader';
@@ -196,41 +196,7 @@ const BookingsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      fetchBookings();
-    }
-  }, [user]);
-
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.get('/bookings/tenant/bookings');
-
-      if (response.success && response.data) {
-        // Map backend response to frontend Booking interface
-        const mappedBookings = response.data.map((booking: any) => ({
-          ...booking,
-          properties: booking.property ? {
-            ...booking.property,
-            price: booking.property.pricePerNight || booking.property.price
-          } : undefined
-        }));
-        setBookings(mappedBookings);
-      } else {
-        console.error('Failed to fetch bookings:', response.error);
-        setBookings([]);
-      }
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { items: bookings, loading, error } = useBookings(user?.id || '', 10, 1);
 
   const getUpcomingBookings = () => {
     const now = new Date();
@@ -274,6 +240,11 @@ const BookingsPage = () => {
                   <PropertyCardSkeleton key={i} />
                 ))}
               </div>
+            ) : error ? (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 text-center">
+                <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
+                <p className="text-red-500 dark:text-red-400">Failed to load bookings: {error}</p>
+              </div>
             ) : (
               <>
                 {/* Tab Navigation */}
@@ -301,6 +272,12 @@ const BookingsPage = () => {
                     className={`px-4 py-2 font-medium text-sm ${activeTab === 'cancelled' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   >
                     Cancelled
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('confirmed')}
+                    className={`px-4 py-2 font-medium text-sm ${activeTab === 'confirmed' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    Confirmed ({getBookingsByStatus('CONFIRMED').length})
                   </button>
                 </div>
 
@@ -389,6 +366,28 @@ const BookingsPage = () => {
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
                           <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">cancel</span>
                           <p className="text-gray-500 dark:text-gray-400">No cancelled bookings</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'confirmed' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                          Confirmed Bookings ({getBookingsByStatus('CONFIRMED').length})
+                        </h2>
+                      </div>
+                      {getBookingsByStatus('CONFIRMED').length > 0 ? (
+                        <div className="space-y-4">
+                          {getBookingsByStatus('CONFIRMED').map(booking => (
+                            <BookingCard key={booking.id} booking={booking} navigate={navigate} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+                          <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">check_circle</span>
+                          <p className="text-gray-500 dark:text-gray-400">No confirmed bookings</p>
                         </div>
                       )}
                     </div>

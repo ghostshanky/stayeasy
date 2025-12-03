@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+
 import { apiClient } from "../api/apiClient";
 
 interface OwnerPayment {
@@ -41,7 +41,7 @@ export function useOwnerPayments(ownerId: string, limit = 10, page = 1, status?:
 
     const fetchPayments = async () => {
       try {
-        const response = await apiClient.get('/payments/owner', {
+        const response = await apiClient.get(`/api/payments/owner/${ownerId}`, {
           params: { limit, page, status }
         });
 

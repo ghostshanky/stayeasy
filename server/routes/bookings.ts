@@ -19,7 +19,7 @@ bookingsRoutes.post(
   '/tenant/bookings',
   bookingLimiter,
   requireAuth,
-  requireRole(['TENANT']),
+  requireRole(['TENANT', 'OWNER']),
   BookingsController.createBooking
 )
 
@@ -27,7 +27,7 @@ bookingsRoutes.put(
   '/tenant/bookings/:id',
   bookingLimiter,
   requireAuth,
-  requireRole(['TENANT']),
+  requireRole(['TENANT', 'OWNER']),
   BookingsController.updateBooking
 )
 
@@ -35,21 +35,21 @@ bookingsRoutes.delete(
   '/tenant/bookings/:id',
   bookingLimiter,
   requireAuth,
-  requireRole(['TENANT']),
+  requireRole(['TENANT', 'OWNER']),
   BookingsController.cancelBooking
 )
 
 bookingsRoutes.get(
   '/tenant/bookings',
   requireAuth,
-  requireRole(['TENANT']),
+  requireRole(['TENANT', 'OWNER']),
   BookingsController.getTenantBookings
 )
 
 bookingsRoutes.get(
   '/tenant/bookings/:id',
   requireAuth,
-  requireRole(['TENANT']),
+  requireRole(['TENANT', 'OWNER']),
   BookingsController.getBookingDetails
 )
 

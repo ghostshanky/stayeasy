@@ -136,7 +136,7 @@ const OwnerMessagesPage = () => {
 
   const markAsRead = async (messageId: string) => {
     try {
-      const response = await apiClient.put('/messages/read', {
+      const response = await apiClient.put('/api/messages/read', {
         messageIds: [messageId]
       });
 

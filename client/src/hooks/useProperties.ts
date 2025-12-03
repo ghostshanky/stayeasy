@@ -19,7 +19,7 @@ export const useProperties = () => {
   useEffect(() => {
     const fetchProperties = async () => {
       try {
-        const response = await apiClient.get('/properties', {
+        const response = await apiClient.get('/api/properties', {
           params: {
             limit: 12,
             page: 1

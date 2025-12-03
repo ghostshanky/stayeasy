@@ -45,12 +45,21 @@ export function useOwnerProperties(limit = 10, page = 1) {
       try {
         // Correct endpoint is /owner/properties, mounted at /api/owner/properties
         // But apiClient adds /api, so we need /owner/properties
-        const response = await apiClient.get('/owner/properties', {
+        console.log('🔍 [useOwnerProperties] Fetching properties for user:', user.id);
+        console.log('🔍 [useOwnerProperties] API URL:', '/owner/properties');
+        console.log('🔍 [useOwnerProperties] API Params:', { limit, page, ownerId: user.id });
+
+        const response = await apiClient.get('/api/owner/properties', {
           params: {
             limit,
-            page,
-            ownerId: user.id
+            page
           }
+        });
+
+        console.log('🔍 [useOwnerProperties] API Response:', {
+          success: response.success,
+          dataLength: response.data?.length,
+          error: response.error
         });
 
         if (!mounted) return;
@@ -66,6 +75,7 @@ export function useOwnerProperties(limit = 10, page = 1) {
             price: p.price_per_night,
             files: (p.images || []).map((url: string) => ({ url }))
           }));
+          console.log('🔍 [useOwnerProperties] Mapped properties:', mappedItems.length);
           setItems(mappedItems);
         } else {
           console.error('❌ [useOwnerProperties] Failed to fetch properties:', response.error);

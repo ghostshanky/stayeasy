@@ -207,50 +207,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      invoices: {
-        Row: {
-          id: string
-          payment_id: string
-          details: string
-          invoice_no: string
-          booking_id: string
-          user_id: string
-          owner_id: string
-          line_items: any
-          amount: number
-          status: string
-          pdf_file_id?: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          payment_id: string
-          details: string
-          invoice_no: string
-          booking_id: string
-          user_id: string
-          owner_id: string
-          line_items: any
-          amount: number
-          status: string
-          pdf_file_id?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          payment_id?: string
-          details?: string
-          invoice_no?: string
-          booking_id?: string
-          user_id?: string
-          owner_id?: string
-          line_items?: any
-          amount?: number
-          status?: string
-          pdf_file_id?: string
-          created_at?: string
-        }
-      }
+
       chats: {
         Row: {
           id: string

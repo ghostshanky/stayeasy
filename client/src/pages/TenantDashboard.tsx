@@ -6,6 +6,7 @@ import { DashboardCardSkeleton } from '../components/common';
 import toast from 'react-hot-toast';
 import { apiClient } from '../api/apiClient';
 import { useAuth } from '../hooks/useAuth';
+import { useBookings } from '../hooks/useBookings';
 import { BRAND } from '../config/brand';
 
 interface StatCardData {
@@ -21,50 +22,31 @@ const TenantDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [userName, setUserName] = useState('User');
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: bookings, loading, error } = useBookings(user?.id || '', 10, 1);
 
   useEffect(() => {
     if (user) {
       setUserName(user.name || user.email?.split('@')[0] || 'User');
-      fetchBookings();
     }
   }, [user]);
 
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.get('/bookings/tenant/bookings');
-
-      if (response.success && response.data) {
-        // Map backend response to frontend Booking interface
-        const mappedBookings = response.data.map((booking: any) => ({
-          ...booking,
-          properties: booking.property ? {
-            ...booking.property,
-            price: booking.property.pricePerNight || booking.property.price
-          } : undefined
-        }));
-        setBookings(mappedBookings);
-      } else {
-        console.error('Failed to fetch bookings:', response.error);
-        // Fallback to empty list or handle error
-        setBookings([]);
-      }
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handlePayment = async (bookingId: string) => {
     try {
-      navigate('/confirm');
+      // Create payment intent first
+      const response = await apiClient.post('/payments/create', { bookingId });
+      if (response.data.success) {
+        navigate('/confirm', {
+          state: {
+            paymentId: response.data.data.paymentId,
+            upiUri: response.data.data.upiUri,
+            qrDataUrl: response.data.data.qrDataUrl,
+            amount: response.data.data.amount
+          }
+        });
+      }
     } catch (error) {
       console.error('Error navigating to payment:', error);
-      toast.error('Failed to process payment. Please try again.');
+      toast.error('Failed to initiate payment. Please try again.');
     }
   };
 
@@ -81,9 +63,17 @@ const TenantDashboard = () => {
     switch (status) {
       case 'CONFIRMED': return 'bg-green-100 text-green-800';
       case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'AWAITING_VERIFICATION': return 'bg-orange-100 text-orange-800';
       case 'CANCELLED': return 'bg-red-100 text-red-800';
       case 'COMPLETED': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'AWAITING_VERIFICATION': return 'Verifying...';
+      default: return status;
     }
   };
 
@@ -101,14 +91,9 @@ const TenantDashboard = () => {
     });
   };
 
-  const getPastBookings = () => {
-    const now = new Date();
-    return bookings.filter(booking => new Date(booking.check_out) < now);
-  };
-
   const getTotalSpent = () => {
     return bookings
-      .filter(booking => booking.status === 'COMPLETED')
+      .filter(booking => booking.status === 'COMPLETED' || booking.status === 'CONFIRMED')
       .reduce((total, booking) => {
         const price = booking.properties?.price || 0;
         return total + price;
@@ -196,23 +181,23 @@ const TenantDashboard = () => {
 
           <div className="flex items-center justify-between mt-4">
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-              {booking.status}
+              {getStatusLabel(booking.status)}
             </span>
 
             <div className="flex gap-2">
               {booking.status === 'CONFIRMED' && (
                 <button
                   onClick={() => handleChat(booking.properties?.id || '', booking.owner_id || '')}
-                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                  className="p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-full transition-colors"
+                  title="Message Owner"
                 >
-                  Chat Owner
+                  <span className="material-symbols-outlined text-xl">chat</span>
                 </button>
               )}
-
               {booking.status === 'PENDING' && (
                 <button
                   onClick={() => handlePayment(booking.id)}
-                  className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors"
                 >
                   Pay Now
                 </button>
@@ -245,6 +230,11 @@ const TenantDashboard = () => {
           Array.from({ length: 4 }).map((_, index) => (
             <DashboardCardSkeleton key={index} />
           ))
+        ) : error ? (
+          <div className="col-span-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+            <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
+            <p className="text-red-500 dark:text-red-400">Failed to load bookings: {error}</p>
+          </div>
         ) : (
           stats.map((stat, index) => (
             <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
@@ -288,55 +278,14 @@ const TenantDashboard = () => {
 
       {/* Recent Bookings */}
       <div className="space-y-6">
-        {/* Upcoming Bookings */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Upcoming Stays</h2>
-            <button
-              onClick={() => navigate('/bookings')}
-              className="text-primary hover:text-primary/80 text-sm font-medium"
-            >
-              View All →
-            </button>
-          </div>
-          {getUpcomingBookings().length > 0 ? (
-            <div className="space-y-4">
-              {getUpcomingBookings().slice(0, 2).map(renderBookingCard)}
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-              <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_upcoming</span>
-              <p className="text-gray-500 dark:text-gray-400">No upcoming bookings</p>
-            </div>
-          )}
-        </div>
-
-        {/* Current Bookings */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Current Stay</h2>
-            {getCurrentBookings().length > 0 && (
-              <button
-                onClick={() => navigate('/bookings')}
-                className="text-primary hover:text-primary/80 text-sm font-medium"
-              >
-                View All →
-              </button>
-            )}
-          </div>
-          {loading ? (
-            <DashboardCardSkeleton />
-          ) : getCurrentBookings().length > 0 ? (
-            <div className="space-y-4">
-              {getCurrentBookings().slice(0, 1).map(renderBookingCard)}
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-              <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">today</span>
-              <p className="text-gray-500 dark:text-gray-400">No active bookings</p>
-            </div>
-          )}
-        </div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Bookings</h2>
+        {loading ? (
+          <p>Loading bookings...</p>
+        ) : bookings.length === 0 ? (
+          <p className="text-gray-500">No bookings found.</p>
+        ) : (
+          bookings.map(renderBookingCard)
+        )}
       </div>
     </div>
   );

@@ -35,7 +35,7 @@ export function useOwnerMessages(limit = 10, page = 1) {
 
     const fetchMessages = async () => {
       try {
-        const response = await apiClient.get('/messages/owner', {
+        const response = await apiClient.get('/api/messages/owner', {
           params: { limit, page }
         });
 

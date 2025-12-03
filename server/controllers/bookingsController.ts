@@ -17,7 +17,7 @@ const createBookingSchema = z.object({
 })
 
 const updateBookingSchema = z.object({
-  status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED']).optional(),
+  status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'AWAITING_VERIFICATION']).optional(),
   checkIn: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Invalid check-in date'
   }).optional(),
@@ -27,9 +27,9 @@ const updateBookingSchema = z.object({
 })
 
 const bookingQuerySchema = z.object({
-  status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED']).optional(),
-  page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(10)
+  status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'AWAITING_VERIFICATION']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10)
 })
 
 export class BookingsController {
@@ -353,9 +353,6 @@ export class BookingsController {
             }
           },
           payments: {
-            include: {
-              invoices: true
-            },
             orderBy: { createdAt: 'desc' }
           },
         }
@@ -545,7 +542,7 @@ export class BookingsController {
     try {
       const ownerId = req.currentUser!.id
       const bookingId = req.params.id
-      const { reason } = req.body
+      // const { reason } = req.body
 
       // Find booking and verify ownership
       const booking = await prisma.booking.findFirst({

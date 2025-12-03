@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import { useNavigate } from 'react-router-dom';
 import SideNavBar from '../components/SideNavBar';
-import { usePayments } from '../hooks/usePayments';
+import { usePayments, confirmPayment } from '../hooks/usePayments';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -101,15 +101,23 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
     navigate('confirmAndPay');
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    switch (method) {
-      case 'UPI': return 'account_balance';
-      case 'CREDIT_CARD': return 'credit_card';
-      case 'DEBIT_CARD': return 'credit_card';
-      case 'BANK_TRANSFER': return 'account_balance';
-      default: return 'payments';
+  const handleConfirmPayment = async () => {
+    try {
+      const response = await confirmPayment(payment.id, payment.upi_reference);
+      if (response.success) {
+        toast.success('Payment confirmed successfully! Owner will verify it.');
+        // Refresh payments data
+        window.location.reload();
+      } else {
+        toast.error(response.error?.message || 'Failed to confirm payment');
+      }
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      toast.error('Failed to confirm payment');
     }
   };
+
+
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
@@ -117,7 +125,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <h3 className="font-bold text-gray-900 dark:text-white">
-              {payment.booking?.property?.name || 'Unknown Property'}
+              {payment.booking?.property?.title || 'Unknown Property'}
             </h3>
             {getStatusBadge(payment.status)}
           </div>
@@ -217,6 +225,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, navigate }) => {
 
         {payment.status === 'AWAITING_OWNER_VERIFICATION' && (
           <button
+            onClick={handleConfirmPayment}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
             <span className="material-symbols-outlined">hourglass_top</span>
@@ -277,6 +286,18 @@ const PaymentsPage = () => {
 
   const { items: payments, loading, error } = usePayments(userId || '', 10, 1, activeTab === 'history' ? undefined : 'AWAITING_PAYMENT');
 
+  // Debug logging
+  useEffect(() => {
+    console.log('PaymentsPage Debug:', {
+      userId,
+      activeTab,
+      paymentsCount: payments.length,
+      loading,
+      error,
+      payments: payments.slice(0, 3) // Log first 3 payments
+    });
+  }, [userId, payments, loading, error, activeTab]);
+
   useEffect(() => {
     if (payments.length > 0) {
       const totalPaid = payments
@@ -284,7 +305,7 @@ const PaymentsPage = () => {
         .reduce((sum, p) => sum + p.amount, 0);
 
       const pendingAmount = payments
-        .filter(p => p.status === 'AWAITING_PAYMENT')
+        .filter(p => p.status === 'AWAITING_PAYMENT' || p.status === 'AWAITING_OWNER_VERIFICATION')
         .reduce((sum, p) => sum + p.amount, 0);
 
       const totalBookings = new Set(payments.map(p => p.booking_id)).size;
@@ -489,8 +510,8 @@ const PaymentsPage = () => {
               )}
 
               {activeTab === 'pending' && (
-                getPaymentsByStatus('AWAITING_PAYMENT').length > 0 ? (
-                  getPaymentsByStatus('AWAITING_PAYMENT').map(payment => (
+                payments.filter(p => p.status === 'AWAITING_PAYMENT' || p.status === 'AWAITING_OWNER_VERIFICATION').length > 0 ? (
+                  payments.filter(p => p.status === 'AWAITING_PAYMENT' || p.status === 'AWAITING_OWNER_VERIFICATION').map(payment => (
                     <PaymentCard key={payment.id} payment={payment} navigate={navigate} />
                   ))
                 ) : (

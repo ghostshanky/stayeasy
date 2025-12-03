@@ -25,7 +25,7 @@ const MessageHostModal: React.FC<MessageHostModalProps> = ({ isOpen, onClose, ho
     setIsSending(true);
 
     try {
-      const response = await apiClient.post('/messages', {
+      const response = await apiClient.post('/api/messages', {
         recipientId: hostId,
         content: message.trim(),
         propertyId: propertyId,

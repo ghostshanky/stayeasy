@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { verifyPayment } from '../../hooks/usePayments';
+import toast from 'react-hot-toast';
 
 interface OwnerPaymentsListProps {
     payments: any[];
 }
 
 const OwnerPaymentsList: React.FC<OwnerPaymentsListProps> = ({ payments }) => {
+    const [verifying, setVerifying] = useState<string | null>(null);
+    
     const formatCurrency = (amount: number) => {
         return `₹${amount.toLocaleString()}`;
     };
@@ -35,6 +39,25 @@ const OwnerPaymentsList: React.FC<OwnerPaymentsListProps> = ({ payments }) => {
                 {config.text}
             </span>
         );
+    };
+
+    const handleVerifyPayment = async (paymentId: string, verified: boolean) => {
+        setVerifying(paymentId);
+        try {
+            const response = await verifyPayment(paymentId, verified);
+            if (response.success) {
+                toast.success(`Payment ${verified ? 'verified' : 'rejected'} successfully!`);
+                // Refresh the page to update the payment status
+                window.location.reload();
+            } else {
+                toast.error(response.error?.message || 'Failed to verify payment');
+            }
+        } catch (error) {
+            console.error('Error verifying payment:', error);
+            toast.error('Failed to verify payment');
+        } finally {
+            setVerifying(null);
+        }
     };
 
     return (
@@ -77,9 +100,22 @@ const OwnerPaymentsList: React.FC<OwnerPaymentsListProps> = ({ payments }) => {
                                 </button>
                             )}
                             {payment.status === 'AWAITING_OWNER_VERIFICATION' && (
-                                <button className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-md hover:bg-blue-200">
-                                    Payment Confirmed
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => handleVerifyPayment(payment.id, true)}
+                                        disabled={verifying === payment.id}
+                                        className="px-3 py-1 text-sm font-medium text-green-600 bg-green-100 rounded-md hover:bg-green-200 disabled:opacity-50"
+                                    >
+                                        {verifying === payment.id ? 'Verifying...' : 'Verify'}
+                                    </button>
+                                    <button
+                                        onClick={() => handleVerifyPayment(payment.id, false)}
+                                        disabled={verifying === payment.id}
+                                        className="px-3 py-1 text-sm font-medium text-red-600 bg-red-100 rounded-md hover:bg-red-200 disabled:opacity-50"
+                                    >
+                                        {verifying === payment.id ? 'Verifying...' : 'Reject'}
+                                    </button>
+                                </div>
                             )}
                             <button className="px-3 py-1 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
                                 View Details

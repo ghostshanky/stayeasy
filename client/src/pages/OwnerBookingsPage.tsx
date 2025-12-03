@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Page, Booking } from '../types';
 import OwnerSideNavBar from '../components/owner/OwnerSideNavBar';
 import OwnerHeader from '../components/owner/OwnerHeader';
-import { apiClient } from '../api/apiClient';
+import { useOwnerBookings } from '../hooks/useBookings';
 import { useAuth } from '../hooks/useAuth';
 import { BRAND } from '../config/brand';
 import { PropertyCardSkeleton } from '../components/common/SkeletonLoader';
+import { apiClient } from '../api/apiClient';
 
 interface BookingCardProps {
   booking: Booking;
@@ -137,42 +138,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
 const OwnerBookingsPage = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      fetchBookings();
-    }
-  }, [user]);
-
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.get('/bookings/owner/bookings');
-
-      if (response.success && response.data) {
-        // Map backend response to frontend Booking interface if needed
-        // The endpoint returns bookings with properties and tenant
-        const mappedBookings = response.data.map((booking: any) => ({
-          ...booking,
-          properties: booking.property ? {
-            ...booking.property,
-            price: booking.property.pricePerNight || booking.property.price
-          } : undefined
-        }));
-        setBookings(mappedBookings);
-      } else {
-        console.error('Failed to fetch bookings:', response.error);
-        setBookings([]);
-      }
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { items: bookings, loading, error } = useOwnerBookings(user?.id || '');
 
   const getUpcomingBookings = () => {
     const now = new Date();
@@ -215,6 +181,11 @@ const OwnerBookingsPage = () => {
                 <PropertyCardSkeleton key={i} />
               ))}
             </div>
+          ) : error ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
+              <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
+              <p className="text-red-500 dark:text-red-400">Failed to load bookings: {error}</p>
+            </div>
           ) : (
             <>
               {/* Tab Navigation */}
@@ -251,7 +222,7 @@ const OwnerBookingsPage = () => {
                   <div>
                     {getUpcomingBookings().length > 0 ? (
                       <div className="space-y-4">
-                        {getUpcomingBookings().map(booking => (
+                        {getUpcomingBookings().map((booking: Booking) => (
                           <BookingCard key={booking.id} booking={booking} />
                         ))}
                       </div>
@@ -268,7 +239,7 @@ const OwnerBookingsPage = () => {
                   <div>
                     {getCurrentBookings().length > 0 ? (
                       <div className="space-y-4">
-                        {getCurrentBookings().map(booking => (
+                        {getCurrentBookings().map((booking: Booking) => (
                           <BookingCard key={booking.id} booking={booking} />
                         ))}
                       </div>
@@ -285,7 +256,7 @@ const OwnerBookingsPage = () => {
                   <div>
                     {getPastBookings().length > 0 ? (
                       <div className="space-y-4">
-                        {getPastBookings().map(booking => (
+                        {getPastBookings().map((booking: Booking) => (
                           <BookingCard key={booking.id} booking={booking} />
                         ))}
                       </div>
@@ -302,7 +273,7 @@ const OwnerBookingsPage = () => {
                   <div>
                     {getBookingsByStatus('CONFIRMED').length > 0 ? (
                       <div className="space-y-4">
-                        {getBookingsByStatus('CONFIRMED').map(booking => (
+                        {getBookingsByStatus('CONFIRMED').map((booking: Booking) => (
                           <BookingCard key={booking.id} booking={booking} />
                         ))}
                       </div>

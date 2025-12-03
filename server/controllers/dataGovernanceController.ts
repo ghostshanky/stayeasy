@@ -24,10 +24,9 @@ export class DataGovernanceController {
         return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND' } });
       }
 
-      const [bookings, payments, invoices, reviews, chats] = await Promise.all([
+      const [bookings, payments, reviews, chats] = await Promise.all([
         prisma.booking.findMany({ where: { userId: userIdToExport } }),
         prisma.payment.findMany({ where: { userId: userIdToExport } }),
-        prisma.invoice.findMany({ where: { userId: userIdToExport } }),
         prisma.review.findMany({ where: { userId: userIdToExport } }),
         prisma.chat.findMany({
           where: { OR: [{ userId: userIdToExport }, { ownerId: userIdToExport }] },
@@ -46,15 +45,14 @@ export class DataGovernanceController {
         },
         bookings,
         payments,
-        invoices,
         reviews,
         chats,
       };
 
       await AuditService.log(actor!.id, 'UPDATE', 'USER', userIdToExport, {
-          newData: { action: 'DATA_EXPORT' },
-          ip: req.ip,
-          userAgent: req.headers['user-agent']
+        newData: { action: 'DATA_EXPORT' },
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
       });
 
       res.setHeader('Content-Disposition', `attachment; filename="export-${userIdToExport}.json"`);
@@ -112,10 +110,10 @@ export class DataGovernanceController {
         await prisma.refreshToken.deleteMany({ where: { userId: userIdToDelete } });
 
         await AuditService.log(actor!.id, 'UPDATE', 'USER', userIdToDelete, {
-            oldData,
-            newData: updatedUser,
-            ip: req.ip,
-            userAgent: req.headers['user-agent']
+          oldData,
+          newData: updatedUser,
+          ip: req.ip,
+          userAgent: req.headers['user-agent']
         });
 
         res.status(200).json({ success: true, message: 'User has been pseudonymized due to financial records.' });
@@ -124,9 +122,9 @@ export class DataGovernanceController {
         await prisma.user.delete({ where: { id: userIdToDelete } });
 
         await AuditService.log(actor!.id, 'DELETE', 'USER', userIdToDelete, {
-            oldData,
-            ip: req.ip,
-            userAgent: req.headers['user-agent']
+          oldData,
+          ip: req.ip,
+          userAgent: req.headers['user-agent']
         });
 
         res.status(200).json({ success: true, message: 'User has been permanently deleted.' });
@@ -137,13 +135,3 @@ export class DataGovernanceController {
     }
   }
 }
-
-import express from 'express';
-import { requireAuth } from '../middleware.js';
-
-const dataGovernanceRouter = express.Router();
-
-dataGovernanceRouter.get('/user/:id/export', requireAuth, DataGovernanceController.exportUserData);
-dataGovernanceRouter.post('/user/:id/delete', requireAuth, DataGovernanceController.deleteUser);
-
-export default dataGovernanceRouter;

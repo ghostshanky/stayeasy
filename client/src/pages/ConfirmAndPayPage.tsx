@@ -1,12 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../api/apiClient';
+import { apiClient, API_ENDPOINTS } from '../config/api';
 import { useAuth } from '../hooks/useAuth';
 import QRCodeGenerator from '../components/QRCodeGenerator';
 import toast from 'react-hot-toast';
 import { BRAND } from '../config/brand';
 
 interface Booking {
+    id: string;
+    user_id: string;
+    property_id: string;
+    check_in: string;
+    check_out: string;
+    status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+    guests: number;
+    payment_status: string;
+    created_at: string;
+    updated_at: string;
+    properties?: {
+        id: string;
+        title: string;
+        location: string;
+        images?: string[];
+        price?: number;
+    };
+    tenant?: {
+        id: string;
+        name: string;
+        email: string;
+    };
+    owner?: {
+        id: string;
+        name: string;
+        email: string;
+    };
+}
+
+interface BookingFormData {
     id: string;
     userId: string;
     propertyId: string;
@@ -34,7 +64,7 @@ interface Booking {
 const ConfirmAndPayPage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const [booking, setBooking] = useState<Booking | null>(null);
+    const [booking, setBooking] = useState<BookingFormData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showQRModal, setShowQRModal] = useState(false);
@@ -42,6 +72,12 @@ const ConfirmAndPayPage = () => {
     const [paymentId, setPaymentId] = useState<string | null>(null);
     const [upiId, setUpiId] = useState('kunalsable24@okaxis');
     const [merchantName, setMerchantName] = useState('StayEasy');
+
+    // Date selection states
+    const [editingDates, setEditingDates] = useState(false);
+    const [tempCheckIn, setTempCheckIn] = useState('');
+    const [tempCheckOut, setTempCheckOut] = useState('');
+    const [updatingDates, setUpdatingDates] = useState(false);
 
     useEffect(() => {
         const getBooking = async () => {
@@ -55,10 +91,35 @@ const ConfirmAndPayPage = () => {
             }
 
             try {
-                const response = await apiClient.get(`/tenant/bookings/${bookingId}`);
+                const response = await apiClient.get(API_ENDPOINTS.bookings.details(bookingId));
 
                 if (response.success && response.data) {
-                    setBooking(response.data);
+                    // Map the API response to match our interface
+                    const bookingData: BookingFormData = {
+                        id: (response.data as any).id || '',
+                        userId: (response.data as any).user_id || '',
+                        propertyId: (response.data as any).property_id || '',
+                        checkIn: (response.data as any).check_in || '',
+                        checkOut: (response.data as any).check_out || '',
+                        status: (response.data as any).status || 'PENDING',
+                        guests: (response.data as any).guests || 1,
+                        paymentStatus: (response.data as any).payment_status || '',
+                        createdAt: (response.data as any).created_at || '',
+                        updatedAt: (response.data as any).updated_at || '',
+                        property: (response.data as any).properties || {
+                            id: (response.data as any).property_id || '',
+                            title: 'Unknown Property',
+                            location: 'Unknown Location',
+                            pricePerNight: (response.data as any).properties?.pricePerNight || (response.data as any).property?.pricePerNight || 0,
+                            images: [],
+                            owner: {
+                                id: '',
+                                name: '',
+                                email: ''
+                            }
+                        }
+                    };
+                    setBooking(bookingData);
                 } else {
                     throw new Error(response.error?.message || 'Failed to load booking details');
                 }
@@ -84,15 +145,14 @@ const ConfirmAndPayPage = () => {
 
         setProcessingPayment(true);
         try {
-            const response = await apiClient.post('/payments/create', {
+            const response = await apiClient.post(API_ENDPOINTS.payments.create, {
                 bookingId: booking.id,
                 amount: totalAmount,
                 upiId,
-                merchantName
             });
 
             if (response.success && response.data) {
-                setPaymentId(response.data.paymentId);
+                setPaymentId((response.data as any)?.paymentId || 'payment-generated');
                 setShowQRModal(true);
             } else {
                 toast.error('Failed to create payment: ' + (response.error?.message || 'Unknown error'));
@@ -117,10 +177,84 @@ const ConfirmAndPayPage = () => {
         });
     };
 
-    const calculateTotalAmount = (booking: Booking) => {
+    const calculateTotalAmount = (booking: BookingFormData) => {
         if (!booking) return 0;
         const nights = Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24));
         return booking.property.pricePerNight * nights;
+    };
+
+    const calculateNights = (checkIn: string, checkOut: string) => {
+        if (!checkIn || !checkOut) return 0;
+        const nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24));
+        return nights > 0 ? nights : 0;
+    };
+
+    const handleEditDates = () => {
+        if (!booking) return;
+        setTempCheckIn(booking.checkIn);
+        setTempCheckOut(booking.checkOut);
+        setEditingDates(true);
+    };
+
+    const handleSaveDates = async () => {
+        if (!booking || !tempCheckIn || !tempCheckOut) return;
+
+        // Validate dates
+        const checkInDate = new Date(tempCheckIn);
+        const checkOutDate = new Date(tempCheckOut);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (checkInDate < today) {
+            toast.error('Check-in date cannot be in the past');
+            return;
+        }
+
+        if (checkOutDate <= checkInDate) {
+            toast.error('Check-out date must be after check-in date');
+            return;
+        }
+
+        setUpdatingDates(true);
+        try {
+            const response = await apiClient.put(API_ENDPOINTS.bookings.update(booking.id), {
+                check_in: tempCheckIn,
+                check_out: tempCheckOut,
+            });
+
+            if (response.success && response.data) {
+                // Update the booking with the new dates while preserving other data
+                const updatedBooking = {
+                    ...booking,
+                    checkIn: tempCheckIn,
+                    checkOut: tempCheckOut,
+                    id: (response.data as any).id || booking.id,
+                    userId: (response.data as any).user_id || booking.userId,
+                    propertyId: (response.data as any).property_id || booking.propertyId,
+                    status: (response.data as any).status || booking.status,
+                    guests: (response.data as any).guests || booking.guests,
+                    paymentStatus: (response.data as any).payment_status || booking.paymentStatus,
+                    createdAt: (response.data as any).created_at || booking.createdAt,
+                    updatedAt: (response.data as any).updated_at || booking.updatedAt,
+                };
+                setBooking(updatedBooking);
+                setEditingDates(false);
+                toast.success('Booking dates updated successfully');
+            } else {
+                throw new Error(response.error?.message || 'Failed to update booking dates');
+            }
+        } catch (error: any) {
+            console.error('Error updating booking dates:', error);
+            toast.error('Failed to update booking dates: ' + (error.message || 'Unknown error'));
+        } finally {
+            setUpdatingDates(false);
+        }
+    };
+
+    const handleCancelDates = () => {
+        setEditingDates(false);
+        setTempCheckIn('');
+        setTempCheckOut('');
     };
 
     if (loading) {
@@ -250,20 +384,40 @@ const ConfirmAndPayPage = () => {
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <span className="text-gray-500 dark:text-gray-400">Check-in:</span>
-                                    <span className="ml-2 text-gray-900 dark:text-white font-medium">
-                                        {formatDate(booking.checkIn)}
-                                    </span>
+                                    {editingDates ? (
+                                        <input
+                                            type="date"
+                                            value={tempCheckIn}
+                                            onChange={(e) => setTempCheckIn(e.target.value)}
+                                            className="ml-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                                            min={new Date().toISOString().split('T')[0]}
+                                        />
+                                    ) : (
+                                        <span className="ml-2 text-gray-900 dark:text-white font-medium">
+                                            {formatDate(booking.checkIn)}
+                                        </span>
+                                    )}
                                 </div>
                                 <div>
                                     <span className="text-gray-500 dark:text-gray-400">Check-out:</span>
-                                    <span className="ml-2 text-gray-900 dark:text-white font-medium">
-                                        {formatDate(booking.checkOut)}
-                                    </span>
+                                    {editingDates ? (
+                                        <input
+                                            type="date"
+                                            value={tempCheckOut}
+                                            onChange={(e) => setTempCheckOut(e.target.value)}
+                                            className="ml-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                                            min={tempCheckIn || new Date().toISOString().split('T')[0]}
+                                        />
+                                    ) : (
+                                        <span className="ml-2 text-gray-900 dark:text-white font-medium">
+                                            {formatDate(booking.checkOut)}
+                                        </span>
+                                    )}
                                 </div>
                                 <div>
                                     <span className="text-gray-500 dark:text-gray-400">Nights:</span>
                                     <span className="ml-2 text-gray-900 dark:text-white font-medium">
-                                        {Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24))}
+                                        {editingDates ? calculateNights(tempCheckIn, tempCheckOut) : calculateNights(booking.checkIn, booking.checkOut)}
                                     </span>
                                 </div>
                                 <div>
@@ -274,13 +428,42 @@ const ConfirmAndPayPage = () => {
                                 </div>
                             </div>
 
+                            {editingDates && (
+                                <div className="flex gap-2 mt-4">
+                                    <button
+                                        onClick={handleSaveDates}
+                                        disabled={updatingDates}
+                                        className="flex-1 px-3 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                    >
+                                        {updatingDates ? 'Updating...' : 'Save Dates'}
+                                    </button>
+                                    <button
+                                        onClick={handleCancelDates}
+                                        className="flex-1 px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
+                            {!editingDates && (
+                                <button
+                                    onClick={handleEditDates}
+                                    className="mt-4 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                                >
+                                    Edit Dates
+                                </button>
+                            )}
+
                             <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
                                 <div className="flex justify-between items-center">
                                     <span className="text-lg font-semibold text-gray-900 dark:text-white">
                                         Total Amount
                                     </span>
                                     <span className="text-2xl font-bold text-primary">
-                                        {formatCurrency(calculateTotalAmount(booking))}
+                                        {formatCurrency(editingDates ?
+                                            booking.property.pricePerNight * calculateNights(tempCheckIn, tempCheckOut) :
+                                            calculateTotalAmount(booking)
+                                        )}
                                     </span>
                                 </div>
                             </div>
@@ -383,9 +566,19 @@ const ConfirmAndPayPage = () => {
 
                             <div className="space-y-3">
                                 <button
-                                    onClick={() => {
-                                        setShowQRModal(false);
-                                        navigate('/payments');
+                                    onClick={async () => {
+                                        try {
+                                            await apiClient.post(API_ENDPOINTS.payments.confirm, {
+                                                paymentId,
+                                                upiReference: 'manual-confirm'
+                                            });
+                                            toast.success('Payment submitted for verification');
+                                            setShowQRModal(false);
+                                            navigate('/payments');
+                                        } catch (error) {
+                                            console.error('Error confirming payment:', error);
+                                            toast.error('Failed to confirm payment status');
+                                        }
                                     }}
                                     className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                                 >
@@ -407,3 +600,5 @@ const ConfirmAndPayPage = () => {
 };
 
 export default ConfirmAndPayPage;
+
+

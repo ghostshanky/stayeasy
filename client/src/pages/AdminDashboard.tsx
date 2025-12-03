@@ -71,7 +71,7 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.get('/admin/stats');
+        const response = await apiClient.get('/api/admin/stats');
 
         if (response.success && response.data) {
           setStats(response.data);
@@ -305,8 +305,8 @@ const AdminDashboard = ({ navigate }: { navigate: (page: Page) => void }) => {
                 <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{user.email}</td>
                 <td className="py-3 px-4">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
-                      user.role === 'OWNER' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
-                        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                    user.role === 'OWNER' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                     }`}>
                     {user.role}
                   </span>

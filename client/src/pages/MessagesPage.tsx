@@ -153,7 +153,7 @@ const MessagesPage = () => {
         try {
             if (!user) return;
 
-            const response = await apiClient.get('/messages/conversations');
+            const response = await apiClient.get('/api/messages/conversations');
 
             if (response.success && response.data) {
                 const conversationsData: Conversation[] = response.data.map((conv: any) => ({
@@ -248,7 +248,7 @@ const MessagesPage = () => {
                 }
 
                 // Send message via API (which will trigger socket event from server)
-                const response = await apiClient.post('/messages', {
+                const response = await apiClient.post('/api/messages', {
                     recipientId: recipientId,
                     content: messageInput.trim()
                 });
@@ -278,7 +278,7 @@ const MessagesPage = () => {
 
         setCreatingChat(true);
         try {
-            const chatResponse = await apiClient.post('/messages', {
+            const chatResponse = await apiClient.post('/api/messages', {
                 recipientId: newChatEmail,
                 content: 'Conversation started',
                 propertyId: null

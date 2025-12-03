@@ -32,7 +32,7 @@ export function useReviews(propertyId: string | undefined, limit = 10, page = 1)
       }
 
       try {
-        const response = await apiClient.get('/reviews', {
+        const response = await apiClient.get('/api/reviews', {
           params: {
             propertyId,
             limit,

@@ -3,7 +3,6 @@ import { z } from 'zod'
 import QRCode from 'qrcode'
 import { PrismaClient, PaymentStatus, BookingStatus } from '@prisma/client'
 import { AuditLogger } from '../audit-logger.js'
-import { generateInvoicePdf } from '../../prisma/pdfGenerator'
 
 const prisma = new PrismaClient()
 
@@ -127,8 +126,6 @@ export class PaymentsController {
       const userId = req.currentUser!.id
 
       // 1. Find payment and validate ownership and status.
-      // Note: Payment model doesn't have userId directly, it's on Booking.
-      // We need to check if the booking associated with this payment belongs to the user.
       const payment = await prisma.payment.findFirst({
         where: {
           id: paymentId,
@@ -146,12 +143,17 @@ export class PaymentsController {
         return res.status(404).json({ success: false, error: { code: 'PAYMENT_NOT_FOUND', message: 'Payment not found or not in a confirmable state.' } })
       }
 
-      // 2. Update payment status.
+      // 2. Update payment status and booking status.
       const updatedPayment = await prisma.payment.update({
         where: { id: paymentId },
         data: {
           status: 'AWAITING_OWNER_VERIFICATION',
-          transactionId: upiReference // Mapping upiReference to transactionId
+          transactionId: upiReference,
+          booking: {
+            update: {
+              status: 'AWAITING_VERIFICATION'
+            }
+          }
         }
       })
 
@@ -193,14 +195,37 @@ export class PaymentsController {
           booking: {
             include: {
               user: { select: { name: true, email: true } },
-              property: { select: { title: true } } // Changed name to title
+              property: { select: { title: true, location: true, address: true, pricePerNight: true } }
             }
           }
         },
         orderBy: { createdAt: 'asc' }
       })
 
-      res.status(200).json({ success: true, data: pendingPayments })
+      // Convert amount from paisa to rupees and format dates
+      const formattedPayments = pendingPayments.map(payment => ({
+        id: payment.id,
+        booking_id: payment.bookingId,
+        amount: payment.amount / 100, // Convert from paisa to rupees
+        currency: 'INR',
+        status: payment.status,
+        upi_uri: payment.upiQrUri,
+        upi_reference: payment.transactionId,
+        verified_by: payment.verifiedBy,
+        verified_at: payment.verifiedAt?.toISOString(),
+        created_at: payment.createdAt.toISOString(),
+        booking: {
+          check_in: payment.booking.checkIn.toISOString(),
+          check_out: payment.booking.checkOut.toISOString(),
+          property: {
+            name: payment.booking.property.title,
+            address: payment.booking.property.address || payment.booking.property.location
+          }
+        },
+        user: payment.booking.user
+      }))
+
+      res.status(200).json({ success: true, data: formattedPayments })
     } catch (error) {
       console.error('Error fetching pending payments:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch pending payments.' } })
@@ -214,7 +239,7 @@ export class PaymentsController {
   static async getUserPayments(req: Request, res: Response) {
     try {
       const userId = req.currentUser!.id
-      const { limit = 10, page = 1, status } = req.query
+      const { limit = '10', page = '1', status } = req.query
 
       const whereClause: any = {
         booking: {
@@ -231,18 +256,40 @@ export class PaymentsController {
         include: {
           booking: {
             include: {
-              property: { select: { title: true, address: true } }, // Changed name to title
+              property: { select: { title: true, location: true, address: true, pricePerNight: true } },
               user: { select: { name: true, email: true } }
             }
-          },
-          invoices: true
+          }
         },
         orderBy: { createdAt: 'desc' },
         skip: (Number(page) - 1) * Number(limit),
         take: Number(limit)
       })
 
-      res.status(200).json({ success: true, data: payments })
+      // Convert amount from paisa to rupees and format dates
+      const formattedPayments = payments.map(payment => ({
+        id: payment.id,
+        booking_id: payment.bookingId,
+        amount: payment.amount / 100, // Convert from paisa to rupees
+        currency: 'INR',
+        status: payment.status,
+        upi_uri: payment.upiQrUri,
+        upi_reference: payment.transactionId,
+        verified_by: payment.verifiedBy,
+        verified_at: payment.verifiedAt?.toISOString(),
+        created_at: payment.createdAt.toISOString(),
+        booking: {
+          check_in: payment.booking.checkIn.toISOString(),
+          check_out: payment.booking.checkOut.toISOString(),
+          property: {
+            name: payment.booking.property.title,
+            address: payment.booking.property.address || payment.booking.property.location
+          }
+        },
+        user: payment.booking.user
+      }))
+
+      res.status(200).json({ success: true, data: formattedPayments })
     } catch (error) {
       console.error('Error fetching user payments:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch payments.' } })
@@ -256,6 +303,7 @@ export class PaymentsController {
   static async getOwnerPayments(req: Request, res: Response) {
     try {
       const { ownerId } = req.params
+      const { limit = '10', page = '1', status } = req.query
       const currentUserId = req.currentUser!.id
 
       // Ensure only the owner can access their own payments
@@ -274,16 +322,38 @@ export class PaymentsController {
         include: {
           booking: {
             include: {
-              property: { select: { title: true, address: true } }, // Changed name to title
+              property: { select: { title: true, location: true, address: true, pricePerNight: true } },
               user: { select: { name: true, email: true } }
             }
-          },
-          invoices: true
+          }
         },
         orderBy: { createdAt: 'desc' }
       })
 
-      res.status(200).json({ success: true, data: payments })
+      // Convert amount from paisa to rupees and format dates
+      const formattedPayments = payments.map(payment => ({
+        id: payment.id,
+        booking_id: payment.bookingId,
+        amount: payment.amount / 100, // Convert from paisa to rupees
+        currency: 'INR',
+        status: payment.status,
+        upi_uri: payment.upiQrUri,
+        upi_reference: payment.transactionId,
+        verified_by: payment.verifiedBy,
+        verified_at: payment.verifiedAt?.toISOString(),
+        created_at: payment.createdAt.toISOString(),
+        booking: {
+          check_in: payment.booking.checkIn.toISOString(),
+          check_out: payment.booking.checkOut.toISOString(),
+          property: {
+            name: payment.booking.property.title,
+            address: payment.booking.property.address || payment.booking.property.location
+          }
+        },
+        user: payment.booking.user
+      }))
+
+      res.status(200).json({ success: true, data: formattedPayments })
     } catch (error) {
       console.error('Error fetching owner payments:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch owner payments.' } })
@@ -360,7 +430,7 @@ export class PaymentsController {
       if (!payment.bookingId) throw new Error('Booking ID missing on payment record.')
 
       // 2. Update Payment status
-      const updatedPayment = await tx.payment.update({
+      await tx.payment.update({
         where: { id: paymentId },
         data: {
           status: 'VERIFIED',
@@ -372,39 +442,15 @@ export class PaymentsController {
       // 3. Update Booking status
       await tx.booking.update({
         where: { id: payment.bookingId },
-        data: { status: 'CONFIRMED' }
-      })
-
-      // 4. Create Invoice
-      const invoiceNo = `INV-${Date.now()}-${payment.id.slice(-6).toUpperCase()}`
-      const invoice = await tx.invoice.create({
         data: {
-          paymentId: payment.id,
-          details: `Payment verified for booking ${payment.bookingId}`
-          // Note: Invoice model in schema.prisma is minimal, doesn't have invoice_no, user_id, owner_id, amount, status, line_items
-          // We need to check schema.prisma again.
-          // Schema has: id, paymentId, details, pdfFileId, createdAt.
-          // The previous Supabase code was inserting a lot more fields.
-          // We will stick to the schema definition.
+          status: 'CONFIRMED',
+          paymentStatus: 'paid'
         }
       })
-
-      // 5. Generate and link PDF (outside of DB transaction but logically part of the flow)
-      // We can't do async PDF generation inside transaction easily if it takes time, but here we just call it.
-      // Assuming generateInvoicePdf handles its own logic.
-      // We'll do it AFTER transaction or just ignore errors for now as per previous implementation style.
-
-      // 6. Log audit events
-      // AuditLogger uses prisma.create, which is outside this transaction unless we pass tx.
-      // For now we'll call it after transaction or let it be independent.
 
       return {
         paymentId: payment.id,
         status: 'VERIFIED',
-        invoice: {
-          id: invoice.id,
-          // invoiceNo: invoice.invoice_no, // Not in schema
-        },
         booking: {
           id: payment.bookingId,
           status: 'CONFIRMED',
@@ -413,7 +459,6 @@ export class PaymentsController {
     }).then(async (result) => {
       // Post-transaction actions
       await AuditLogger.logPaymentVerification(ownerId, result.booking.id, result.paymentId, 'verify')
-      // await AuditLogger.logInvoiceGeneration(...) // Invoice schema mismatch, skipping for now
       await AuditLogger.logBookingStatusChange(ownerId, result.booking.id, 'PENDING', 'CONFIRMED')
       return result
     })
@@ -426,7 +471,6 @@ export class PaymentsController {
         status: 'REJECTED',
         verifiedBy: ownerId,
         verifiedAt: new Date(),
-        // rejection_reason: note // Not in schema
       },
       include: { booking: true }
     })
@@ -436,7 +480,6 @@ export class PaymentsController {
     return {
       paymentId: payment.id,
       status: 'REJECTED',
-      invoice: null,
       booking: null,
     }
   }
@@ -476,19 +519,14 @@ export class PaymentsController {
               status: 'VERIFIED',
               verifiedBy: 'WEBHOOK',
               verifiedAt: new Date(),
-              // completed_at: new Date() // Not in schema
             }
           })
 
           await tx.booking.update({
             where: { id: payment.bookingId },
-            data: { status: 'CONFIRMED' }
-          })
-
-          await tx.invoice.create({
             data: {
-              paymentId: payment.id,
-              details: `Payment completed via webhook for booking ${payment.bookingId}`
+              status: 'CONFIRMED',
+              paymentStatus: 'paid'
             }
           })
         })
@@ -502,8 +540,7 @@ export class PaymentsController {
         await prisma.payment.update({
           where: { id: paymentId },
           data: {
-            status: 'REJECTED', // Using REJECTED as FAILED is not in enum? Schema says REJECTED.
-            // completed_at: new Date()
+            status: 'REJECTED',
           }
         })
 

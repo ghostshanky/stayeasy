@@ -93,7 +93,7 @@ const SearchResultsPage = () => {
             if (filters.city) params.append('city', filters.city);
             if (filters.amenities) params.append('amenities', filters.amenities);
 
-            const response = await apiClient.get(`/properties?${params}`);
+            const response = await apiClient.get(`/api/properties?${params}`);
 
             console.log('🔍 [SearchResults] API Response:', {
                 success: response.success,

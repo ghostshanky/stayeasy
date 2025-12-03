@@ -13,7 +13,7 @@ import { errorHandler } from '../utils/errorHandler';
 
 // Default API configuration
 const defaultConfig: ApiConfig = {
-  baseURL: '/api',
+  baseURL: '',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -57,6 +57,12 @@ export class ApiClient {
       },
       (error: AxiosError) => {
         this.handleApiError(error);
+        if (error.response && error.response.status === 401) {
+          console.log('🔄 [Response] 401 Unauthorized - clearing token and redirecting');
+          // Clear auth token and redirect to login
+          localStorage.removeItem('accessToken');
+          window.location.href = '/login';
+        }
         return Promise.reject(error);
       }
     );

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MessageHostModal from '../components/MessageHostModal';
 import { useReviews } from '../hooks/useReviews';
 import { useAuth } from '../hooks/useAuth';
-import { apiClient } from '../config/api';
+import { apiClient, API_ENDPOINTS } from '../config/api';
 import { BRAND } from '../config/brand';
 
 const PropertyDetailsPage = () => {
@@ -30,16 +30,16 @@ const PropertyDetailsPage = () => {
         // For now, let's create a simple booking with default dates
         // In a real app, you'd want a date selection modal
         const checkIn = new Date();
-        const checkOut = new Date();
+        checkIn.setDate(checkIn.getDate() + 1); // Start from tomorrow
+        const checkOut = new Date(checkIn);
         checkOut.setDate(checkIn.getDate() + 7); // 7 days stay
 
         setBookingLoading(true);
         try {
-            const response = await apiClient.post('/bookings/create', {
+            const response = await apiClient.post(API_ENDPOINTS.bookings.create, {
                 propertyId: property.id,
                 checkIn: checkIn.toISOString(),
-                checkOut: checkOut.toISOString(),
-                guestCount: 1
+                checkOut: checkOut.toISOString()
             });
 
             if (response.success && response.data) {
@@ -61,7 +61,7 @@ const PropertyDetailsPage = () => {
         const fetchPropertyDetails = async () => {
             try {
                 setLoading(true);
-                const response = await apiClient.get(`/properties/${propertyId}`);
+                const response = await apiClient.get(`/api/properties/${propertyId}`);
                 if (response.success && response.data) {
                     const propertyData = response.data;
 
@@ -234,7 +234,7 @@ const PropertyDetailsPage = () => {
                                 <div className="lg:col-span-1">
                                     <div className="sticky top-24 p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
                                         <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                                            ₹{property.price_per_night.toLocaleString()} <span className="text-base font-normal text-gray-500 dark:text-gray-400">/ month</span>
+                                            ₹{property.price_per_night.toLocaleString()} <span className="text-base font-normal text-gray-500 dark:text-gray-400">/ night</span>
                                         </p>
                                         <div className="space-y-4">
                                             <button onClick={handleRequestToBook} className="w-full flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary text-white text-base font-bold hover:bg-primary/90 transition-colors">

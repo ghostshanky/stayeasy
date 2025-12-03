@@ -82,11 +82,11 @@ router.post('/login', async (req, res) => {
             },
             message: 'Login successful'
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Login error:', error);
         res.status(500).json({
             success: false,
-            error: { code: 'LOGIN_FAILED', message: 'Login failed' }
+            error: { code: 'LOGIN_FAILED', message: `Login failed: ${error.message}` }
         });
     }
 });

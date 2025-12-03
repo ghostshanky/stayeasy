@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔍 [Auth] Making request to /auth/me');
 
       // Get user profile from the server
-      const response = await apiClient.get('/auth/me');
+      const response = await apiClient.get('/api/auth/me');
 
       console.log('🔍 [Auth] /auth/me response:', {
         success: response.success,
@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('🔍 [Client] Login attempt:', { email });
 
-      const response = await apiClient.post('/auth/login', { email, password });
+      const response = await apiClient.post('/api/auth/login', { email, password });
 
       console.log('🔍 [Client] Login response:', {
         hasData: !!response.data,
@@ -193,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('🔍 [Client] Signup attempt:', { email, name });
 
-      const response = await apiClient.post('/auth/signup', {
+      const response = await apiClient.post('/api/auth/signup', {
         email,
         password,
         name,
@@ -253,7 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const refreshToken = localStorage.getItem('refreshToken');
       if (refreshToken) {
-        await apiClient.post('/auth/logout', { refreshToken });
+        await apiClient.post('/api/auth/logout', { refreshToken });
       }
     } catch (error: any) {
       console.error('Logout error:', error);

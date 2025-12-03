@@ -38,7 +38,7 @@ if (missingEnvVars.length > 0) {
 
 const app = express()
 const server = createServer(app)
-const PORT = parseInt(process.env.PORT || '3002')
+const PORT = parseInt(process.env.PORT || '3003')
 
 // Initialize Chat Service
 const chatService = new ChatService(server)
@@ -120,7 +120,7 @@ app.use('/api/auth', authRouter)
 app.use('/api/users', usersRouter)
 
 const paymentsRouter = express.Router()
-paymentsRouter.post('/create', PaymentsController.createPayment)
+paymentsRouter.post('/', PaymentsController.createPayment)
 paymentsRouter.post('/confirm', PaymentsController.confirmPayment)
 paymentsRouter.get('/pending', PaymentsController.getPendingPayments)
 paymentsRouter.get('/', PaymentsController.getUserPayments) // Add this for user payments

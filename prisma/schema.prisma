@@ -160,22 +160,8 @@ model Payment {
 
   // Relations
   booking       Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  invoices      Invoice[]
 
   @@map("payments")
-}
-
-model Invoice {
-  id          String   @id @default(cuid())
-  paymentId   String   @map("payment_id")
-  details     String
-  pdfFileId   String?  @map("pdf_file_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-
-  @@map("invoices")
 }
 
 model Chat {

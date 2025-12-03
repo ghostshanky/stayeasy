@@ -24,33 +24,47 @@ export function useBookings(userId: string, limit = 10, page = 1, status?: strin
           params.append('status', status);
         }
 
-        const response = await apiClient.get(`/tenant/bookings?${params.toString()}`);
+        console.log('🔍 [useBookings] Fetching bookings for user:', userId);
+        console.log('🔍 [useBookings] API URL:', `/bookings/tenant/bookings?${params.toString()}`);
+
+        const response = await apiClient.get(`/api/bookings/tenant/bookings?${params.toString()}`);
+
+        console.log('🔍 [useBookings] API Response:', {
+          success: response.success,
+          dataLength: response.data?.length,
+          error: response.error
+        });
 
         if (!mounted) return;
 
         if (response.success && response.data) {
-          // Map API response (camelCase) to Booking type (snake_case)
+          // Map API response to frontend Booking interface
           const mappedBookings = response.data.map((b: any) => ({
             id: b.id,
             tenant_id: b.userId,
-            owner_id: b.property?.ownerId, // Assuming property is included
+            owner_id: b.property?.owner?.id,
             property_id: b.propertyId,
             check_in: b.checkIn,
             check_out: b.checkOut,
             status: b.status,
-            total_amount: 0, // Calculate or get from API if available
-            payment_status: 'PENDING' as PaymentStatus, // Default or get from API
+            total_amount: b.payments && b.payments.length > 0 ? b.payments.reduce((sum: number, payment: any) => sum + (payment.amount || 0), 0) : 0,
+            payment_status: b.payments && b.payments.length > 0 ? b.payments[0].status : 'PENDING' as PaymentStatus,
             created_at: b.createdAt,
             updated_at: b.updatedAt,
             properties: b.property ? {
               id: b.property.id,
-              title: b.property.title, // name -> title
+              title: b.property.title,
               location: b.property.location,
               images: b.property.images || [],
-              price: b.property.price
+              price: b.property.pricePerNight || b.property.price || 0
             } : undefined,
-            // Map other fields as needed
+            tenant: b.user ? {
+              id: b.user.id,
+              name: b.user.name,
+              email: b.user.email
+            } : undefined
           }));
+          console.log('🔍 [useBookings] Mapped bookings:', mappedBookings.length);
           setItems(mappedBookings);
         } else {
           console.error('❌ [useBookings] Failed to fetch bookings:', response.error);
@@ -101,12 +115,21 @@ export function useOwnerBookings(ownerId: string, limit = 10, page = 1, status?:
           params.append('status', status);
         }
 
-        const response = await apiClient.get(`/owner/bookings?${params.toString()}`);
+        console.log('🔍 [useOwnerBookings] Fetching bookings for owner:', ownerId);
+        console.log('🔍 [useOwnerBookings] API URL:', `/bookings/owner/bookings?${params.toString()}`);
+
+        const response = await apiClient.get(`/api/bookings/owner/bookings?${params.toString()}`);
+
+        console.log('🔍 [useOwnerBookings] API Response:', {
+          success: response.success,
+          dataLength: response.data?.length,
+          error: response.error
+        });
 
         if (!mounted) return;
 
         if (response.success && response.data) {
-          // Map API response (camelCase) to Booking type (snake_case)
+          // Map API response to frontend Booking interface
           const mappedBookings = response.data.map((b: any) => ({
             id: b.id,
             tenant_id: b.userId,
@@ -115,16 +138,16 @@ export function useOwnerBookings(ownerId: string, limit = 10, page = 1, status?:
             check_in: b.checkIn,
             check_out: b.checkOut,
             status: b.status,
-            total_amount: 0, // TODO: Get from API
-            payment_status: 'PENDING' as PaymentStatus, // TODO: Get from API
+            total_amount: b.payments && b.payments.length > 0 ? b.payments.reduce((sum: number, payment: any) => sum + (payment.amount || 0), 0) : 0,
+            payment_status: b.payments && b.payments.length > 0 ? b.payments[0].status : 'PENDING' as PaymentStatus,
             created_at: b.createdAt,
             updated_at: b.updatedAt,
             properties: b.property ? {
               id: b.property.id,
               title: b.property.title,
               location: b.property.location,
-              images: [], // TODO: Get images
-              price: 0 // TODO: Get price
+              images: b.property.images || [],
+              price: b.property.pricePerNight || b.property.price || 0
             } : undefined,
             tenant: b.user ? {
               id: b.user.id,
@@ -132,6 +155,7 @@ export function useOwnerBookings(ownerId: string, limit = 10, page = 1, status?:
               email: b.user.email
             } : undefined
           }));
+          console.log('🔍 [useOwnerBookings] Mapped bookings:', mappedBookings.length);
           setItems(mappedBookings);
         } else {
           // Fallback to sample data if API fails or returns empty (for dev)
@@ -177,6 +201,7 @@ export function useOwnerBookings(ownerId: string, limit = 10, page = 1, status?:
               }
             }
           ];
+          console.log('🔍 [useOwnerBookings] Using sample data:', sampleBookings.length);
           setItems(sampleBookings);
         }
       } finally {

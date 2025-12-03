@@ -6,7 +6,7 @@ export async function sendMessage({ from_id, to_id, property_id, content }: {
   property_id?: string;
   content: string;
 }) {
-  const response = await apiClient.post('/messages', {
+  const response = await apiClient.post('/api/messages', {
     recipientId: to_id,
     content,
     propertyId: property_id
@@ -31,7 +31,7 @@ export async function getMessages(userId: string, otherUserId?: string) {
     // For now, let's use the inbox endpoint or similar if available, 
     // but the original function fetched ALL messages. 
     // We'll use the inbox endpoint which returns a list of messages.
-    const response = await apiClient.get('/messages/inbox');
+    const response = await apiClient.get('/api/messages/inbox');
     if (!response.success) {
       throw new Error(response.error?.message || 'Failed to fetch messages');
     }
@@ -40,7 +40,7 @@ export async function getMessages(userId: string, otherUserId?: string) {
 }
 
 export async function markMessagesAsRead(messageIds: string[], userId: string) {
-  const response = await apiClient.put('/messages/read', { messageIds });
+  const response = await apiClient.put('/api/messages/read', { messageIds });
 
   if (!response.success) {
     throw new Error(response.error?.message || 'Failed to mark messages as read');
@@ -48,7 +48,7 @@ export async function markMessagesAsRead(messageIds: string[], userId: string) {
 }
 
 export async function getConversations(userId: string) {
-  const response = await apiClient.get('/messages/conversations');
+  const response = await apiClient.get('/api/messages/conversations');
 
   if (!response.success) {
     throw new Error(response.error?.message || 'Failed to fetch conversations');
