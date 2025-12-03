@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { apiClient } from "../api/apiClient";
 
 export async function sendMessage({ from_id, to_id, property_id, content }: {
   from_id: string;
@@ -6,78 +6,70 @@ export async function sendMessage({ from_id, to_id, property_id, content }: {
   property_id?: string;
   content: string;
 }) {
-  const { data, error } = await supabase
-    .from("messages")
-    .insert({
-      sender_id: from_id,
-      recipient_id: to_id,
-      content,
-      sender_type: 'USER'
-    } as any)
-    .select();
+  const response = await apiClient.post('/messages', {
+    recipientId: to_id,
+    content,
+    propertyId: property_id
+  });
 
-  if (error) throw error;
-  return data[0];
+  if (!response.success) {
+    throw new Error(response.error?.message || 'Failed to send message');
+  }
+
+  return response.data;
 }
 
 export async function getMessages(userId: string, otherUserId?: string) {
-  let query = supabase
-    .from("messages")
-    .select("*")
-    .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-    .order('created_at', { ascending: true });
-
   if (otherUserId) {
-    query = query.or(`and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`);
+    const response = await apiClient.get(`/messages/conversation/${otherUserId}`);
+    if (!response.success) {
+      throw new Error(response.error?.message || 'Failed to fetch messages');
+    }
+    return response.data.messages;
+  } else {
+    // Fallback or different endpoint if needed. 
+    // For now, let's use the inbox endpoint or similar if available, 
+    // but the original function fetched ALL messages. 
+    // We'll use the inbox endpoint which returns a list of messages.
+    const response = await apiClient.get('/messages/inbox');
+    if (!response.success) {
+      throw new Error(response.error?.message || 'Failed to fetch messages');
+    }
+    return response.data;
   }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
 }
 
 export async function markMessagesAsRead(messageIds: string[], userId: string) {
-  const { error } = await supabase
-    .from("messages")
-    .update({ read_at: new Date().toISOString() } as any)
-    .in('id', messageIds)
-    .eq('recipient_id', userId) as any;
+  const response = await apiClient.put('/messages/read', { messageIds });
 
-  if (error) throw error;
+  if (!response.success) {
+    throw new Error(response.error?.message || 'Failed to mark messages as read');
+  }
 }
 
 export async function getConversations(userId: string) {
-  // Get all messages for this user, grouped by conversation
-  const { data, error } = await supabase
-    .from("messages")
-    .select("*")
-    .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-    .order('created_at', { ascending: false });
+  const response = await apiClient.get('/messages/conversations');
 
-  if (error) throw error;
+  if (!response.success) {
+    throw new Error(response.error?.message || 'Failed to fetch conversations');
+  }
 
-  // Group messages by conversation (other user)
-  const conversations = new Map();
+  // Transform the response to match the expected format of the original function if necessary.
+  // The original function returned an array of conversation objects.
+  // The API returns: [{ id, otherUser, lastMessage, unreadCount, ... }]
+  // The original function returned: [{ otherUserId, messages: [], lastMessage, unreadCount }]
 
-  data.forEach((message: any) => {
-    const otherUserId = message.sender_id === userId ? message.recipient_id : message.sender_id;
-
-    if (!conversations.has(otherUserId)) {
-      conversations.set(otherUserId, {
-        otherUserId,
-        messages: [],
-        lastMessage: message,
-        unreadCount: 0
-      });
-    }
-
-    const conv = conversations.get(otherUserId);
-    conv.messages.unshift(message); // Add to beginning since we ordered desc
-
-    if (message.recipient_id === userId && !message.read_at) {
-      conv.unreadCount++;
-    }
-  });
-
-  return Array.from(conversations.values());
+  // We need to map the API response to the old format to maintain compatibility
+  return response.data.map((conv: any) => ({
+    otherUserId: conv.otherUser.id,
+    messages: [], // API doesn't return full message history in conversation list
+    lastMessage: {
+      ...conv.lastMessage,
+      sender_id: conv.lastMessage.senderId,
+      recipient_id: conv.lastMessage.recipientId,
+      created_at: conv.lastMessage.createdAt,
+      read_at: conv.lastMessage.readAt
+    },
+    unreadCount: conv.unreadCount
+  }));
 }

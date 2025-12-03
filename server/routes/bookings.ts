@@ -55,6 +55,13 @@ bookingsRoutes.get(
 
 // Owner routes
 bookingsRoutes.get(
+  '/owner/stats',
+  requireAuth,
+  requireRole(['OWNER']),
+  BookingsController.getOwnerStats
+)
+
+bookingsRoutes.get(
   '/owner/bookings',
   requireAuth,
   requireRole(['OWNER']),

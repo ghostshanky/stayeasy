@@ -2,10 +2,11 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // API configuration
 export const API_CONFIG = {
-  baseURL: '/api', // Using hardcoded path for now, will be proxied by Vite
+  baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3002/api' : '/api'),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
 } as const;
 
@@ -46,21 +47,14 @@ class ApiClient {
     // Request interceptor
     this.instance.interceptors.request.use(
       (config) => {
-        const authToken = localStorage.getItem('authToken');
-        const accessToken = localStorage.getItem('accessToken');
+        const token = localStorage.getItem('accessToken');
         
-        console.log('🔍 [Client Request] Checking tokens:');
-        console.log('🔍 [Client Request] Auth token:', !!authToken);
-        console.log('🔍 [Client Request] Access token:', !!accessToken);
-        console.log('🔍 [Client Request] Request URL:', config.url);
+        console.log('🔍 [Client Request] Checking token for:', config.url);
+        console.log('🔍 [Client Request] Token found:', !!token);
         
-        // Use authToken if it exists (matches server expectation)
-        if (authToken) {
-          config.headers.Authorization = `Bearer ${authToken}`;
-          console.log('✅ [Client Request] Using authToken');
-        } else if (accessToken) {
-          config.headers.Authorization = `Bearer ${accessToken}`;
-          console.log('⚠️ [Client Request] Using accessToken (fallback)');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          console.log('✅ [Client Request] Using token');
         } else {
           console.log('⚠️ [Client Request] No token found');
         }
@@ -82,10 +76,10 @@ class ApiClient {
         
         if (error.response?.status === 401) {
           console.log('🔄 [Client Response] 401 Unauthorized - clearing tokens');
-          // Clear both tokens
-          localStorage.removeItem('authToken');
+          // Clear all auth tokens
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
+          localStorage.removeItem('authToken');
           window.location.href = '/auth';
         } else if (error.response) {
           console.log('❌ [Client Response] Other error:', error.response.status, error.response.data);
@@ -156,13 +150,13 @@ export const apiClient = new ApiClient(API_CONFIG);
 
 // Debug function to check authentication status
 export const checkAuthStatus = () => {
-  const authToken = localStorage.getItem('authToken');
   const accessToken = localStorage.getItem('accessToken');
+  const refreshToken = localStorage.getItem('refreshToken');
   console.log('🔍 [Auth Debug] Current authentication status:');
-  console.log('🔍 [Auth Debug] Auth token (server expected):', !!authToken);
-  console.log('🔍 [Auth Debug] Access token (fallback):', !!accessToken);
+  console.log('🔍 [Auth Debug] Access token:', !!accessToken);
+  console.log('🔍 [Auth Debug] Refresh token:', !!refreshToken);
   console.log('🔍 [Auth Debug] API Base URL:', API_CONFIG.baseURL);
-  return { hasAuthToken: !!authToken, hasAccessToken: !!accessToken };
+  return { hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken };
 };
 
 // API endpoints

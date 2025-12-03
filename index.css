@@ -752,26 +752,83 @@ body {
 
 /* Print optimization */
 @media print {
-    body {
-        font-size: 12pt;
-        line-height: 1.4;
+    /* hide page chrome */
+    header, .site-header, .topbar, .sidebar, nav, .app-footer, .toast, .modal-backdrop {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
     }
-    
-    a {
-        color: black;
-        text-decoration: underline;
+
+    /* show only main content wrapper */
+    body, html {
+        background: #fff !important;
+        color: #111 !important;
     }
-    
-    a[href]:after {
-        content: " (" attr(href) ")";
+
+    /* main content area: ensure full page width */
+    .main-content, main, .page-content, #root {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 12mm 12mm 12mm 12mm !important; /* printer margins */
     }
-    
-    abbr[title]:after {
-        content: " (" attr(title) ")";
+
+    /* cards and sections become full width */
+    .card, .panel, .property-card, .message-panel {
+        background: #fff !important;
+        color: #111 !important;
+        box-shadow: none !important;
+        border: 1px solid #e6e6e6 !important;
+        page-break-inside: avoid !important;
+        -webkit-print-color-adjust: exact !important;
     }
-    
-    .no-print {
-        display: none;
+
+    /* hide interactive elements */
+    button, input, textarea, select, .no-print, .no-print * {
+        display: none !important;
+    }
+
+    /* images: show if meaningful, otherwise hide */
+    img {
+        max-width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* tables: adjust for page width */
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        page-break-inside: auto !important;
+    }
+    tr, thead, tbody {
+        page-break-inside: avoid !important;
+        page-break-after: auto !important;
+    }
+
+    /* avoid splitting small blocks across pages */
+    .no-break, .card, .message-thread, .booking-item {
+        page-break-inside: avoid !important;
+    }
+
+    /* footer for each printed page (if needed) */
+    @page {
+        margin: 12mm;
+    }
+
+    /* ensure contrast (force dark text) */
+    * {
+        color: #111 !important;
+        background: transparent !important;
+    }
+
+    /* support for a 'print-mode' class toggled by JS */
+    body.print-mode .sidebar,
+    body.print-mode header {
+        display: none !important;
     }
 }
 
@@ -886,4 +943,102 @@ body {
 
 .auth-container.right-panel-active .overlay-right {
     transform: translateX(20%);
+}
+
+/* Print button styles */
+.print-button {
+    background: #07b28b;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+@media print {
+    .print-button {
+        display: none !important;
+    }
+}
+
+/* === Print stylesheet === */
+@media print {
+  /* hide page chrome */
+  header, .site-header, .topbar, .sidebar, nav, .app-footer, .toast, .modal-backdrop {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* show only main content wrapper */
+  body, html {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  /* main content area: ensure full page width */
+  .main-content, main, .page-content, #root {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12mm 12mm 12mm 12mm !important; /* printer margins */
+  }
+
+  /* cards and sections become full width */
+  .card, .panel, .property-card, .message-panel {
+    background: #fff !important;
+    color: #111 !important;
+    box-shadow: none !important;
+    border: 1px solid #e6e6e6 !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /* hide interactive elements */
+  button, input, textarea, select, .no-print, .no-print * {
+    display: none !important;
+  }
+
+  /* images: show if meaningful, otherwise hide */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* tables: adjust for page width */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+  }
+  tr, thead, tbody {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  /* avoid splitting small blocks across pages */
+  .no-break, .card, .message-thread, .booking-item {
+    page-break-inside: avoid !important;
+  }
+
+  /* footer for each printed page (if needed) */
+  @page {
+    margin: 12mm;
+  }
+
+  /* ensure contrast (force dark text) */
+  * {
+    color: #111 !important;
+    background: transparent !important;
+  }
+
+  /* support for a 'print-mode' class toggled by JS */
+  body.print-mode .sidebar,
+  body.print-mode header {
+    display: none !important;
+  }
 }

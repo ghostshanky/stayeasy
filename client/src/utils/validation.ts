@@ -1,4 +1,97 @@
+import React from 'react';
 import { z } from 'zod';
+
+// Form field types
+export interface FormField {
+  name: string;
+  type: 'text' | 'email' | 'password' | 'number' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'date' | 'time';
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  options?: Array<{ value: string; label: string }>;
+  validation?: z.ZodTypeAny;
+}
+
+export interface FormValidationResult {
+  isValid: boolean;
+  errors?: Record<string, string>;
+}
+
+// Form validation hook
+export function useFormValidation(fields: FormField[]) {
+  const [data, setData] = React.useState<Record<string, any>>({});
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [touched, setTouched] = React.useState<Record<string, boolean>>({});
+
+  const isValid = Object.keys(errors).length === 0;
+
+  const validateForm = (): FormValidationResult => {
+    const newErrors: Record<string, string> = {};
+
+    fields.forEach(field => {
+      const value = data[field.name];
+
+      // Check required fields
+      if (field.required && (!value || value.toString().trim() === '')) {
+        newErrors[field.name] = `${field.label} is required`;
+        return;
+      }
+
+      // Run custom validation if provided
+      if (field.validation) {
+        try {
+          field.validation.parse(value);
+        } catch (error) {
+          if (error instanceof z.ZodError) {
+            newErrors[field.name] = error.errors[0]?.message || 'Invalid value';
+          }
+        }
+      }
+    });
+
+    setErrors(newErrors);
+    return { isValid: Object.keys(newErrors).length === 0, errors: newErrors };
+  };
+
+  const handleFieldChange = (name: string, value: any) => {
+    setData(prev => ({ ...prev, [name]: value }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleFieldBlur = (name: string) => {
+    setTouched(prev => ({ ...prev, [name]: true }));
+  };
+
+  const resetForm = () => {
+    setData({});
+    setErrors({});
+    setTouched({});
+  };
+
+  const setFieldValue = (name: string, value: any) => {
+    setData(prev => ({ ...prev, [name]: value }));
+  };
+
+  return {
+    data,
+    errors,
+    touched,
+    isValid,
+    validateForm,
+    handleFieldChange,
+    handleFieldBlur,
+    resetForm,
+    setFieldValue,
+  };
+}
 
 // Common validation schemas
 export const commonSchemas = {

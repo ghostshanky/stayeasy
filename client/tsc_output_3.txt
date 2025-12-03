@@ -1,0 +1,226 @@
+src/api/apiClient.ts(4,3): error TS6133: 'ApiError' is declared but its value is never read.
+src/api/apiClient.ts(12,1): error TS6133: 'errorHandler' is declared but its value is never read.
+src/App.tsx(2,25): error TS6133: 'Navigate' is declared but its value is never read.
+src/components/common/ErrorBoundary.tsx(2,41): error TS6133: 'ErrorBoundaryType' is declared but its value is never read.
+src/components/common/ErrorBoundary.tsx(27,37): error TS2339: Property 'onError' does not exist on type 'ErrorHandler'.
+src/components/common/ErrorBoundary.tsx(38,35): error TS2339: Property 'handleError' does not exist on type 'ErrorHandler'.
+src/components/common/ErrorBoundary.tsx(117,25): error TS2339: Property 'getUserMessage' does not exist on type 'ErrorHandler'.
+src/components/common/ErrorBoundary.tsx(157,18): error TS2339: Property 'handleError' does not exist on type 'ErrorHandler'.
+src/components/common/Form.tsx(2,40): error TS6133: 'FormValidationResult' is declared but its value is never read.
+src/components/common/Form.tsx(104,11): error TS6133: 'isTouched' is declared but its value is never read.
+src/components/Header.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/Header.tsx(17,11): error TS6133: 'navigate' is declared but its value is never read.
+src/components/Header.tsx(28,37): error TS2339: Property 'user_metadata' does not exist on type 'User'.
+src/components/Header.tsx(30,30): error TS2339: Property 'user_metadata' does not exist on type 'User'.
+src/components/Header.tsx(30,65): error TS2339: Property 'user_metadata' does not exist on type 'User'.
+src/components/Header.tsx(30,113): error TS2339: Property 'user_metadata' does not exist on type 'User'.
+src/components/MobileMenu.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/owner/OwnerBookingsCalendar.tsx(2,1): error TS6133: 'supabase' is declared but its value is never read.
+src/components/owner/OwnerBookingsCalendar.tsx(28,10): error TS6133: 'selectedBooking' is declared but its value is never read.
+src/components/owner/OwnerBookingsCalendar.tsx(28,27): error TS6133: 'setSelectedBooking' is declared but its value is never read.
+src/components/owner/OwnerBookingsList.tsx(2,1): error TS6133: 'supabase' is declared but its value is never read.
+src/components/owner/OwnerListingsTable.tsx(4,1): error TS6133: 'supabase' is declared but its value is never read.
+src/components/owner/OwnerPaymentsList.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/owner/OwnerPaymentsList.tsx(5,23): error TS6133: 'setActiveTab' is declared but its value is never read.
+src/components/PrintButton.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/SideNavBar.tsx(59,14): error TS2339: Property 'user_metadata' does not exist on type 'User'.
+src/components/SideNavBar.tsx(60,16): error TS2339: Property 'user_metadata' does not exist on type 'User'.
+src/components/SideNavBar.tsx(60,71): error TS2339: Property 'user_metadata' does not exist on type 'User'.
+src/components/SideNavBar.tsx(61,108): error TS2339: Property 'user_metadata' does not exist on type 'User'.
+src/components/UnauthorizedPage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/UserAvatar.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/hooks/useOwnerMessages.ts(2,1): error TS6133: 'supabase' is declared but its value is never read.
+src/hooks/useOwnerPayments.ts(2,1): error TS6133: 'supabase' is declared but its value is never read.
+src/hooks/usePayments.ts(2,1): error TS6133: 'supabase' is declared but its value is never read.
+src/lib/apiClient.ts(58,13): error TS7053: Element implicitly has an 'any' type because expression of type '"Authorization"' can't be used to index type 'HeadersInit'.
+  Property 'Authorization' does not exist on type 'HeadersInit'.
+src/lib/messages.ts(3,37): error TS6133: 'from_id' is declared but its value is never read.
+src/lib/messages.ts(22,35): error TS6133: 'userId' is declared but its value is never read.
+src/lib/messages.ts(42,64): error TS6133: 'userId' is declared but its value is never read.
+src/lib/messages.ts(50,40): error TS6133: 'userId' is declared but its value is never read.
+src/pages/AboutUsPage.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/AboutUsPage.tsx(2,1): error TS6133: 'Link' is declared but its value is never read.
+src/pages/AdminDashboard.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/AdminDashboard.tsx(59,25): error TS6133: 'navigate' is declared but its value is never read.
+src/pages/AdminDashboard.tsx(66,23): error TS6133: 'setCurrentPage' is declared but its value is never read.
+src/pages/AdminDashboard.tsx(68,10): error TS6133: 'totalPages' is declared but its value is never read.
+src/pages/AuthPage.tsx(2,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/BookingsPage.tsx(2,10): error TS6133: 'Page' is declared but its value is never read.
+src/pages/ConfirmAndPayPage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/HelpPage.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/LandingPage.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/LandingPage.tsx(13,11): error TS6198: All destructured elements are unused.
+src/pages/LandingPage.tsx(13,13): error TS2339: Property 'reviews' does not exist on type '{ items: Review[]; loading: boolean; error: string | null; total: number; }'.
+src/pages/LandingPage.tsx(13,50): error TS2554: Expected 1-3 arguments, but got 0.
+src/pages/MessagesPage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/MessagesPage.tsx(2,1): error TS6133: 'Page' is declared but its value is never read.
+src/pages/MessagesPage.tsx(41,12): error TS6133: 'loading' is declared but its value is never read.
+src/pages/MyListingsPage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/MyListingsPage.tsx(2,10): error TS6133: 'Page' is declared but its value is never read.
+src/pages/OwnerBookingsPage.tsx(2,10): error TS6133: 'Page' is declared but its value is never read.
+src/pages/OwnerDashboard.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/OwnerDashboard.tsx(29,81): error TS2554: Expected 1-4 arguments, but got 0.
+src/pages/OwnerDashboard.tsx(40,11): error TS6133: 'handleNavigate' is declared but its value is never read.
+src/pages/OwnerMessagesPage.tsx(2,1): error TS6133: 'Page' is declared but its value is never read.
+src/pages/OwnerPaymentsPage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/OwnerPaymentsPage.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/OwnerPaymentsPage.tsx(2,1): error TS6133: 'Page' is declared but its value is never read.
+src/pages/OwnerPaymentsPage.tsx(147,38): error TS2322: Type '{ payments: any[]; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'payments' does not exist on type 'IntrinsicAttributes'.
+src/pages/PaymentsPage.tsx(104,9): error TS6133: 'getPaymentMethodIcon' is declared but its value is never read.
+src/pages/PaymentVerificationPage.tsx(2,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/PaymentVerificationPage.tsx(3,1): error TS6133: 'Page' is declared but its value is never read.
+src/pages/PaymentVerificationPage.tsx(35,27): error TS6133: 'user' is declared but its value is never read.
+src/pages/PaymentVerificationPage.tsx(71,27): error TS6133: 'user' is declared but its value is never read.
+src/pages/ProfilePage.tsx(3,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/PropertyDetailsPage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/PropertyDetailsPage.tsx(3,1): error TS6133: 'Page' is declared but its value is never read.
+src/pages/PropertyDetailsPage.tsx(5,1): error TS6133: 'sendMessage' is declared but its value is never read.
+src/pages/PropertyDetailsPage.tsx(6,1): error TS6133: 'useProperties' is declared but its value is never read.
+src/pages/PropertyDetailsPage.tsx(227,14): error TS2741: Property 'hostId' is missing in type '{ isOpen: boolean; onClose: () => void; hostName: string; propertyId: string | undefined; }' but required in type 'MessageHostModalProps'.
+src/pages/SearchResultsPage.tsx(50,11): error TS6133: 'navigate' is declared but its value is never read.
+src/pages/TenantDashboard.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/TenantDashboard.tsx(2,10): error TS6133: 'Page' is declared but its value is never read.
+src/pages/TenantDashboard.tsx(3,1): error TS6133: 'SideNavBar' is declared but its value is never read.
+src/pages/TenantDashboard.tsx(62,32): error TS6133: 'bookingId' is declared but its value is never read.
+src/pages/TenantDashboard.tsx(71,29): error TS6133: 'propertyId' is declared but its value is never read.
+src/pages/TenantDashboard.tsx(71,49): error TS6133: 'ownerId' is declared but its value is never read.
+src/pages/TenantDashboard.tsx(104,9): error TS6133: 'getPastBookings' is declared but its value is never read.
+src/utils/errorHandler.ts(1,17): error TS6133: 'ComponentType' is declared but its value is never read.
+src/utils/errorHandler.ts(42,15): error TS6133: 'error' is declared but its value is never read.
+src/utils/errorHandler.ts(293,31): error TS6133: 'error' is declared but its value is never read.
+src/utils/performance.ts(53,17): error TS2323: Cannot redeclare exported variable 'useDebounce'.
+src/utils/performance.ts(70,17): error TS2323: Cannot redeclare exported variable 'useDebouncedState'.
+src/utils/performance.ts(88,17): error TS2323: Cannot redeclare exported variable 'useThrottle'.
+src/utils/performance.ts(109,17): error TS2323: Cannot redeclare exported variable 'useIntersectionObserver'.
+src/utils/performance.ts(139,17): error TS2323: Cannot redeclare exported variable 'useVirtualScroll'.
+src/utils/performance.ts(168,17): error TS2323: Cannot redeclare exported variable 'VirtualList'.
+src/utils/performance.ts(219,47): error TS2344: Type 'T' does not satisfy the constraint '(...args: any) => any'.
+  Type 'ComponentType<any>' is not assignable to type '(...args: any) => any'.
+    Type 'ComponentClass<any, any>' is not assignable to type '(...args: any) => any'.
+      Type 'ComponentClass<any, any>' provides no match for the signature '(...args: any): any'.
+src/utils/performance.ts(231,17): error TS2323: Cannot redeclare exported variable 'OptimizedImage'.
+src/utils/performance.ts(283,17): error TS2323: Cannot redeclare exported variable 'useOptimizedSearch'.
+src/utils/performance.ts(401,17): error TS2323: Cannot redeclare exported variable 'usePerformanceCollector'.
+src/utils/performance.ts(415,3): error TS2323: Cannot redeclare exported variable 'useDebounce'.
+src/utils/performance.ts(415,3): error TS2484: Export declaration conflicts with exported declaration of 'useDebounce'.
+src/utils/performance.ts(416,3): error TS2323: Cannot redeclare exported variable 'useDebouncedState'.
+src/utils/performance.ts(416,3): error TS2484: Export declaration conflicts with exported declaration of 'useDebouncedState'.
+src/utils/performance.ts(417,3): error TS2323: Cannot redeclare exported variable 'useThrottle'.
+src/utils/performance.ts(417,3): error TS2484: Export declaration conflicts with exported declaration of 'useThrottle'.
+src/utils/performance.ts(418,3): error TS2323: Cannot redeclare exported variable 'useIntersectionObserver'.
+src/utils/performance.ts(418,3): error TS2484: Export declaration conflicts with exported declaration of 'useIntersectionObserver'.
+src/utils/performance.ts(419,3): error TS2323: Cannot redeclare exported variable 'useVirtualScroll'.
+src/utils/performance.ts(419,3): error TS2484: Export declaration conflicts with exported declaration of 'useVirtualScroll'.
+src/utils/performance.ts(420,3): error TS2323: Cannot redeclare exported variable 'useOptimizedSearch'.
+src/utils/performance.ts(420,3): error TS2484: Export declaration conflicts with exported declaration of 'useOptimizedSearch'.
+src/utils/performance.ts(421,3): error TS2323: Cannot redeclare exported variable 'usePerformanceCollector'.
+src/utils/performance.ts(421,3): error TS2484: Export declaration conflicts with exported declaration of 'usePerformanceCollector'.
+src/utils/performance.ts(426,3): error TS2323: Cannot redeclare exported variable 'VirtualList'.
+src/utils/performance.ts(426,3): error TS2484: Export declaration conflicts with exported declaration of 'VirtualList'.
+src/utils/performance.ts(427,3): error TS2323: Cannot redeclare exported variable 'OptimizedImage'.
+src/utils/performance.ts(427,3): error TS2484: Export declaration conflicts with exported declaration of 'OptimizedImage'.
+src/utils/performance.ts(432,3): error TS2484: Export declaration conflicts with exported declaration of 'PerformanceMetrics'.
+src/utils/validation.ts(46,43): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+useChat.ts(3,23): error TS2307: Cannot find module '../api/apiClient' or its corresponding type declarations.
+../prisma/pdfGenerator.ts(1,1): error TS6133: 'supabaseServer' is declared but its value is never read.
+../server/archive-job.ts(149,7): error TS2322: Type 'null' is not assignable to type '(Without<MessageScalarRelationFilter, MessageWhereInput> & MessageWhereInput) | (Without<MessageWhereInput, MessageScalarRelationFilter> & MessageScalarRelationFilter) | undefined'.
+../server/audit-logger.ts(7,71): error TS6133: 'paymentId' is declared but its value is never read.
+../server/audit-logger.ts(20,75): error TS6133: 'paymentId' is declared but its value is never read.
+../server/audit-logger.ts(33,75): error TS6133: 'paymentId' is declared but its value is never read.
+../server/audit-logger.ts(47,73): error TS6133: 'paymentId' is declared but its value is never read.
+../server/audit-logger.ts(47,92): error TS6133: 'invoiceId' is declared but its value is never read.
+../server/audit-logger.ts(73,36): error TS6133: 'paymentId' is declared but its value is never read.
+../server/audit-logger.ts(89,36): error TS6133: 'bookingId' is declared but its value is never read.
+../server/audit-logger.ts(136,73): error TS6133: 'bookingId' is declared but its value is never read.
+../server/audit-logger.ts(162,53): error TS6133: 'propertyId' is declared but its value is never read.
+../server/audit-logger.ts(201,52): error TS6133: 'reviewId' is declared but its value is never read.
+../server/chat-api.ts(24,11): error TS6133: 'userRole' is declared but its value is never read.
+../server/chat-api.ts(195,22): error TS6133: 'propertyId' is declared but its value is never read.
+../server/chat-api.ts(238,11): error TS2322: Type '{ messageId: string; url: any; fileName: any; fileType: any; userId: string; }[]' is not assignable to type 'FileCreateManyInput | FileCreateManyInput[]'.
+  Type '{ messageId: string; url: any; fileName: any; fileType: any; userId: string; }[]' is not assignable to type 'FileCreateManyInput[]'.
+    Property 'type' is missing in type '{ messageId: string; url: any; fileName: any; fileType: any; userId: string; }' but required in type 'FileCreateManyInput'.
+../server/chat-api.ts(260,15): error TS2353: Object literal may only specify known properties, and 'updatedAt' does not exist in type '(Without<ChatUpdateInput, ChatUncheckedUpdateInput> & ChatUncheckedUpdateInput) | (Without<...> & ChatUpdateInput)'.
+../server/chat-api.ts(280,26): error TS6133: 'propertyId' is declared but its value is never read.
+../server/controllers/adminController.ts(514,25): error TS6133: 'req' is declared but its value is never read.
+../server/controllers/bookingsController.ts(548,13): error TS6133: 'reason' is declared but its value is never read.
+../server/controllers/dataGovernanceController.ts(29,44): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type 'PaymentWhereInput'.
+../server/controllers/dataGovernanceController.ts(30,44): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type 'InvoiceWhereInput'.
+../server/controllers/dataGovernanceController.ts(87,38): error TS2322: Type '"REFUNDED"' is not assignable to type 'PaymentStatus'.
+../server/controllers/filesController.ts(87,11): error TS2353: Object literal may only specify known properties, and 'fileName' does not exist in type '(Without<FileCreateInput, FileUncheckedCreateInput> & FileUncheckedCreateInput) | (Without<...> & FileCreateInput)'.
+../server/controllers/filesController.ts(118,71): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type 'FileWhereInput'.
+../server/controllers/filesController.ts(148,17): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type '(Without<FileUpdateInput, FileUncheckedUpdateInput> & FileUncheckedUpdateInput) | (Without<...> & FileUpdateInput)'.
+../server/controllers/filesController.ts(151,84): error TS2339: Property 'fileName' does not exist on type '{ url: string; id: string; type: string; createdAt: Date; messageId: string; }'.
+../server/controllers/filesController.ts(195,22): error TS6133: 'file' is declared but its value is never read.
+../server/controllers/filesController.ts(201,19): error TS6133: 'file' is declared but its value is never read.
+../server/controllers/filesController.ts(220,76): error TS6133: 'req' is declared but its value is never read.
+../server/controllers/imageController.ts(84,21): error TS6133: 'fileRecord' is declared but its value is never read.
+../server/controllers/invoicesController.ts(33,20): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type 'InvoiceWhereInput'.
+../server/controllers/invoicesController.ts(42,25): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type 'PropertySelect<DefaultArgs>'.
+../server/controllers/invoicesController.ts(55,41): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type 'InvoiceWhereInput'.
+../server/controllers/invoicesController.ts(61,28): error TS2339: Property 'invoiceNo' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(62,25): error TS2339: Property 'amount' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(63,25): error TS2339: Property 'status' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(66,23): error TS2339: Property 'bookingId' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(67,28): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(68,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(69,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(73,27): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(109,11): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type 'InvoiceWhereInput'.
+../server/controllers/invoicesController.ts(119,23): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type 'PropertySelect<DefaultArgs>'.
+../server/controllers/invoicesController.ts(161,28): error TS2339: Property 'invoiceNo' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(162,25): error TS2339: Property 'amount' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(163,25): error TS2339: Property 'status' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(165,28): error TS2339: Property 'lineItems' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(167,23): error TS2339: Property 'bookingId' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(168,28): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(169,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(170,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(174,27): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(175,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(176,27): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(177,30): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(179,25): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(180,24): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(216,20): error TS2353: Object literal may only specify known properties, and 'ownerId' does not exist in type 'InvoiceWhereInput'.
+../server/controllers/invoicesController.ts(225,25): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type 'PropertySelect<DefaultArgs>'.
+../server/controllers/invoicesController.ts(245,41): error TS2353: Object literal may only specify known properties, and 'ownerId' does not exist in type 'InvoiceWhereInput'.
+../server/controllers/invoicesController.ts(251,28): error TS2339: Property 'invoiceNo' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(252,25): error TS2339: Property 'amount' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(253,25): error TS2339: Property 'status' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(256,23): error TS2339: Property 'bookingId' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(257,28): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(258,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(259,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(263,27): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(265,25): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(300,11): error TS2353: Object literal may only specify known properties, and 'ownerId' does not exist in type 'InvoiceWhereInput'.
+../server/controllers/invoicesController.ts(310,23): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type 'PropertySelect<DefaultArgs>'.
+../server/controllers/invoicesController.ts(345,28): error TS2339: Property 'invoiceNo' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(346,25): error TS2339: Property 'amount' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(347,25): error TS2339: Property 'status' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(349,28): error TS2339: Property 'lineItems' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(351,23): error TS2339: Property 'bookingId' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'.
+../server/controllers/invoicesController.ts(352,28): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(353,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(354,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(358,27): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(359,29): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(360,27): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(361,30): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(363,25): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/invoicesController.ts(364,24): error TS2551: Property 'payment' does not exist on type '{ id: string; details: string; paymentId: string; createdAt: Date; pdfFileId: string | null; }'. Did you mean 'paymentId'?
+../server/controllers/paymentsController.ts(4,39): error TS6133: 'BookingStatus' is declared but its value is never read.
+../server/controllers/paymentsController.ts(6,1): error TS6133: 'generateInvoicePdf' is declared but its value is never read.
+../server/controllers/paymentsController.ts(363,13): error TS6133: 'updatedPayment' is declared but its value is never read.
+../server/controllers/paymentsController.ts(379,13): error TS6133: 'invoiceNo' is declared but its value is never read.
+../server/controllers/propertiesController.ts(13,9): error TS6133: 'checkIn' is declared but its value is never read.
+../server/controllers/propertiesController.ts(14,9): error TS6133: 'checkOut' is declared but its value is never read.
+../server/middleware/audit.ts(32,9): error TS2353: Object literal may only specify known properties, and 'actorId' does not exist in type '(Without<AuditLogCreateInput, AuditLogUncheckedCreateInput> & AuditLogUncheckedCreateInput) | (Without<...> & AuditLogCreateInput)'.
+../server/routes/invoices.ts(9,7): error TS6133: 'invoiceLimiter' is declared but its value is never read.
+../server/routes/properties.ts(67,4): error TS6133: 'req' is declared but its value is never read.
+../server/routes/testUpload.ts(47,20): error TS18046: 'error' is of type 'unknown'.
+../server/server.ts(7,1): error TS6133: 'PrismaClient' is declared but its value is never read.
+../server/server.ts(45,7): error TS6133: 'chatService' is declared but its value is never read.
+../server/server.ts(48,7): error TS6133: 'upload' is declared but its value is never read.
+../server/tests/api.test.ts(3,1): error TS6133: 'AuthService' is declared but its value is never read.

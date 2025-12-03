@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { errorHandler, ErrorBoundary as ErrorBoundaryType, AppError } from '../../utils/errorHandler';
+import { errorRegistry, AppError } from '../../utils/errorHandler';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -13,8 +13,6 @@ interface ErrorBoundaryProps {
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  private unsubscribe?: () => void;
-
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
@@ -23,19 +21,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     };
   }
 
-  componentDidMount(): void {
-    this.unsubscribe = errorHandler.onError((error: AppError) => {
-      this.setState({ hasError: true, error });
-      this.props.onError?.(error);
-    });
-  }
-
-  componentWillUnmount(): void {
-    this.unsubscribe?.();
-  }
-
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
-    const appError = errorHandler.handleError(error);
+    const appError = errorRegistry.handle(error);
     return {
       hasError: true,
       error: appError,
@@ -44,6 +31,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error('Error caught by boundary:', error, errorInfo);
+    if (this.state.error && this.props.onError) {
+      this.props.onError(this.state.error);
+    }
   }
 
   handleRetry = (): void => {
@@ -51,9 +41,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   };
 
   render(): ReactNode {
-    if (this.state.hasError) {
+    if (this.state.hasError && this.state.error) {
       const FallbackComponent = this.props.fallback || DefaultErrorFallback;
-      return <FallbackComponent error={this.state.error!} retry={this.handleRetry} />;
+      return <FallbackComponent error={this.state.error} retry={this.handleRetry} />;
     }
 
     return this.props.children;
@@ -68,17 +58,17 @@ interface ErrorFallbackProps {
 const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({ error, retry }) => {
   const getErrorIcon = (type: string) => {
     switch (type) {
-      case 'NETWORK_ERROR':
+      case 'NETWORK':
         return 'wifi_off';
-      case 'AUTH_ERROR':
+      case 'AUTH':
         return 'lock';
-      case 'VALIDATION_ERROR':
+      case 'VALIDATION':
         return 'error';
       case 'NOT_FOUND':
         return 'search_off';
-      case 'PERMISSION_DENIED':
+      case 'PERMISSION':
         return 'no_accounts';
-      case 'SERVER_ERROR':
+      case 'SERVER':
         return 'server';
       default:
         return 'error';
@@ -87,13 +77,13 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({ error, retry }) =>
 
   const getErrorColor = (severity: string) => {
     switch (severity) {
-      case 'critical':
+      case 'CRITICAL':
         return 'text-red-600';
-      case 'high':
+      case 'HIGH':
         return 'text-orange-600';
-      case 'medium':
+      case 'MEDIUM':
         return 'text-yellow-600';
-      case 'low':
+      case 'LOW':
         return 'text-blue-600';
       default:
         return 'text-gray-600';
@@ -108,26 +98,26 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({ error, retry }) =>
             {getErrorIcon(error.type)}
           </span>
         </div>
-        
+
         <h1 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary mb-2">
           Oops! Something went wrong
         </h1>
-        
+
         <p className="text-text-light-secondary dark:text-text-dark-secondary mb-6">
-          {errorHandler.getUserMessage(error)}
+          {error.message}
         </p>
-        
+
         {error.details && (
           <details className="text-left mb-6">
             <summary className="cursor-pointer text-sm font-medium text-primary hover:text-primary/80">
               Error Details
             </summary>
             <pre className="mt-2 p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto max-h-40">
-              {JSON.stringify(error.details, null, 2)}
+              {error.details}
             </pre>
           </details>
         )}
-        
+
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={retry}
@@ -135,7 +125,7 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({ error, retry }) =>
           >
             Try Again
           </button>
-          
+
           <button
             onClick={() => window.location.href = '/'}
             className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -154,7 +144,7 @@ export function useErrorBoundary() {
 
   const captureError = React.useCallback((error: Error) => {
     setError(error);
-    errorHandler.handleError(error);
+    errorRegistry.handle(error);
   }, []);
 
   const resetError = React.useCallback(() => {

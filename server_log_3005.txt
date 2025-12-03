@@ -1,0 +1,114 @@
+
+> stayeasy-app@0.0.0 server
+> tsx watch server/server.ts
+
+[dotenv@17.2.3] injecting env (17) from .env -- tip: ≡ƒöÉ encrypt with Dotenvx: https://dotenvx.com
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ΓÜÖ∩╕Å  suppress all logs with { quiet: true }
+≡ƒÜÇ StayEasy API Server running on port 3005
+≡ƒô▒ Health check: http://localhost:3005/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development
+≡ƒô¥ [2025-12-01T20:02:27.261Z] POST /api/auth/signup
+≡ƒöÉ [AuthService.createUser] Creating user: {
+  email: 'testuser1748455895@example.com',
+  name: 'Test User',
+  role: 'TENANT'
+}
+Γ£à [AuthService.createUser] Users table accessible, sample columns: [
+  'id',                 'email',
+  'password',           'name',
+  'role',               'bio',
+  'mobile',             'image_id',
+  'email_verified',     'email_token',
+  'email_token_expiry', 'created_at',
+  'updated_at',         'avatar_url',
+  'metadata'
+]
+Γ£à [AuthService.createUser] Password hashed, email token generated
+Γ£à [AuthService.createUser] User created successfully: e92a57f1-2a1e-4928-8440-2d28f34caa02
+≡ƒÄ» [AuthService.createSession] Creating session for user: e92a57f1-2a1e-4928-8440-2d28f34caa02
+≡ƒöÉ [AuthService.createSession] Generated tokens, inserting into sessions table
+Γ£à [AuthService.createSession] Session created using sessions table
+Γ£à [AuthService.createSession] Session created successfully
+≡ƒô¥ [2025-12-01T20:02:30.835Z] POST /api/messages
+POST /messages request body: { content: 'Hello from new user', recipientId: 'owner1@example.com' }
+Sender ID: e92a57f1-2a1e-4928-8440-2d28f34caa02
+Looking up recipient by email: owner1@example.com
+Resolved recipient ID: user-owner-1
+Finding/creating chat between e92a57f1-2a1e-4928-8440-2d28f34caa02 and user-owner-1
+Creating new chat
+Chat ID: cminksvux0001q0wkk5h4c1nw
+Inserting message using Prisma
+Message sent successfully: cminksw2k0003q0wkfcb8t6oj
+≡ƒô¥ [2025-12-01T20:03:21.033Z] POST /api/auth/signup
+≡ƒöÉ [AuthService.createUser] Creating user: {
+  email: 'testuser858166813@example.com',
+  name: 'Test User',
+  role: 'TENANT'
+}
+Γ£à [AuthService.createUser] Users table accessible, sample columns: [
+  'id',                 'email',
+  'password',           'name',
+  'role',               'bio',
+  'mobile',             'image_id',
+  'email_verified',     'email_token',
+  'email_token_expiry', 'created_at',
+  'updated_at',         'avatar_url',
+  'metadata'
+]
+Γ£à [AuthService.createUser] Password hashed, email token generated
+Γ£à [AuthService.createUser] User created successfully: 8e6ae112-76c7-44c9-859f-28e5849a5ced
+≡ƒÄ» [AuthService.createSession] Creating session for user: 8e6ae112-76c7-44c9-859f-28e5849a5ced
+≡ƒöÉ [AuthService.createSession] Generated tokens, inserting into sessions table
+Γ£à [AuthService.createSession] Session created using sessions table
+Γ£à [AuthService.createSession] Session created successfully
+≡ƒô¥ [2025-12-01T20:03:25.036Z] POST /api/messages
+POST /messages request body: { content: 'Hello from new user', recipientId: 'owner1@example.com' }
+Sender ID: 8e6ae112-76c7-44c9-859f-28e5849a5ced
+Looking up recipient by email: owner1@example.com
+Resolved recipient ID: user-owner-1
+Finding/creating chat between 8e6ae112-76c7-44c9-859f-28e5849a5ced and user-owner-1
+Creating new chat
+Chat ID: cminktzp10005q0wku46jeeyv
+Inserting message using Prisma
+Message sent successfully: cminktzsn0007q0wkvbbvt5pk
+≡ƒô¥ [2025-12-01T20:03:26.394Z] GET /api/messages/conversations
+Error fetching conversations: {
+  code: '42501',
+  details: null,
+  hint: null,
+  message: 'permission denied for table messages'
+}
+1:34:11 am [tsx] change in ./server\controllers\messagesController.ts Restarting...
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [TransformError]: Transform failed with 2 errors:
+C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\server\controllers\messagesController.ts:18:6: ERROR: A return statement cannot be used here:
+C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\server\controllers\messagesController.ts:39:38: ERROR: "await" can only be used inside an "async" function
+    at failureErrorWithLog (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:1467:15)
+    at C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:736:50
+    at responseCallbacks.<computed> (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:603:9)
+    at handleIncomingPacket (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:658:12)
+    at Socket.readFromStdout (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:581:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+
+Node.js v22.17.1
+c1:34:53 am [tsx] change in ./server\controllers\messagesController.ts Rerunning...
+c[dotenv@17.2.3] injecting env (17) from .env -- tip: ≡ƒöÉ prevent building .env in docker: https://dotenvx.com/prebuild
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ≡ƒôí add observability to secrets: https://dotenvx.com/ops
+≡ƒÜÇ StayEasy API Server running on port 3005
+≡ƒô▒ Health check: http://localhost:3005/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development

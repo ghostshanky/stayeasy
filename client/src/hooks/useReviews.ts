@@ -3,47 +3,60 @@ import { apiClient } from "../api/apiClient";
 
 interface Review {
   id: string;
-  user_id: string;
-  property_id: string;
   rating: number;
-  comment?: string;
+  comment: string;
   created_at: string;
-  user?: {
-    name: string;
+  user: {
+    full_name?: string;
+    name?: string;
+    email?: string;
+    avatar_url?: string;
   };
 }
 
-export function useReviews(propertyId?: string, limit = 12, page = 1) {
+export function useReviews(propertyId: string | undefined, limit = 10, page = 1) {
   const [items, setItems] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    
-    const fetchReviews = async () => {
-      try {
-        const params = new URLSearchParams({
-          limit: limit.toString(),
-          offset: ((page - 1) * limit).toString(),
-        });
-        
-        if (propertyId) {
-          params.append('property_id', propertyId);
-        }
+    setError(null);
 
-        const response = await apiClient.get(`/reviews?${params}`);
-          
+    const fetchReviews = async () => {
+      if (!propertyId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await apiClient.get('/reviews', {
+          params: {
+            propertyId,
+            limit,
+            page
+          }
+        });
+
         if (!mounted) return;
-        
-        if (response.data.success) {
-          setItems(response.data.data || []);
+
+        if (response.success && response.data) {
+          setItems(response.data);
+          if (response.pagination) {
+            setTotal(response.pagination.total);
+          }
         } else {
-          console.error('Failed to fetch reviews:', response.data.error);
+          console.error('Error fetching reviews:', response.error);
+          setError(response.error?.message || 'Failed to fetch reviews');
+          setItems([]);
         }
-      } catch (error) {
+      } catch (err) {
         if (mounted) {
-          console.error(error);
+          console.error("Error fetching reviews:", err);
+          setError("Failed to fetch reviews");
+          setItems([]);
         }
       } finally {
         if (mounted) {
@@ -51,11 +64,13 @@ export function useReviews(propertyId?: string, limit = 12, page = 1) {
         }
       }
     };
-    
+
     fetchReviews();
-    
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, [propertyId, limit, page]);
 
-  return { items, loading };
+  return { items, loading, error, total };
 }

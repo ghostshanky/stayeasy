@@ -1,7 +1,9 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { AuditLogger } from '../audit-logger.js'
-import { supabaseServer } from '../lib/supabaseServer.js'
+import { PrismaClient, BookingStatus } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 // --- Input Validation Schemas ---
 const createBookingSchema = z.object({
@@ -67,13 +69,11 @@ export class BookingsController {
       }
 
       // Check if property exists and is available
-      const { data: property, error: propertyError } = await supabaseServer
-        .from('properties')
-        .select('*')
-        .eq('id', propertyId)
-        .single()
+      const property = await prisma.property.findUnique({
+        where: { id: propertyId }
+      })
 
-      if (propertyError || !property) {
+      if (!property) {
         return res.status(404).json({
           success: false,
           error: { code: 'PROPERTY_NOT_FOUND', message: 'Property not found' }
@@ -81,18 +81,19 @@ export class BookingsController {
       }
 
       // Check for booking conflicts
-      const { data: conflictingBookings, error: conflictError } = await supabaseServer
-        .from('bookings')
-        .select('*')
-        .eq('property_id', propertyId)
-        .in('status', ['PENDING', 'CONFIRMED'])
-        .or(`and(check_in.lte.${checkInDate.toISOString()},check_out.gt.${checkInDate.toISOString()}),and(check_in.lt.${checkOutDate.toISOString()},check_out.gte.${checkOutDate.toISOString()}),and(check_in.gte.${checkInDate.toISOString()},check_out.lte.${checkOutDate.toISOString()})`)
+      // Overlap logic: (StartA <= EndB) and (EndA >= StartB)
+      const conflictingBookings = await prisma.booking.findMany({
+        where: {
+          propertyId: propertyId,
+          status: { in: ['PENDING', 'CONFIRMED'] },
+          AND: [
+            { checkIn: { lt: checkOutDate } },
+            { checkOut: { gt: checkInDate } }
+          ]
+        }
+      })
 
-      if (conflictError) {
-        throw conflictError
-      }
-
-      if (conflictingBookings && conflictingBookings.length > 0) {
+      if (conflictingBookings.length > 0) {
         return res.status(409).json({
           success: false,
           error: { code: 'BOOKING_CONFLICT', message: 'Property is not available for the selected dates' }
@@ -100,27 +101,22 @@ export class BookingsController {
       }
 
       // Create booking
-      const { data: booking, error: createError } = await supabaseServer
-        .from('bookings')
-        .insert({
-          user_id: tenantId,
-          property_id: propertyId,
-          check_in: checkInDate.toISOString(),
-          check_out: checkOutDate.toISOString(),
+      const booking = await prisma.booking.create({
+        data: {
+          userId: tenantId,
+          propertyId: propertyId,
+          checkIn: checkInDate,
+          checkOut: checkOutDate,
           status: 'PENDING'
-        })
-        .select(`
-          *,
-          property:properties!property_id (
-            *,
-            owner:users!owner_id (name, email)
-          )
-        `)
-        .single()
-
-      if (createError) {
-        throw createError
-      }
+        },
+        include: {
+          property: {
+            include: {
+              owner: { select: { name: true, email: true } }
+            }
+          }
+        }
+      })
 
       // Log audit event
       await AuditLogger.logBookingCreation(tenantId, propertyId, booking.id, checkInDate, checkOutDate)
@@ -174,7 +170,8 @@ export class BookingsController {
         data: {
           ...updates,
           ...(updates.checkIn && { checkIn: new Date(updates.checkIn) }),
-          ...(updates.checkOut && { checkOut: new Date(updates.checkOut) })
+          ...(updates.checkOut && { checkOut: new Date(updates.checkOut) }),
+          ...(updates.status && { status: updates.status as BookingStatus })
         },
         include: {
           property: {
@@ -273,7 +270,7 @@ export class BookingsController {
 
       const where: any = { userId: tenantId }
       if (status) {
-        where.status = status
+        where.status = status as BookingStatus
       }
 
       const [bookings, total] = await Promise.all([
@@ -347,7 +344,6 @@ export class BookingsController {
           property: {
             include: {
               owner: { select: { name: true, email: true } },
-              details: true,
               reviews: {
                 include: {
                   user: { select: { name: true } }
@@ -358,11 +354,10 @@ export class BookingsController {
           },
           payments: {
             include: {
-              invoice: true
+              invoices: true
             },
             orderBy: { createdAt: 'desc' }
           },
-          invoices: true
         }
       })
 
@@ -418,7 +413,7 @@ export class BookingsController {
         property: { ownerId }
       }
       if (status) {
-        where.status = status
+        where.status = status as BookingStatus
       }
 
       const [bookings, total] = await Promise.all([
@@ -426,7 +421,7 @@ export class BookingsController {
           where,
           include: {
             property: {
-              select: { id: true, name: true, address: true }
+              select: { id: true, title: true, location: true }
             },
             user: {
               select: { id: true, name: true, email: true }
@@ -515,10 +510,10 @@ export class BookingsController {
       // Update booking status
       const updatedBooking = await prisma.booking.update({
         where: { id: bookingId },
-        data: { status: status as any },
+        data: { status: status as BookingStatus },
         include: {
           property: {
-            select: { id: true, name: true, address: true }
+            select: { id: true, title: true, location: true }
           },
           user: {
             select: { id: true, name: true, email: true }
@@ -590,6 +585,48 @@ export class BookingsController {
       res.status(500).json({
         success: false,
         error: { code: 'INTERNAL_ERROR', message: 'Failed to cancel booking.' }
+      })
+    }
+  }
+
+  /**
+   * GET /api/owner/stats
+   * Returns dashboard stats for the authenticated owner
+   */
+  static async getOwnerStats(req: Request, res: Response) {
+    try {
+      const ownerId = req.currentUser!.id
+
+      const [propertiesCount, bookingsCount, revenueResult, averageRatingResult] = await Promise.all([
+        prisma.property.count({ where: { ownerId } }),
+        prisma.booking.count({ where: { property: { ownerId } } }),
+        prisma.payment.aggregate({
+          where: {
+            booking: { property: { ownerId } },
+            status: 'PAID'
+          },
+          _sum: { amount: true }
+        }),
+        prisma.review.aggregate({
+          where: { property: { ownerId } },
+          _avg: { rating: true }
+        })
+      ])
+
+      res.status(200).json({
+        success: true,
+        data: {
+          totalProperties: propertiesCount,
+          totalBookings: bookingsCount,
+          totalRevenue: revenueResult._sum.amount || 0,
+          averageRating: averageRatingResult._avg.rating || 0
+        }
+      })
+    } catch (error: any) {
+      console.error('Owner stats fetch error:', error)
+      res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch owner stats.' }
       })
     }
   }

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../client/src/lib/supabase';
 import { StayEasyLogo } from '../App';
 import { BRAND } from '../client/src/config/brand';
 import { useDarkMode } from '../client/src/contexts/DarkModeContext';
 import { useAuth } from '../client/src/hooks/useAuth';
 import MobileMenu from './MobileMenu';
-import { getCloudinaryUrl } from './CloudinaryImage';
+// Simple Cloudinary URL helper
+const getCloudinaryUrl = (publicId: string, width = 200, height = 200): string => {
+  if (!publicId) return "/default_profile_pic.jpg";
+  return `https://res.cloudinary.com/degncsmrz/image/upload/w_${width},h_${height},c_fill,f_auto,q_auto/${publicId}`;
+};
 
 export default function Header() {
     const navigate = useNavigate();

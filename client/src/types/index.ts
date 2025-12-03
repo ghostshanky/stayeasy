@@ -1,18 +1,14 @@
-// Core application types
+export type UserRole = 'TENANT' | 'OWNER' | 'ADMIN';
+
 export interface User {
   id: string;
+  name: string;
   email: string;
   role: UserRole;
-  name?: string;
-  user_metadata?: {
-    image_id?: string;
-    full_name?: string;
-  };
-  created_at: string;
-  updated_at: string;
+  image_id?: string;
+  bio?: string;
+  mobile?: string;
 }
-
-export type UserRole = 'TENANT' | 'OWNER' | 'ADMIN';
 
 export interface AuthContextType {
   user: User | null;
@@ -39,9 +35,16 @@ export interface ApiResponse<T = any> {
     limit?: number;
     hasMore?: boolean;
   };
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
-// Property types
+export type PropertyStatus = 'AVAILABLE' | 'BOOKED' | 'MAINTENANCE' | 'UNAVAILABLE';
+
 export interface Property {
   id: string;
   name: string;
@@ -62,8 +65,6 @@ export interface Property {
   created_at: string;
   updated_at: string;
 }
-
-export type PropertyStatus = 'AVAILABLE' | 'BOOKED' | 'MAINTENANCE' | 'UNAVAILABLE';
 
 export interface Listing {
   id: string | number;
@@ -128,6 +129,7 @@ export enum ListingStatus {
 export enum StatChangeDirection {
   Increase = 'increase',
   Decrease = 'decrease',
+  Neutral = 'neutral',
 }
 
 // UI Component types
@@ -387,6 +389,7 @@ export interface StorageConfig {
 export interface CacheConfig {
   ttl: number;
   maxSize: number;
+  expires?: number;
 }
 
 // Performance types

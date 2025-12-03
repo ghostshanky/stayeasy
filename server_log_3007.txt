@@ -1,0 +1,119 @@
+
+> stayeasy-app@0.0.0 server
+> tsx watch server/server.ts
+
+[dotenv@17.2.3] injecting env (17) from .env -- tip: ≡ƒöä add secrets lifecycle management: https://dotenvx.com/ops
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ≡ƒöæ add access controls to secrets: https://dotenvx.com/ops
+≡ƒÜÇ StayEasy API Server running on port 3007
+≡ƒô▒ Health check: http://localhost:3007/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development
+≡ƒô¥ [2025-12-01T20:22:36.759Z] POST /api/auth/signup
+≡ƒöÉ [AuthService.createUser] Creating user: {
+  email: 'testuser1334820145@example.com',
+  name: 'Test User',
+  role: 'TENANT'
+}
+Γ£à [AuthService.createUser] Users table accessible, sample columns: [
+  'id',                 'email',
+  'password',           'name',
+  'role',               'bio',
+  'mobile',             'image_id',
+  'email_verified',     'email_token',
+  'email_token_expiry', 'created_at',
+  'updated_at',         'avatar_url',
+  'metadata'
+]
+Γ£à [AuthService.createUser] Password hashed, email token generated
+Γ£à [AuthService.createUser] User created successfully: 5af891ca-d83e-4e82-8061-9eedcaaf4245
+≡ƒÄ» [AuthService.createSession] Creating session for user: 5af891ca-d83e-4e82-8061-9eedcaaf4245
+≡ƒöÉ [AuthService.createSession] Generated tokens, inserting into sessions table
+Γ£à [AuthService.createSession] Session created using sessions table
+Γ£à [AuthService.createSession] Session created successfully
+≡ƒô¥ [2025-12-01T20:22:40.501Z] POST /api/messages
+POST /messages request body: { content: 'Hello from new user', recipientId: 'owner1@example.com' }
+Sender ID: 5af891ca-d83e-4e82-8061-9eedcaaf4245
+Looking up recipient by email: owner1@example.com
+Resolved recipient ID: user-owner-1
+Finding/creating chat between 5af891ca-d83e-4e82-8061-9eedcaaf4245 and user-owner-1
+Creating new chat
+Chat ID: cminlish00001q07gm1m8wbwp
+Inserting message using Prisma
+Message sent successfully: cminliso20003q07gb6h2k3g8
+≡ƒô¥ [2025-12-01T20:22:43.727Z] GET /api/messages/conversations
+10:50:48 am [tsx] change in ./server\controllers\propertiesController.ts Restarting...
+c[dotenv@17.2.3] injecting env (17) from .env -- tip: ≡ƒöä add secrets lifecycle management: https://dotenvx.com/ops
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ≡ƒæÑ sync secrets across teammates & machines: https://dotenvx.com/ops
+≡ƒÜÇ StayEasy API Server running on port 3007
+≡ƒô▒ Health check: http://localhost:3007/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development
+10:51:11 am [tsx] change in ./server\controllers\propertiesController.ts Restarting...
+c[dotenv@17.2.3] injecting env (17) from .env -- tip: ΓÜÖ∩╕Å  write to custom object with { processEnv: myObject }
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ≡ƒöÉ encrypt with Dotenvx: https://dotenvx.com
+≡ƒÜÇ StayEasy API Server running on port 3007
+≡ƒô▒ Health check: http://localhost:3007/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development
+10:51:27 am [tsx] change in ./server\controllers\propertiesController.ts Restarting...
+c[dotenv@17.2.3] injecting env (17) from .env -- tip: ≡ƒöÉ encrypt with Dotenvx: https://dotenvx.com
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ≡ƒöÉ encrypt with Dotenvx: https://dotenvx.com
+≡ƒÜÇ StayEasy API Server running on port 3007
+≡ƒô▒ Health check: http://localhost:3007/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development
+≡ƒô¥ [2025-12-02T05:24:01.477Z] GET /
+≡ƒô¥ [2025-12-02T05:24:01.587Z] GET /favicon.ico
+10:59:33 am [tsx] change in ./server\auth.ts Restarting...
+c[dotenv@17.2.3] injecting env (0) from .env -- tip: ΓÜÖ∩╕Å  write to custom object with { processEnv: myObject }
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: Γ£à audit secrets and track compliance: https://dotenvx.com/ops
+≡ƒÜÇ StayEasy API Server running on port 3007
+≡ƒô▒ Health check: http://localhost:3007/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development
+11:00:51 am [tsx] change in ./server\controllers\propertiesController.ts Restarting...
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [TransformError]: Transform failed with 1 error:
+C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\server\controllers\propertiesController.ts:29:4: ERROR: Unexpected "}"
+    at failureErrorWithLog (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:1467:15)
+    at C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:736:50
+    at responseCallbacks.<computed> (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:603:9)
+    at handleIncomingPacket (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:658:12)
+    at Socket.readFromStdout (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\tsx\node_modules\esbuild\lib\main.js:581:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+
+Node.js v22.17.1
+c11:01:43 am [tsx] change in ./server\controllers\propertiesController.ts Rerunning...
+c[dotenv@17.2.3] injecting env (0) from .env -- tip: ≡ƒöä add secrets lifecycle management: https://dotenvx.com/ops
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ≡ƒôí add observability to secrets: https://dotenvx.com/ops
+≡ƒÜÇ StayEasy API Server running on port 3007
+≡ƒô▒ Health check: http://localhost:3007/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development
+≡ƒô¥ [2025-12-02T05:32:52.860Z] GET /
+≡ƒô¥ [2025-12-02T05:32:52.985Z] GET /favicon.ico

@@ -41,15 +41,18 @@ export function useMessages(userId: string) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get(`/messages/conversations?userId=${userId}`);
-      
-      if (response.data.success) {
-        setConversations(response.data.data);
+      const response = await apiClient.get('/messages/conversations');
+
+      if (response.success && response.data) {
+        setConversations(response.data);
       } else {
-        throw new Error(response.data.error?.message || 'Failed to fetch conversations');
+        console.error('❌ [useMessages] Failed to fetch conversations:', response.error);
+        setError(response.error?.message || 'Failed to fetch conversations');
+        setConversations([]);
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred while fetching conversations');
+      setConversations([]);
     } finally {
       setLoading(false);
     }
@@ -62,14 +65,17 @@ export function useMessages(userId: string) {
       setError(null);
 
       const response = await apiClient.get(`/messages/conversation/${otherUserId}`);
-      
-      if (response.data.success) {
-        setMessages(response.data.data.messages || []);
+
+      if (response.success && response.data) {
+        setMessages(response.data.messages);
       } else {
-        throw new Error(response.data.error?.message || 'Failed to fetch messages');
+        console.error('❌ [useMessages] Failed to fetch messages:', response.error);
+        setError(response.error?.message || 'Failed to fetch messages');
+        setMessages([]);
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred while fetching messages');
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -81,15 +87,15 @@ export function useMessages(userId: string) {
       const response = await apiClient.post('/messages', {
         recipientId,
         content,
-        propertyId,
+        propertyId
       });
 
-      if (response.data.success) {
+      if (response.success && response.data) {
         // Refresh conversations to show the new message
         await fetchConversations();
-        return response.data.data;
+        return response.data;
       } else {
-        throw new Error(response.data.error?.message || 'Failed to send message');
+        throw new Error(response.error?.message || 'Failed to send message');
       }
     } catch (err: any) {
       throw new Error(err.message || 'An error occurred while sending message');
@@ -99,21 +105,19 @@ export function useMessages(userId: string) {
   // Mark messages as read
   const markMessagesAsRead = async (messageIds: string[]) => {
     try {
-      const response = await apiClient.put('/messages/read', {
-        messageIds,
-      });
+      const response = await apiClient.put('/messages/read', { messageIds });
 
-      if (response.data.success) {
-        // Update local state
-        setMessages(prev => prev.map(msg =>
-          messageIds.includes(msg.id)
-            ? { ...msg, readAt: new Date().toISOString() }
-            : msg
-        ));
-        return true;
-      } else {
-        throw new Error(response.data.error?.message || 'Failed to mark messages as read');
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to mark messages as read');
       }
+
+      // Update local state
+      setMessages(prev => prev.map(msg =>
+        messageIds.includes(msg.id)
+          ? { ...msg, readAt: new Date().toISOString() }
+          : msg
+      ));
+      return true;
     } catch (err: any) {
       throw new Error(err.message || 'An error occurred while marking messages as read');
     }
@@ -125,16 +129,43 @@ export function useMessages(userId: string) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get(`/messages?page=${page}&limit=${limit}`);
-      
-      if (response.data.success) {
-        setMessages(response.data.data);
-        return response.data.pagination;
+      // Using inbox endpoint which returns received messages.
+      // Note: This might not include sent messages if the backend endpoint is strictly inbox.
+      const response = await apiClient.get(`/messages/inbox?page=${page}&limit=${limit}`);
+
+      if (response.success && response.data) {
+        // Transform data if necessary, but apiClient response should be already usable
+        // The backend returns { success: true, data: [...], pagination: {...} }
+        // We need to match the expected return type of this function
+
+        const transformedMessages = response.data.map((msg: any) => ({
+          id: msg.id,
+          senderId: msg.sender?.id || msg.sender_id, // Handle both cases if backend varies
+          recipientId: msg.receiver?.id || msg.recipient_id,
+          content: msg.content,
+          propertyId: msg.property_id,
+          readAt: msg.read ? new Date().toISOString() : undefined, // backend returns boolean 'read'
+          createdAt: msg.created_at,
+          sender: msg.sender,
+          recipient: msg.receiver,
+          property: msg.property
+        }));
+
+        setMessages(transformedMessages);
+        return {
+          total: response.pagination?.total || transformedMessages.length,
+          page: response.pagination?.page || page,
+          limit: response.pagination?.limit || limit
+        };
       } else {
-        throw new Error(response.data.error?.message || 'Failed to fetch messages');
+        console.error('❌ [useMessages] Failed to fetch all messages:', response.error);
+        setError(response.error?.message || 'Failed to fetch messages');
+        setMessages([]);
+        return { total: 0, page, limit };
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred while fetching messages');
+      return { total: 0, page, limit };
     } finally {
       setLoading(false);
     }

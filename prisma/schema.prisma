@@ -28,29 +28,17 @@ model User {
   // Relations
   bookings          Booking[]
   reviews           Review[]
-  chats             Chat[]
-  messages          Message[]
+  startedChats      Chat[]   @relation("UserChats")
+  receivedChats     Chat[]   @relation("OwnerChats")
+  sentMessages      Message[] @relation("SentMessages")
+  receivedMessages  Message[] @relation("ReceivedMessages")
   sessions          Session[]
   auditLogs         AuditLog[]
   notifications     Notification[]
   properties        Property[]
+  refreshTokens     RefreshToken[]
 
   @@map("users")
-}
-
-model Owner {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  password   String
-  name       String
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  properties Property[]
-  chats      Chat[]
-
-  @@map("owners")
 }
 
 model Property {
@@ -58,22 +46,29 @@ model Property {
   ownerId           String   @map("owner_id")
   title             String
   location          String
+  address           String?
   description       String?
   pricePerNight     Float    @map("price_per_night")
+  currency          String   @default("INR")
   images            String[] @default([])
+  imageStorageIds   String[] @map("image_storage_ids") @default([])
   rating            Float    @default(0)
-  amenities         String[] @default([])
-  tags              String[] @default([])
+  ratingCount       Int      @default(0) @map("rating_count")
   capacity          Int
+  amenities         Json     @default("[]")
+  tags              String[] @default([])
+  status            String   @default("available")
+  available         Boolean  @default(true) @map("available")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   // Relations
-  owner             Owner    @relation(fields: [ownerId], references: [id])
-  user              User     @relation(fields: [ownerId], references: [id], map: "properties_user_id_fkey")
-  propertyDetails   PropertyDetail[]
+  owner             User     @relation(fields: [ownerId], references: [id])
   bookings          Booking[]
   reviews           Review[]
+  propertyDetails   PropertyDetail[]
+  propertyAmenities  PropertyAmenity[]
+  propertyTags      PropertyTag[]
 
   @@map("properties")
 }
@@ -90,20 +85,49 @@ model PropertyDetail {
   @@map("property_details")
 }
 
-model Booking {
-  id          String         @id @default(cuid())
-  userId      String         @map("user_id")
-  propertyId  String         @map("property_id")
-  checkIn     DateTime       @map("check_in")
-  checkOut    DateTime       @map("check_out")
-  status      BookingStatus  @default(PENDING)
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
+model PropertyAmenity {
+  id           String @id @default(cuid())
+  propertyId   String @map("property_id")
+  amenityType  String @map("amenity_type")
+  amenityName  String @map("amenity_name")
+  value        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property    Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  payments    Payment[]
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_amenities")
+}
+
+model PropertyTag {
+  id         String @id @default(cuid())
+  propertyId String @map("property_id")
+  tagName    String @map("tag_name")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_tags")
+}
+
+model Booking {
+  id            String         @id @default(cuid())
+  userId        String         @map("user_id")
+  propertyId    String         @map("property_id")
+  checkIn       DateTime       @map("check_in")
+  checkOut      DateTime       @map("check_out")
+  guests        Int            @default(1)
+  status        BookingStatus  @default(PENDING)
+  paymentStatus String         @default("pending") @map("payment_status")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  payments      Payment[]
 
   @@map("bookings")
 }
@@ -124,15 +148,19 @@ model Review {
 }
 
 model Payment {
-  id         String         @id @default(cuid())
-  bookingId  String         @map("booking_id")
-  amount     Float
-  status     PaymentStatus  @default(PENDING)
-  createdAt  DateTime       @default(now()) @map("created_at")
+  id            String         @id @default(cuid())
+  bookingId     String         @map("booking_id")
+  amount        Float
+  upiQrUri      String?        @map("upi_qr_uri")
+  transactionId String?        @map("transaction_id")
+  status        PaymentStatus  @default(PENDING)
+  verifiedAt    DateTime?      @map("verified_at")
+  verifiedBy    String?        @map("verified_by")
+  createdAt     DateTime       @default(now()) @map("created_at")
 
   // Relations
-  booking    Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  invoices   Invoice[]
+  booking       Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  invoices      Invoice[]
 
   @@map("payments")
 }
@@ -141,6 +169,7 @@ model Invoice {
   id          String   @id @default(cuid())
   paymentId   String   @map("payment_id")
   details     String
+  pdfFileId   String?  @map("pdf_file_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
@@ -156,8 +185,8 @@ model Chat {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   // Relations
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  owner      Owner     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  user       User      @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
+  owner      User      @relation("OwnerChats", fields: [ownerId], references: [id], onDelete: Cascade)
   messages   Message[]
 
   @@map("chats")
@@ -169,13 +198,15 @@ model Message {
   senderId      String   @map("sender_id")
   recipientId   String   @map("recipient_id")
   content       String
+  attachments   Json     @default("[]")
   senderType    String   @default("USER") @map("sender_type")
   readAt        DateTime? @map("read_at")
   createdAt     DateTime @default(now()) @map("created_at")
 
   // Relations
   chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  sender        User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  sender        User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient     User     @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
   files         File[]
 
   @@map("messages")
@@ -233,6 +264,21 @@ model Notification {
   @@map("notifications")
 }
 
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  token      String
+  expiresAt  DateTime @map("expires_at")
+  ip         String?
+  device     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
 enum Role {
   TENANT
   OWNER
@@ -241,6 +287,7 @@ enum Role {
 
 enum BookingStatus {
   PENDING
+  AWAITING_VERIFICATION
   CONFIRMED
   CANCELLED
   COMPLETED
@@ -248,6 +295,10 @@ enum BookingStatus {
 
 enum PaymentStatus {
   PENDING
-  COMPLETED
-  FAILED
+  PAID
+  REJECTED
+  VERIFIED
+  AWAITING_PAYMENT
+  AWAITING_OWNER_VERIFICATION
+  CANCELLED
 }

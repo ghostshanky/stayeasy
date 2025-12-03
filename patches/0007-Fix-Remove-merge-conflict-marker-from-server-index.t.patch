@@ -1,0 +1,31 @@
+From ebcb72ece6c1c8b08e1471dbcb1bec2aa8dfc623 Mon Sep 17 00:00:00 2001
+From: ghostshanky <actofjoy00@gmail.com>
+Date: Mon, 1 Dec 2025 14:35:15 +0530
+Subject: [PATCH 07/19] Fix: Remove merge conflict marker from server/index.ts
+
+---
+ server/index.ts | 11 -----------
+ 1 file changed, 11 deletions(-)
+
+diff --git a/server/index.ts b/server/index.ts
+index 7b4b475..5e5525e 100644
+--- a/server/index.ts
++++ b/server/index.ts
+@@ -8,14 +8,3 @@ import imageRoutes from './controllers/imageController.js';
+ import userRoutes from './routes/users.js';
+ import { supabaseServer } from './lib/supabaseServer.js';
+ import { AuthService } from './auth.js';
+-=======
+-import express from 'express';
+-import cors from 'cors';
+-import dotenv from 'dotenv';
+-import upiPaymentRoutes from './upi-payment.js';
+-import { PropertiesController } from './controllers/propertiesController.js';
+-import messagesRoutes from './controllers/messagesController.js';
+-import imageRoutes from './controllers/imageController.js';
+-import userRoutes from './routes/users.js';
+-import { supabaseServer } from './lib/supabaseServer.js';
+-import { AuthService } from './auth.js';
+-- 
+2.51.0.windows.1
+

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 import { apiClient } from "../api/apiClient";
 
 interface OwnerMessage {
@@ -34,20 +35,24 @@ export function useOwnerMessages(limit = 10, page = 1) {
 
     const fetchMessages = async () => {
       try {
-        const response = await apiClient.get(`/messages?page=${page}&limit=${limit}`);
+        const response = await apiClient.get('/messages/owner', {
+          params: { limit, page }
+        });
 
         if (!mounted) return;
 
-        if (response.data.success) {
-          setItems(response.data.data || []);
+        if (response.success && response.data) {
+          setItems(response.data);
         } else {
-          console.error("Error fetching owner messages:", response.data.error);
-          setError(response.data.error?.message || "Failed to fetch messages");
+          console.error('❌ [useOwnerMessages] Failed to fetch messages:', response.error);
+          setError(response.error?.message || 'Failed to fetch messages');
+          setItems([]);
         }
       } catch (err) {
         if (mounted) {
           console.error("Error fetching owner messages:", err);
           setError("Failed to fetch messages");
+          setItems([]);
         }
       } finally {
         if (mounted) {

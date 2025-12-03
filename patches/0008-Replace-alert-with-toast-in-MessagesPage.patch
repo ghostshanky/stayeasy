@@ -1,0 +1,157 @@
+From 6324b22c7b9190fede255f2e7fec4da0bd2a8dce Mon Sep 17 00:00:00 2001
+From: ghostshanky <actofjoy00@gmail.com>
+Date: Mon, 1 Dec 2025 14:39:22 +0530
+Subject: [PATCH 08/19] Replace alert() with toast in MessagesPage
+
+---
+ client/src/pages/MessagesPage.tsx | 61 +++++++++++++++----------------
+ 1 file changed, 30 insertions(+), 31 deletions(-)
+
+diff --git a/client/src/pages/MessagesPage.tsx b/client/src/pages/MessagesPage.tsx
+index 61b6c87..5bfce28 100644
+--- a/client/src/pages/MessagesPage.tsx
++++ b/client/src/pages/MessagesPage.tsx
+@@ -4,27 +4,28 @@ import { useNavigate } from 'react-router-dom';
+ import SideNavBar from '../components/SideNavBar';
+ import { supabase } from '../lib/supabase';
+ import { useAuth } from '../hooks/useAuth';
++import toast from 'react-hot-toast';
+ 
+ interface Message {
+-  id: string;
+-  text: string;
+-  sender: 'user' | 'host';
+-  time: string;
++    id: string;
++    text: string;
++    sender: 'user' | 'host';
++    time: string;
+ }
+ 
+ interface Conversation {
+-  id: string;
+-  name: string;
+-  lastMessage: string;
+-  time: string;
+-  unread: boolean;
+-  messages: Message[];
+-  other_user?: {
++    id: string;
+     name: string;
+-    email: string;
+-    avatar_url?: string;
+-    id?: string;
+-  };
++    lastMessage: string;
++    time: string;
++    unread: boolean;
++    messages: Message[];
++    other_user?: {
++        name: string;
++        email: string;
++        avatar_url?: string;
++        id?: string;
++    };
+ }
+ 
+ const MessagesPage = () => {
+@@ -45,7 +46,7 @@ const MessagesPage = () => {
+     const fetchConversations = async () => {
+         try {
+             setLoading(true);
+-            
++
+             if (!user) {
+                 console.log('User not authenticated');
+                 return;
+@@ -138,11 +139,11 @@ const MessagesPage = () => {
+ 
+             // Fetch user details for each chat participant
+             const conversations: Conversation[] = [];
+-            
++
+             for (const chat of chats || []) {
+                 // Get the other user ID
+                 const otherUserId = (chat as any).user1_id === user.id ? (chat as any).user2_id : (chat as any).user1_id;
+-                
++
+                 // Fetch the other user's details
+                 const { data: otherUser, error: userError } = await supabase
+                     .from('profiles')
+@@ -244,22 +245,22 @@ const MessagesPage = () => {
+                     }
+                     return conv;
+                 });
+-                
++
+                 setConversations(updatedConversations);
+                 setMessageInput('');
+-                
++
+                 // Refresh conversations to get the latest messages
+                 await fetchConversations();
+             } catch (error) {
+                 console.error('Error sending message:', error);
+-                alert('Failed to send message. Please try again.');
++                toast.error('Failed to send message. Please try again.');
+             }
+         }
+     };
+ 
+     const handleCreateNewChat = async () => {
+         if (!newChatEmail.trim()) {
+-            alert('Please enter an email address');
++            toast.error('Please enter an email address');
+             return;
+         }
+ 
+@@ -274,9 +275,9 @@ const MessagesPage = () => {
+ 
+             if (error) {
+                 if (error.code === 'PGRST116') {
+-                    alert('User with this email not found');
++                    toast.error('User with this email not found');
+                 } else {
+-                    alert('Error checking user: ' + error.message);
++                    toast.error('Error checking user: ' + error.message);
+                 }
+                 return;
+             }
+@@ -328,7 +329,7 @@ const MessagesPage = () => {
+             setSelectedConversation(newConversation.id);
+         } catch (error) {
+             console.error('Error creating chat:', error);
+-            alert('Failed to create chat');
++            toast.error('Failed to create chat');
+         } finally {
+             setCreatingChat(false);
+         }
+@@ -366,9 +367,8 @@ const MessagesPage = () => {
+                                             <div
+                                                 key={conversation.id}
+                                                 onClick={() => setSelectedConversation(conversation.id)}
+-                                                className={`p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
+-                                                    selectedConversation === conversation.id ? 'bg-primary/5 border-r-2 border-primary' : ''
+-                                                }`}
++                                                className={`p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 ${selectedConversation === conversation.id ? 'bg-primary/5 border-r-2 border-primary' : ''
++                                                    }`}
+                                             >
+                                                 <div className="flex justify-between items-start">
+                                                     <div className="flex items-start gap-3 flex-1">
+@@ -421,11 +421,10 @@ const MessagesPage = () => {
+                                                         className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                                                     >
+                                                         <div
+-                                                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+-                                                                message.sender === 'user'
++                                                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.sender === 'user'
+                                                                     ? 'bg-primary text-white'
+                                                                     : 'bg-gray-100 dark:bg-gray-800 text-[#111518] dark:text-gray-200'
+-                                                            }`}
++                                                                }`}
+                                                         >
+                                                             <p className="text-sm">{message.text}</p>
+                                                             <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-100' : 'text-[#617989] dark:text-gray-400'}`}>
+-- 
+2.51.0.windows.1
+

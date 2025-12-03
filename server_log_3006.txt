@@ -1,0 +1,106 @@
+
+> stayeasy-app@0.0.0 server
+> tsx watch server/server.ts
+
+[dotenv@17.2.3] injecting env (17) from .env -- tip: ≡ƒôí add observability to secrets: https://dotenvx.com/ops
+≡ƒöì [Supabase] URL: https://...e.co
+≡ƒöì [Supabase] Service key present: true
+Γ£à Supabase credentials loaded successfully
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ΓÜÖ∩╕Å  override existing env vars with { override: true }
+≡ƒÜÇ StayEasy API Server running on port 3006
+≡ƒô▒ Health check: http://localhost:3006/api/health
+≡ƒÆ¼ WebSocket chat service initialized
+≡ƒöº Environment: development
+≡ƒô¥ [2025-12-01T20:06:11.245Z] POST /api/auth/signup
+≡ƒöÉ [AuthService.createUser] Creating user: {
+  email: 'testuser2044139722@example.com',
+  name: 'Test User',
+  role: 'TENANT'
+}
+Γ£à [AuthService.createUser] Users table accessible, sample columns: [
+  'id',                 'email',
+  'password',           'name',
+  'role',               'bio',
+  'mobile',             'image_id',
+  'email_verified',     'email_token',
+  'email_token_expiry', 'created_at',
+  'updated_at',         'avatar_url',
+  'metadata'
+]
+Γ£à [AuthService.createUser] Password hashed, email token generated
+Γ£à [AuthService.createUser] User created successfully: 5261e833-1b9c-4b61-8997-66acd5fc51c8
+≡ƒÄ» [AuthService.createSession] Creating session for user: 5261e833-1b9c-4b61-8997-66acd5fc51c8
+≡ƒöÉ [AuthService.createSession] Generated tokens, inserting into sessions table
+Γ£à [AuthService.createSession] Session created using sessions table
+Γ£à [AuthService.createSession] Session created successfully
+≡ƒô¥ [2025-12-01T20:06:14.649Z] POST /api/messages
+POST /messages request body: { content: 'Hello from new user', recipientId: 'owner1@example.com' }
+Sender ID: 5261e833-1b9c-4b61-8997-66acd5fc51c8
+Looking up recipient by email: owner1@example.com
+Resolved recipient ID: user-owner-1
+Finding/creating chat between 5261e833-1b9c-4b61-8997-66acd5fc51c8 and user-owner-1
+Creating new chat
+Chat ID: cminkxo3p0001q0q440ushsl6
+Inserting message using Prisma
+Message sent successfully: cminkxodn0003q0q494i3738n
+≡ƒô¥ [2025-12-01T20:06:18.262Z] GET /api/messages/conversations
+Error fetching conversations: PrismaClientValidationError: 
+Invalid `prisma.chat.findMany()` invocation in
+C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\server\controllers\messagesController.ts:25:37
+
+  22 const userId = req.currentUser!.id;
+  23 
+  24 // Get chats where user is participant
+ΓåÆ 25 const chats = await prisma.chat.findMany({
+       where: {
+         OR: [
+           {
+             userId: "5261e833-1b9c-4b61-8997-66acd5fc51c8"
+           },
+           {
+             ownerId: "5261e833-1b9c-4b61-8997-66acd5fc51c8"
+           }
+         ]
+       },
+       include: {
+         user: {
+           select: {
+             id: true,
+             name: true,
+             email: true,
+             imageId: true
+           }
+         },
+         owner: {
+           select: {
+             id: true,
+             name: true,
+             email: true,
+             imageId: true,
+             ~~~~~~~
+     ?       password?: true,
+     ?       createdAt?: true,
+     ?       updatedAt?: true,
+     ?       properties?: true,
+     ?       chats?: true,
+     ?       _count?: true
+           }
+         },
+         messages: {
+           orderBy: {
+             createdAt: "desc"
+           },
+           take: 1
+         }
+       }
+     })
+
+Unknown field `imageId` for select statement on model `Owner`. Available options are marked with ?.
+    at throwValidationException (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.handleRequestError (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at async a (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at async <anonymous> (C:\Users\kunal\OneDrive\Desktop\dbms\stayeasy\server\controllers\messagesController.ts:25:19) {
+  clientVersion: '6.19.0'
+}

@@ -10,11 +10,17 @@
     "preview": "vite preview",
     "server": "tsx watch server/server.ts",
     "start": "tsx server/server.ts",
+    "client": "vite --host",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "test:ci": "jest --ci --runInBand --coverage"
+    "test:ci": "jest --ci --runInBand --coverage",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:push": "prisma db push",
+    "seed:dummy": "node prisma/seed-dummy-data.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.922.0",

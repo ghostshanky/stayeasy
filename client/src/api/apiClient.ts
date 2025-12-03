@@ -1,13 +1,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { 
-  ApiResponse, 
-  ApiError, 
-  ApiConfig, 
-  ApiRequestConfig, 
+import {
+  ApiResponse,
+  ApiError,
+  ApiConfig,
+  ApiRequestConfig,
   AsyncState,
   AppError,
   ErrorType,
-  ErrorSeverity 
+  ErrorSeverity
 } from '../types';
 import { errorHandler } from '../utils/errorHandler';
 
@@ -152,7 +152,7 @@ export class ApiClient {
       });
 
       const response = await this.instance.request<ApiResponse<T>>(axiosConfig);
-      
+
       console.log('🔍 [API Client] Response received:', {
         status: response.status,
         hasData: !!response.data,
@@ -160,14 +160,14 @@ export class ApiClient {
         hasError: !!response.data?.error,
         dataKeys: response.data ? Object.keys(response.data) : []
       });
-      
+
       // Ensure the response has the expected structure
       const responseData = response.data;
       if (!responseData || typeof responseData !== 'object') {
         console.error('❌ [API Client] Invalid response format:', responseData);
         throw new Error('Invalid response format');
       }
-      
+
       return responseData;
     } catch (error) {
       console.error('❌ [API Client] Request failed:', {
@@ -210,7 +210,7 @@ export class ApiClient {
   // File upload
   async upload<T = any>(url: string, file: File, onProgress?: (progress: number) => void): Promise<ApiResponse<T>> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('image', file);
 
     const config: AxiosRequestConfig = {
       method: 'POST',
@@ -326,7 +326,7 @@ export function useApi<T = any>() {
 
     try {
       const response = await requestFn();
-      
+
       if (response.success) {
         setState({
           data: response.data || null,
@@ -395,17 +395,17 @@ export function usePaginatedApi<T = any>(
 
     try {
       const response = await requestFn(currentPage, initialLimit);
-      
+
       if (response.success) {
         const newData = response.data || [];
         const totalItems = response.meta?.total || 0;
-        
+
         if (reset) {
           setData(newData);
         } else {
           setData(prev => [...prev, ...newData]);
         }
-        
+
         setTotal(totalItems);
         setHasMore(newData.length === initialLimit);
         setPage(currentPage + 1);
@@ -466,15 +466,15 @@ export function useInfiniteScroll<T = any>(
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
     if (loading) return;
-    
+
     if (observer.current) observer.current.disconnect();
-    
+
     observer.current = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && hasMore) {
         loadMore();
       }
     }, { threshold, rootMargin });
-    
+
     if (node) observer.current.observe(node);
   }, [loading, hasMore, threshold, rootMargin]);
 
@@ -486,7 +486,7 @@ export function useInfiniteScroll<T = any>(
 
     try {
       const response = await requestFn(page);
-      
+
       if (response.success) {
         const newData = response.data || [];
         setData(prev => [...prev, ...newData]);
